@@ -1,0 +1,33 @@
+spring:
+  ai:
+    mcp:
+      server:
+        enabled: true
+        protocol: sse
+        type: sync
+
+infobip:
+  openapi:
+    mcp:
+      # Hardcoded WireMock URLs - no more dynamic property source needed
+      open-api-url: "http://localhost:18089/openapi.json"
+      api-base-url: "http://localhost:18089"
+      security:
+        auth:
+          enabled: true
+          read-timeout: PT2S
+          user-agent: openapi-mcp-test
+          override-external-response: false
+          auth-url: http://localhost:18089/auth/validate
+          oauth:
+            url: http://localhost:18089/auth/validate
+
+logging:
+  level:
+    com.infobip.openapi.mcp: DEBUG
+    com.github.tomakehurst.wiremock: WARN
+
+management:
+  metrics:
+    enable:
+      all: false

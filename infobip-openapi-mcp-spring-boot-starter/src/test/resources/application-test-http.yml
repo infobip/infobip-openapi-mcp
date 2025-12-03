@@ -1,0 +1,47 @@
+spring:
+  ai:
+    mcp:
+      server:
+        enabled: true
+        protocol: stateless
+        streamable-http:
+          mcp-endpoint: /mcp
+        type: sync
+
+infobip:
+  openapi:
+    mcp:
+      # These will be overridden by @DynamicPropertySource in tests that use WireMock
+      open-api-url: "http://localhost:8080/openapi.json"
+      api-base-url: "http://localhost:8080"
+      user-agent: openapi-mcp-test
+      security:
+        auth:
+          enabled: true
+          connect-timeout: PT2S
+          read-timeout: PT2S
+          override-external-response: false
+          auth-url: http://localhost:{$server.port}/auth/validate
+          oauth:
+            enabled: true
+            url: https://example.com/reamls/test-realm
+            connect-timeout: PT2S
+            read-timeout: PT1S
+            scope-discovery:
+              enabled: true
+              scope-extensions: null
+              calculate-minimal-scopes: greedy
+              mandatory-scopes: ""
+            www-authenticate:
+              url-source: api_base_url
+              include-mcp-endpoint: false
+
+logging:
+  level:
+    com.infobip.openapi.mcp: DEBUG
+    com.github.tomakehurst.wiremock: WARN
+
+management:
+  metrics:
+    enable:
+      all: false

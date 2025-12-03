@@ -1,0 +1,20 @@
+spring:
+  ai:
+    mcp:
+      server:
+        enabled: true
+        protocol: sse
+        type: sync
+        stdio: true
+
+infobip:
+  openapi:
+    mcp:
+      security:
+        auth:
+          enabled: false
+
+management:
+  metrics:
+    enable:
+      all: false

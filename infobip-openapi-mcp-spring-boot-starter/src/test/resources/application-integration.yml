@@ -1,0 +1,28 @@
+spring:
+  ai:
+    mcp:
+      server:
+        enabled: true
+        streamable-http:
+          mcp-endpoint: /mcp
+        type: sync
+
+infobip:
+  openapi:
+    mcp:
+      # These will be overridden by @DynamicPropertySource in tests that use WireMock
+      open-api-url: "http://localhost:8080/openapi.json"
+      api-base-url: "http://localhost:8080"
+      security:
+        auth:
+          enabled: false
+
+logging:
+  level:
+    com.infobip.openapi.mcp: DEBUG
+    com.github.tomakehurst.wiremock: WARN
+
+management:
+  metrics:
+    enable:
+      all: false

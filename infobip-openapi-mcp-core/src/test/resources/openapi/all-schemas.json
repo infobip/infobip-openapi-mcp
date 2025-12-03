@@ -1,0 +1,172 @@
+{
+  "openapi": "3.1.1",
+  "info": {
+    "title": "OpenAPI spec with all possible schemas",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/{pathParam}": {
+      "post": {
+        "parameters": [
+          {
+            "in": "query",
+            "name": "queryParam",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "required": true,
+            "name": "pathParam",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "headerParam",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "cookieParam",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "string"
+              }
+            },
+            "application/xml": {
+              "schema": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Ok response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Bad request response"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "complexSchema": {
+        "type": [
+          "object",
+          "array"
+        ],
+        "properties": {
+          "firstProp": {
+            "type": "string"
+          },
+          "secondProp": {
+            "type": "string"
+          }
+        },
+        "dependentSchemas": {
+          "example": {
+            "type": "string"
+          }
+        },
+        "prefixItems": [
+          {
+            "type": "string"
+          }
+        ],
+        "if": {
+          "type": "string"
+        },
+        "not": {
+          "type": "string"
+        },
+        "else": {
+          "type": "string"
+        },
+        "then": {
+          "type": "string"
+        },
+        "contains": {
+          "type": "string"
+        },
+        "contentSchema": {
+          "type": "string"
+        },
+        "items": {
+          "type": "string"
+        },
+        "unevaluatedItems": {
+          "type": "string"
+        }
+      },
+      "anyOfSchema": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "number"
+          }
+        ]
+      },
+      "allOfSchema": {
+        "allOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "number"
+          }
+        ]
+      },
+      "oneOfSchema": {
+        "oneOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "number"
+          }
+        ]
+      }
+    }
+  }
+}

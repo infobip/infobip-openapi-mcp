@@ -1,0 +1,19 @@
+infobip:
+  openapi:
+    mcp:
+      security:
+        auth:
+          enabled: true
+          # These will be overridden by @DynamicPropertySource in tests that use WireMock
+          auth-url: http://localhost:{$server.port}/auth/validate
+          connect-timeout: PT2S
+          read-timeout: PT2S
+          user-agent: openapi-mcp-test
+          override-external-response: false
+          oauth:
+            url: http://localhost:8080/auth/validate
+
+management:
+  metrics:
+    enable:
+      all: false
