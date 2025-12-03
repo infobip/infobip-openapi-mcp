@@ -184,8 +184,7 @@ class OpenApiReaderTest {
         @Test
         void shouldParseValidOpenAPIYamlFromHttpEndpoint() {
             // Given
-            var validOpenAPIYaml =
-                    """
+            var validOpenAPIYaml = """
                     openapi: 3.1.0
                     info:
                       title: Test API
@@ -231,8 +230,7 @@ class OpenApiReaderTest {
         @Test
         void shouldParseValidOpenAPIJsonFromHttpEndpoint() {
             // Given
-            var validOpenAPIJson =
-                    """
+            var validOpenAPIJson = """
                     {
                       "openapi": "3.1.0",
                       "info": {
@@ -326,8 +324,7 @@ class OpenApiReaderTest {
         @Test
         void shouldLogWarningsForDocumentWithValidationIssues(CapturedOutput output) {
             // Given
-            var openApiWithWarnings =
-                    """
+            var openApiWithWarnings = """
                     openapi: 3.0.3
                     info:
                       title: API with Warnings
@@ -365,8 +362,7 @@ class OpenApiReaderTest {
         @Test
         void shouldNotResolveReferences() {
             // Given
-            var openApiWithReferences =
-                    """
+            var openApiWithReferences = """
                     {
                       "openapi": "3.0.3",
                       "info": {

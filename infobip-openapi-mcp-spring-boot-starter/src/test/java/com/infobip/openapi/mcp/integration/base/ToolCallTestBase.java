@@ -56,8 +56,7 @@ public abstract class ToolCallTestBase extends IntegrationTestBase {
     void shouldCallToolAndFail() {
         withInitializedMcpClient(givenClient -> {
             // Given
-            var givenErrorResponse =
-                    """
+            var givenErrorResponse = """
                     {
                           "error": {
                             "code": "500",
@@ -92,8 +91,7 @@ public abstract class ToolCallTestBase extends IntegrationTestBase {
     void shouldCallToolAndFailWithErrorNotInOpenApiSpecification() {
         withInitializedMcpClient(givenClient -> {
             // Given
-            var givenErrorResponse =
-                    """
+            var givenErrorResponse = """
                     {
                       "error": {
                         "code": "400",

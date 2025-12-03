@@ -26,8 +26,7 @@ public class ScopeDiscoveryServiceTest extends OpenApiTestBase {
     @MockitoSpyBean
     protected OpenApiRegistry openApiRegistry;
 
-    private static final String GIVEN_EXTENSIONS_OPENAPI_SPEC =
-            """
+    private static final String GIVEN_EXTENSIONS_OPENAPI_SPEC = """
             {
                 "openapi": "3.1.0",
                 "info": {"title": "Test API", "version": "1.0.0"},
@@ -50,8 +49,7 @@ public class ScopeDiscoveryServiceTest extends OpenApiTestBase {
             }
             """;
 
-    private static final String GIVEN_SECURITY_OPENAPI_SPEC =
-            """
+    private static final String GIVEN_SECURITY_OPENAPI_SPEC = """
             {
                 "openapi": "3.1.0",
                 "info": {"title": "Test API", "version": "1.0.0"},
@@ -235,8 +233,7 @@ public class ScopeDiscoveryServiceTest extends OpenApiTestBase {
         @Test
         void shouldDiscoverScopesFromSecurityIncludingGlobalWhenNoneEndpointsOverridden() {
             // Given
-            var openApiSpecWithGlobalSecurity =
-                    """
+            var openApiSpecWithGlobalSecurity = """
                     {
                         "openapi": "3.1.0",
                         "info": {"title": "Test API", "version": "1.0.0"},
@@ -273,8 +270,7 @@ public class ScopeDiscoveryServiceTest extends OpenApiTestBase {
         @Test
         void shouldDiscoverScopesFromSecurityWithoutGlobalWhenAllEndpointsOverridden() {
             // Given
-            var openApiSpecWithGlobalSecurity =
-                    """
+            var openApiSpecWithGlobalSecurity = """
                     {
                         "openapi": "3.1.0",
                         "info": {"title": "Test API", "version": "1.0.0"},
@@ -317,8 +313,7 @@ public class ScopeDiscoveryServiceTest extends OpenApiTestBase {
         @Test
         void shouldAllowForOptionalSecurityOnOperationLevel() {
             // Given
-            var openApiSpecWithGlobalSecurity =
-                    """
+            var openApiSpecWithGlobalSecurity = """
                     {
                         "openapi": "3.1.0",
                         "info": {"title": "Test API", "version": "1.0.0"},
@@ -368,8 +363,7 @@ public class ScopeDiscoveryServiceTest extends OpenApiTestBase {
         @Test
         void shouldAllowForOptionalSecurityOnGlobalLevel() {
             // Given
-            var openApiSpecWithGlobalSecurity =
-                    """
+            var openApiSpecWithGlobalSecurity = """
                     {
                         "openapi": "3.1.0",
                         "info": {"title": "Test API", "version": "1.0.0"},
@@ -407,8 +401,7 @@ public class ScopeDiscoveryServiceTest extends OpenApiTestBase {
         @Test
         void shouldNotUseSecurityRequirementValuesFromNonOauthBasedSchemes() {
             // Given
-            var openApiSpecWithGlobalSecurity =
-                    """
+            var openApiSpecWithGlobalSecurity = """
                     {
                         "openapi": "3.1.0",
                         "info": {"title": "Test API", "version": "1.0.0"},
@@ -457,8 +450,7 @@ public class ScopeDiscoveryServiceTest extends OpenApiTestBase {
         @Test
         void shouldDiscoverScopesFromSecurityIncludingGlobalWhenSomeEndpointsOverridden() {
             // Given
-            var openApiSpecWithGlobalSecurity =
-                    """
+            var openApiSpecWithGlobalSecurity = """
                     {
                         "openapi": "3.1.0",
                         "info": {"title": "Test API", "version": "1.0.0"},

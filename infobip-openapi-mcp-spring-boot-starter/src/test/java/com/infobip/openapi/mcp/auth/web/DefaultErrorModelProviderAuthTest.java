@@ -40,15 +40,13 @@ class DefaultErrorModelProviderAuthTest extends AuthenticationTestBase {
         headers.set("Authorization", "Bearer expired-token");
         headers.setAccept(List.of(MediaType.APPLICATION_JSON, MediaType.TEXT_EVENT_STREAM));
         headers.setContentType(MediaType.APPLICATION_JSON);
-        var entity = new HttpEntity<>(
-                """
+        var entity = new HttpEntity<>("""
                         {
                             "jsonrpc": "2.0",
                             "method": "tools/list",
                             "id": 1
                         }
-                        """,
-                headers);
+                        """, headers);
 
         // when
         var response =
@@ -64,8 +62,7 @@ class DefaultErrorModelProviderAuthTest extends AuthenticationTestBase {
                         + getStaticWireMockServer().port() + "/.well-known/oauth-protected-resource\"");
 
         // Should return DefaultErrorModelProvider response, not external auth service response
-        String expectedJson =
-                """
+        String expectedJson = """
                         {
                             "error": "Unauthorized",
                             "description": "Authentication required. Please provide valid credentials."
@@ -91,15 +88,13 @@ class DefaultErrorModelProviderAuthTest extends AuthenticationTestBase {
         headers.set("Authorization", "Bearer limited-token");
         headers.setAccept(List.of(MediaType.APPLICATION_JSON, MediaType.TEXT_EVENT_STREAM));
         headers.setContentType(MediaType.APPLICATION_JSON);
-        var entity = new HttpEntity<>(
-                """
+        var entity = new HttpEntity<>("""
                         {
                             "jsonrpc": "2.0",
                             "method": "tools/list",
                             "id": 1
                         }
-                        """,
-                headers);
+                        """, headers);
 
         // when
         var response =
@@ -110,8 +105,7 @@ class DefaultErrorModelProviderAuthTest extends AuthenticationTestBase {
         then(response.getHeaders().getContentType().toString()).isEqualTo("application/json;charset=UTF-8");
 
         // Should return DefaultErrorModelProvider response in JSON format, not external XML
-        String expectedJson =
-                """
+        String expectedJson = """
                         {
                             "error": "Forbidden",
                             "description": "Access denied. You don't have permission to access this resource."
@@ -137,15 +131,13 @@ class DefaultErrorModelProviderAuthTest extends AuthenticationTestBase {
         headers.set("Authorization", "malformed-token");
         headers.setAccept(List.of(MediaType.APPLICATION_JSON, MediaType.TEXT_EVENT_STREAM));
         headers.setContentType(MediaType.APPLICATION_JSON);
-        var entity = new HttpEntity<>(
-                """
+        var entity = new HttpEntity<>("""
                         {
                             "jsonrpc": "2.0",
                             "method": "tools/list",
                             "id": 1
                         }
-                        """,
-                headers);
+                        """, headers);
 
         // when
         var response =
@@ -156,8 +148,7 @@ class DefaultErrorModelProviderAuthTest extends AuthenticationTestBase {
         then(response.getHeaders().getContentType().toString()).isEqualTo("application/json;charset=UTF-8");
 
         // Should return DefaultErrorModelProvider response
-        String expectedJson =
-                """
+        String expectedJson = """
                         {
                             "error": "Bad Request",
                             "description": "Check the request syntax and parameters and try again."
@@ -180,15 +171,13 @@ class DefaultErrorModelProviderAuthTest extends AuthenticationTestBase {
         headers.set("Authorization", "Bearer any-token");
         headers.setAccept(List.of(MediaType.APPLICATION_JSON, MediaType.TEXT_EVENT_STREAM));
         headers.setContentType(MediaType.APPLICATION_JSON);
-        var entity = new HttpEntity<>(
-                """
+        var entity = new HttpEntity<>("""
                         {
                             "jsonrpc": "2.0",
                             "method": "tools/list",
                             "id": 1
                         }
-                        """,
-                headers);
+                        """, headers);
 
         // when
         var response =
@@ -199,8 +188,7 @@ class DefaultErrorModelProviderAuthTest extends AuthenticationTestBase {
         then(response.getHeaders().getContentType().toString()).isEqualTo("application/json;charset=UTF-8");
 
         // Should return DefaultErrorModelProvider response, not external plain text
-        String expectedJson =
-                """
+        String expectedJson = """
                         {
                             "error": "Internal Server Error",
                             "description": "An unexpected error occurred on the server."
@@ -223,15 +211,13 @@ class DefaultErrorModelProviderAuthTest extends AuthenticationTestBase {
         headers.set("Authorization", "Bearer test-token");
         headers.setAccept(List.of(MediaType.APPLICATION_JSON, MediaType.TEXT_EVENT_STREAM));
         headers.setContentType(MediaType.APPLICATION_JSON);
-        var entity = new HttpEntity<>(
-                """
+        var entity = new HttpEntity<>("""
                         {
                             "jsonrpc": "2.0",
                             "method": "tools/list",
                             "id": 1
                         }
-                        """,
-                headers);
+                        """, headers);
 
         // when
         var response =
@@ -242,8 +228,7 @@ class DefaultErrorModelProviderAuthTest extends AuthenticationTestBase {
         then(response.getHeaders().getContentType().toString()).isEqualTo("application/json;charset=UTF-8");
 
         // Should return DefaultErrorModelProvider response
-        String expectedJson =
-                """
+        String expectedJson = """
                         {
                             "error": "Not Found",
                             "description": "The requested resource was not found."
@@ -266,15 +251,13 @@ class DefaultErrorModelProviderAuthTest extends AuthenticationTestBase {
         headers.set("Authorization", "Bearer invalid-token");
         headers.setAccept(List.of(MediaType.APPLICATION_JSON, MediaType.TEXT_EVENT_STREAM));
         headers.setContentType(MediaType.APPLICATION_JSON);
-        var entity = new HttpEntity<>(
-                """
+        var entity = new HttpEntity<>("""
                         {
                             "jsonrpc": "2.0",
                             "method": "tools/list",
                             "id": 1
                         }
-                        """,
-                headers);
+                        """, headers);
 
         // when
         var response =
@@ -285,8 +268,7 @@ class DefaultErrorModelProviderAuthTest extends AuthenticationTestBase {
         then(response.getHeaders().getContentType().toString()).isEqualTo("application/json;charset=UTF-8");
 
         // Should return JSON format from DefaultErrorModelProvider, not XML
-        String expectedJson =
-                """
+        String expectedJson = """
                         {
                             "error": "Forbidden",
                             "description": "Access denied. You don't have permission to access this resource."
@@ -298,8 +280,7 @@ class DefaultErrorModelProviderAuthTest extends AuthenticationTestBase {
     @Test
     void shouldReturnWwwAuthenticateWithScopesForNoAuthorizationHeader() throws JSONException {
         // given - external service returns XML, but we should get JSON
-        var givenOpenApiSpec =
-                """
+        var givenOpenApiSpec = """
                 {
                     "openapi": "3.1.0",
                     "info": {"title": "Test API", "version": "1.0.0"},
@@ -339,15 +320,13 @@ class DefaultErrorModelProviderAuthTest extends AuthenticationTestBase {
         var headers = new HttpHeaders();
         headers.setAccept(List.of(MediaType.APPLICATION_JSON, MediaType.TEXT_EVENT_STREAM));
         headers.setContentType(MediaType.APPLICATION_JSON);
-        var entity = new HttpEntity<>(
-                """
+        var entity = new HttpEntity<>("""
                 {
                     "jsonrpc": "2.0",
                     "method": "tools/list",
                     "id": 1
                 }
-                """,
-                headers);
+                """, headers);
 
         // when
         var response =
@@ -371,8 +350,7 @@ class DefaultErrorModelProviderAuthTest extends AuthenticationTestBase {
                         + ", scope=\"write:resource1 read:resource1\"");
 
         // Should return JSON format from DefaultErrorModelProvider, not XML
-        String expectedJson =
-                """
+        String expectedJson = """
                 {
                     "error": "Unauthorized",
                     "description": "Authentication required. Please provide valid credentials."
@@ -391,15 +369,13 @@ class DefaultErrorModelProviderAuthTest extends AuthenticationTestBase {
             var headers = new HttpHeaders();
             headers.setAccept(List.of(MediaType.APPLICATION_JSON, MediaType.TEXT_EVENT_STREAM));
             headers.setContentType(MediaType.APPLICATION_JSON);
-            var entity = new HttpEntity<>(
-                    """
+            var entity = new HttpEntity<>("""
                             {
                                 "jsonrpc": "2.0",
                                 "method": "tools/list",
                                 "id": 1
                             }
-                            """,
-                    headers);
+                            """, headers);
 
             // when
             var baseUrl = "http://localhost:" + port + "/mcp";
@@ -411,8 +387,7 @@ class DefaultErrorModelProviderAuthTest extends AuthenticationTestBase {
             then(response.getHeaders().get(HttpHeaders.WWW_AUTHENTICATE)).isNullOrEmpty();
 
             // Should return JSON format from DefaultErrorModelProvider, not XML
-            String expectedJson =
-                    """
+            String expectedJson = """
                             {
                                 "error": "Unauthorized",
                                 "description": "Authentication required. Please provide valid credentials."
@@ -439,15 +414,13 @@ class DefaultErrorModelProviderAuthTest extends AuthenticationTestBase {
             headers.set("X-Forwarded-Proto", "https");
             headers.setAccept(List.of(MediaType.APPLICATION_JSON, MediaType.TEXT_EVENT_STREAM));
             headers.setContentType(MediaType.APPLICATION_JSON);
-            var entity = new HttpEntity<>(
-                    """
+            var entity = new HttpEntity<>("""
                             {
                                 "jsonrpc": "2.0",
                                 "method": "tools/list",
                                 "id": 1
                             }
-                            """,
-                    headers);
+                            """, headers);
 
             // when
             var response =
@@ -461,8 +434,7 @@ class DefaultErrorModelProviderAuthTest extends AuthenticationTestBase {
                     .isEqualTo("Bearer resource_metadata=\"" + "https://custom.host.com/test"
                             + "/.well-known/oauth-protected-resource\"");
 
-            String expectedJson =
-                    """
+            String expectedJson = """
                             {
                                 "error": "Unauthorized",
                                 "description": "Authentication required. Please provide valid credentials."
@@ -479,15 +451,13 @@ class DefaultErrorModelProviderAuthTest extends AuthenticationTestBase {
                     HttpHeaders.HOST, "localhost:" + getStaticWireMockServer().port());
             headers.setAccept(List.of(MediaType.APPLICATION_JSON, MediaType.TEXT_EVENT_STREAM));
             headers.setContentType(MediaType.APPLICATION_JSON);
-            var entity = new HttpEntity<>(
-                    """
+            var entity = new HttpEntity<>("""
                             {
                                 "jsonrpc": "2.0",
                                 "method": "tools/list",
                                 "id": 1
                             }
-                            """,
-                    headers);
+                            """, headers);
 
             // when
             var response =
@@ -501,8 +471,7 @@ class DefaultErrorModelProviderAuthTest extends AuthenticationTestBase {
                     .isEqualTo("Bearer resource_metadata=\"" + "http://localhost:" + port + "/test"
                             + "/.well-known/oauth-protected-resource\"");
 
-            String expectedJson =
-                    """
+            String expectedJson = """
                             {
                                 "error": "Unauthorized",
                                 "description": "Authentication required. Please provide valid credentials."

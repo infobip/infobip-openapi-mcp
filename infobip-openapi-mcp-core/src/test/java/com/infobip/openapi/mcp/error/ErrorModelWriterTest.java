@@ -47,8 +47,7 @@ class ErrorModelWriterTest {
             // Given
             HttpStatusCode statusCode = HttpStatus.NOT_FOUND;
             var errorModel = new DefaultErrorModel("Not Found", "Resource not found");
-            String expectedJson =
-                    """
+            String expectedJson = """
                 {
                   "error": "Not Found",
                   "description": "Resource not found"
@@ -71,8 +70,7 @@ class ErrorModelWriterTest {
             // Given
             HttpStatusCode statusCode = HttpStatus.UNAUTHORIZED;
             var errorModel = new DefaultErrorModel("Unauthorized", "Authentication required");
-            String expectedJson =
-                    """
+            String expectedJson = """
                 {
                   "error": "Unauthorized",
                   "description": "Authentication required"
@@ -94,8 +92,7 @@ class ErrorModelWriterTest {
             // Given
             HttpStatusCode statusCode = HttpStatus.NO_CONTENT;
             var errorModel = new DefaultErrorModel("", "");
-            String expectedJson =
-                    """
+            String expectedJson = """
                 {
                   "error": "",
                   "description": ""
@@ -118,8 +115,7 @@ class ErrorModelWriterTest {
             HttpStatusCode statusCode = HttpStatus.BAD_REQUEST;
             var errorModel =
                     new DefaultErrorModel("Bad Request", "Invalid JSON: \"missing quote and special chars: àáâãäåæç");
-            String expectedJson =
-                    """
+            String expectedJson = """
                 {
                   "error": "Bad Request",
                   "description": "Invalid JSON: \\"missing quote and special chars: àáâãäåæç"

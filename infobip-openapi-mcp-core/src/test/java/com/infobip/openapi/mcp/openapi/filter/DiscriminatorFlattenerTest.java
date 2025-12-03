@@ -41,8 +41,7 @@ class DiscriminatorFlattenerTest {
     class NoDiscriminator {
         @Test
         void unchangedWhenNoDiscriminatorsPresent() throws Exception {
-            var input =
-                    """
+            var input = """
                 {
                   "openapi": "3.1.0",
                   "info": {
@@ -68,8 +67,7 @@ class DiscriminatorFlattenerTest {
 
         @Test
         void emptyComponentsRemainsSame() throws Exception {
-            var input =
-                    """
+            var input = """
                 {
                   "openapi": "3.1.0",
                   "info": { "title": "API", "version": "1" },
@@ -83,8 +81,7 @@ class DiscriminatorFlattenerTest {
 
         @Test
         void noComponentsRemainsSame() throws Exception {
-            var input =
-                    """
+            var input = """
                 {
                   "openapi": "3.1.0",
                   "paths": { },
@@ -101,8 +98,7 @@ class DiscriminatorFlattenerTest {
         @Test
         @DisplayName("Discriminator replaced with oneOf; mapped schema properties converted to enum/default.")
         void simpleDiscriminatorMapping() throws Exception {
-            var input =
-                    """
+            var input = """
                 {
                   "openapi": "3.1.0",
                   "info": { "title": "API", "version": "1" },
@@ -142,8 +138,7 @@ class DiscriminatorFlattenerTest {
                   }
                 }
                 """;
-            var expected =
-                    """
+            var expected = """
                 {
                   "openapi": "3.1.0",
                   "info": { "title": "API", "version": "1" },
@@ -204,8 +199,7 @@ class DiscriminatorFlattenerTest {
         @Test
         @DisplayName("Missing referenced schema in mapping is skipped")
         void missingReferencedSchemaSkipped() throws Exception {
-            var input =
-                    """
+            var input = """
                 {
                   "openapi": "3.1.0",
                   "info": { "title": "API", "version": "1" },
@@ -235,8 +229,7 @@ class DiscriminatorFlattenerTest {
                   }
                 }
                 """;
-            var expected =
-                    """
+            var expected = """
                 {
                   "openapi": "3.1.0",
                   "info": { "title": "API", "version": "1" },
@@ -278,8 +271,7 @@ class DiscriminatorFlattenerTest {
         @Test
         @DisplayName("Discriminator without mapping is removed; no oneOf created")
         void discriminatorWithoutMapping() throws Exception {
-            var input =
-                    """
+            var input = """
                 {
                   "openapi": "3.1.0",
                   "info": { "title": "API", "version": "1" },
@@ -299,8 +291,7 @@ class DiscriminatorFlattenerTest {
                   }
                 }
                 """;
-            var expected =
-                    """
+            var expected = """
                 {
                   "openapi": "3.1.0",
                   "info": { "title": "API", "version": "1" },
@@ -328,8 +319,7 @@ class DiscriminatorFlattenerTest {
         @Test
         @DisplayName("Discriminator mapping where referenced schema has allOf; property located in inline allOf schema")
         void allOfInlineProperty() throws Exception {
-            var input =
-                    """
+            var input = """
                 {
                   "openapi": "3.1.0",
                   "info": { "title": "API", "version": "1" },
@@ -364,8 +354,7 @@ class DiscriminatorFlattenerTest {
             // Due to the way how OpenAPI parser reuses references,
             // the "X" component schema also gets modified in the result.
             // This is acceptable and does not affect the correctness of the flattening.
-            var expected =
-                    """
+            var expected = """
                 {
                   "openapi": "3.1.0",
                   "info": { "title": "API", "version": "1" },
@@ -429,8 +418,7 @@ class DiscriminatorFlattenerTest {
         @DisplayName(
                 "Discriminator mapping where property is only in referenced schema via $ref inside allOf no inline match (no adjustment)")
         void allOfWithRefOnlyPropertyInRef() throws Exception {
-            var input =
-                    """
+            var input = """
                 {
                   "openapi": "3.1.0",
                   "info": { "title": "API", "version": "1" },
@@ -461,8 +449,7 @@ class DiscriminatorFlattenerTest {
                   }
                 }
                 """;
-            var expected =
-                    """
+            var expected = """
                 {
                   "openapi": "3.1.0",
                   "info": { "title": "API", "version": "1" },
@@ -530,8 +517,7 @@ class DiscriminatorFlattenerTest {
         @DisplayName(
                 "Discriminator mapping where property is only in referenced schema via $ref inside allOf (ref second in array)")
         void allOfWithRefOnlyPropertyInRefInvertedOrder() throws Exception {
-            var input =
-                    """
+            var input = """
                 {
                   "openapi": "3.1.0",
                   "info": { "title": "API", "version": "1" },
@@ -562,8 +548,7 @@ class DiscriminatorFlattenerTest {
                   }
                 }
                 """;
-            var expected =
-                    """
+            var expected = """
                 {
                   "openapi": "3.1.0",
                   "info": { "title": "API", "version": "1" },
@@ -633,8 +618,7 @@ class DiscriminatorFlattenerTest {
         @Test
         @DisplayName("Discriminator inside property schema is flattened")
         void nestedPropertyDiscriminator() throws Exception {
-            var input =
-                    """
+            var input = """
                 {
                   "openapi": "3.1.0",
                   "info": { "title": "API", "version": "1" },
@@ -666,8 +650,7 @@ class DiscriminatorFlattenerTest {
                   }
                 }
                 """;
-            var expected =
-                    """
+            var expected = """
                 {
                   "openapi": "3.1.0",
                   "info": { "title": "API", "version": "1" },
@@ -717,8 +700,7 @@ class DiscriminatorFlattenerTest {
         @Test
         @DisplayName("Circular reference: discriminator schema is referenced back in mapped schema's allOf")
         void circularReferenceInAllOf() throws Exception {
-            var input =
-                    """
+            var input = """
                 {
                   "openapi": "3.1.0",
                   "info": { "title": "API", "version": "1" },
@@ -754,8 +736,7 @@ class DiscriminatorFlattenerTest {
                   }
                 }
                 """;
-            var expected =
-                    """
+            var expected = """
                 {
                   "openapi": "3.1.0",
                   "info": { "title": "API", "version": "1" },
@@ -822,8 +803,7 @@ class DiscriminatorFlattenerTest {
         @Test
         @DisplayName("Discriminator property defined as $ref with simple allOf mappings")
         void discriminatorPropertyAsRefWithSimpleAllOf() throws Exception {
-            var input =
-                    """
+            var input = """
                 {
                   "openapi": "3.1.0",
                   "info": { "title": "API", "version": "1" },
@@ -878,8 +858,7 @@ class DiscriminatorFlattenerTest {
                   }
                 }
                 """;
-            var expected =
-                    """
+            var expected = """
                 {
                   "openapi": "3.1.0",
                   "info": { "title": "API", "version": "1" },
@@ -994,8 +973,7 @@ class DiscriminatorFlattenerTest {
         @Test
         @DisplayName("Nested discriminators with $ref properties - configuration pattern")
         void nestedDiscriminatorsWithRefProperties() throws Exception {
-            var input =
-                    """
+            var input = """
                 {
                   "openapi": "3.1.0",
                   "info": { "title": "API", "version": "1" },
@@ -1070,8 +1048,7 @@ class DiscriminatorFlattenerTest {
                   }
                 }
                 """;
-            var expected =
-                    """
+            var expected = """
                 {
                   "openapi": "3.1.0",
                   "info": { "title": "API", "version": "1" },
@@ -1201,8 +1178,7 @@ class DiscriminatorFlattenerTest {
         @Test
         @DisplayName("Discriminator in nested property creates infinite loop when mapped schema has properties")
         void discriminatorInPropertyWithCircularProperties() throws Exception {
-            var input =
-                    """
+            var input = """
                 {
                   "openapi": "3.1.0",
                   "info": { "title": "API", "version": "1" },
@@ -1240,8 +1216,7 @@ class DiscriminatorFlattenerTest {
                   }
                 }
                 """;
-            var expected =
-                    """
+            var expected = """
                 {
                   "openapi": "3.1.0",
                   "info": { "title": "API", "version": "1" },
@@ -1293,8 +1268,7 @@ class DiscriminatorFlattenerTest {
         @DisplayName(
                 "Visited schema logic prevents infinite recursion when allOf references earlier discriminator root")
         void preventInfiniteRecursion() throws Exception {
-            var input =
-                    """
+            var input = """
                 {
                   "openapi": "3.1.0",
                   "info": { "title": "API", "version": "1" },
@@ -1317,8 +1291,7 @@ class DiscriminatorFlattenerTest {
                   }
                 }
                 """;
-            var expected =
-                    """
+            var expected = """
                 {
                   "openapi": "3.1.0",
                   "info": { "title": "API", "version": "1" },
@@ -1373,8 +1346,7 @@ class DiscriminatorFlattenerTest {
         @Test
         @DisplayName("$ref schemas (standalone) are not modified directly")
         void refSchemasUnchanged() throws Exception {
-            var input =
-                    """
+            var input = """
                 {
                   "openapi": "3.1.0",
                   "info": { "title": "API", "version": "1" },
@@ -1404,8 +1376,7 @@ class DiscriminatorFlattenerTest {
         @DisplayName(
                 "Multiple mappings with allOf where property is in referenced schema - all allOf items preserved with correct type info")
         void multipleMappingsWithAllOfReferencedProperty() throws Exception {
-            var input =
-                    """
+            var input = """
                 {
                   "openapi": "3.1.0",
                   "info": { "title": "API", "version": "1" },
@@ -1459,8 +1430,7 @@ class DiscriminatorFlattenerTest {
                   }
                 }
                 """;
-            var expected =
-                    """
+            var expected = """
                 {
                   "openapi": "3.1.0",
                   "info": { "title": "API", "version": "1" },
@@ -1582,8 +1552,7 @@ class DiscriminatorFlattenerTest {
         @DisplayName(
                 "First mapped schema adjusted, subsequent mappings added as $ref (three mappings) and unrelated schema untouched")
         void threeMappingsAndUnrelatedPreserved() throws Exception {
-            var input =
-                    """
+            var input = """
                 {
                   "openapi": "3.1.0",
                   "info": { "title": "API", "version": "1" },
@@ -1632,8 +1601,7 @@ class DiscriminatorFlattenerTest {
                   }}
                 }
                 """;
-            var expected =
-                    """
+            var expected = """
                 {
                   "openapi": "3.1.0",
                   "info": { "title": "API", "version": "1" },
@@ -1720,8 +1688,7 @@ class DiscriminatorFlattenerTest {
         @Test
         @DisplayName("Discriminator inside schema referenced through anyOf is flattened")
         void anyOfTraversal() throws Exception {
-            var input =
-                    """
+            var input = """
                 {
                   "openapi": "3.1.0",
                   "info": { "title": "API", "version": "1" },
@@ -1759,8 +1726,7 @@ class DiscriminatorFlattenerTest {
                   }
                 }
                 """;
-            var expected =
-                    """
+            var expected = """
                 {
                   "openapi": "3.1.0",
                   "info": { "title": "API", "version": "1" },
@@ -1814,8 +1780,7 @@ class DiscriminatorFlattenerTest {
         @DisplayName(
                 "Discriminator inside schema referenced through oneOf is flattened without affecting sibling schemas")
         void oneOfTraversal() throws Exception {
-            var input =
-                    """
+            var input = """
                 {
                   "openapi": "3.1.0",
                   "info": { "title": "API", "version": "1" },
@@ -1857,8 +1822,7 @@ class DiscriminatorFlattenerTest {
                   }
                 }
                 """;
-            var expected =
-                    """
+            var expected = """
                 {
                   "openapi": "3.1.0",
                   "info": { "title": "API", "version": "1" },
@@ -1919,8 +1883,7 @@ class DiscriminatorFlattenerTest {
         @Test
         @DisplayName("Discriminator property defined as $ref with complex allOf mappings and required fields")
         void discriminatorPropertyAsRefWithComplexAllOf() throws Exception {
-            var input =
-                    """
+            var input = """
                 {
                   "openapi": "3.1.0",
                   "info": { "title": "API", "version": "1" },
@@ -2017,8 +1980,7 @@ class DiscriminatorFlattenerTest {
                 }
                 """;
 
-            var expectedOutput =
-                    """
+            var expectedOutput = """
                 {
                   "openapi": "3.1.0",
                   "info": { "title": "API", "version": "1" },
@@ -2211,8 +2173,7 @@ class DiscriminatorFlattenerTest {
         @Test
         @DisplayName("Discriminator with property as $ref and single mapping")
         void singleMappingWithRefDiscriminatorProperty() throws Exception {
-            var input =
-                    """
+            var input = """
                 {
                   "openapi": "3.1.0",
                   "info": { "title": "API", "version": "1" },
@@ -2258,8 +2219,7 @@ class DiscriminatorFlattenerTest {
                   }
                 }
                 """;
-            var expected =
-                    """
+            var expected = """
                 {
                   "openapi": "3.1.0",
                   "info": { "title": "API", "version": "1" },
@@ -2319,8 +2279,7 @@ class DiscriminatorFlattenerTest {
         @Test
         @DisplayName("Discriminator inside prefixItems schema is flattened")
         void prefixItemsDiscriminator() throws Exception {
-            var input =
-                    """
+            var input = """
                 {
                   "openapi": "3.1.0",
                   "info": { "title": "API", "version": "1" },
@@ -2349,8 +2308,7 @@ class DiscriminatorFlattenerTest {
                   }
                 }
                 """;
-            var expected =
-                    """
+            var expected = """
                 {
                   "openapi": "3.1.0",
                   "info": { "title": "API", "version": "1" },
@@ -2397,8 +2355,7 @@ class DiscriminatorFlattenerTest {
         @Test
         @DisplayName("Discriminator inside items schema is flattened")
         void itemsDiscriminator() throws Exception {
-            var input =
-                    """
+            var input = """
                 {
                   "openapi": "3.1.0",
                   "info": { "title": "API", "version": "1" },
@@ -2425,8 +2382,7 @@ class DiscriminatorFlattenerTest {
                   }
                 }
                 """;
-            var expected =
-                    """
+            var expected = """
                 {
                   "openapi": "3.1.0",
                   "info": { "title": "API", "version": "1" },
@@ -2471,8 +2427,7 @@ class DiscriminatorFlattenerTest {
         @Test
         @DisplayName("Discriminator inside unevaluatedItems schema is flattened")
         void unevaluatedItemsDiscriminator() throws Exception {
-            var input =
-                    """
+            var input = """
                 {
                   "openapi": "3.1.0",
                   "info": { "title": "API", "version": "1" },
@@ -2499,8 +2454,7 @@ class DiscriminatorFlattenerTest {
                   }
                 }
                 """;
-            var expected =
-                    """
+            var expected = """
                 {
                   "openapi": "3.1.0",
                   "info": { "title": "API", "version": "1" },
@@ -2545,8 +2499,7 @@ class DiscriminatorFlattenerTest {
         @Test
         @DisplayName("Discriminator inside contains schema is flattened")
         void containsDiscriminator() throws Exception {
-            var input =
-                    """
+            var input = """
                 {
                   "openapi": "3.1.0",
                   "info": { "title": "API", "version": "1" },
@@ -2573,8 +2526,7 @@ class DiscriminatorFlattenerTest {
                   }
                 }
                 """;
-            var expected =
-                    """
+            var expected = """
                 {
                   "openapi": "3.1.0",
                   "info": { "title": "API", "version": "1" },
@@ -2619,8 +2571,7 @@ class DiscriminatorFlattenerTest {
         @Test
         @DisplayName("Discriminator inside dependentSchemas is flattened")
         void dependentSchemasDiscriminator() throws Exception {
-            var input =
-                    """
+            var input = """
                 {
                   "openapi": "3.1.0",
                   "info": { "title": "API", "version": "1" },
@@ -2652,8 +2603,7 @@ class DiscriminatorFlattenerTest {
                   }
                 }
                 """;
-            var expected =
-                    """
+            var expected = """
                 {
                   "openapi": "3.1.0",
                   "info": { "title": "API", "version": "1" },
@@ -2703,8 +2653,7 @@ class DiscriminatorFlattenerTest {
         @Test
         @DisplayName("Discriminator inside else schema is flattened")
         void elseDiscriminator() throws Exception {
-            var input =
-                    """
+            var input = """
                 {
                   "openapi": "3.1.0",
                   "info": { "title": "API", "version": "1" },
@@ -2733,8 +2682,7 @@ class DiscriminatorFlattenerTest {
                   }
                 }
                 """;
-            var expected =
-                    """
+            var expected = """
                 {
                   "openapi": "3.1.0",
                   "info": { "title": "API", "version": "1" },
@@ -2781,8 +2729,7 @@ class DiscriminatorFlattenerTest {
         @Test
         @DisplayName("Discriminator inside not schema is flattened")
         void notDiscriminator() throws Exception {
-            var input =
-                    """
+            var input = """
                 {
                   "openapi": "3.1.0",
                   "info": { "title": "API", "version": "1" },
@@ -2809,8 +2756,7 @@ class DiscriminatorFlattenerTest {
                   }
                 }
                 """;
-            var expected =
-                    """
+            var expected = """
                 {
                   "openapi": "3.1.0",
                   "info": { "title": "API", "version": "1" },
@@ -2855,8 +2801,7 @@ class DiscriminatorFlattenerTest {
         @Test
         @DisplayName("Discriminator inside contentSchema is flattened")
         void contentSchemaDiscriminator() throws Exception {
-            var input =
-                    """
+            var input = """
                 {
                   "openapi": "3.1.0",
                   "info": { "title": "API", "version": "1" },
@@ -2885,8 +2830,7 @@ class DiscriminatorFlattenerTest {
                   }
                 }
                 """;
-            var expected =
-                    """
+            var expected = """
                 {
                   "openapi": "3.1.0",
                   "info": { "title": "API", "version": "1" },
@@ -2933,8 +2877,7 @@ class DiscriminatorFlattenerTest {
         @Test
         @DisplayName("Multiple OpenAPI 3.1 properties with discriminators are all flattened")
         void multipleOpenApi31PropertiesWithDiscriminators() throws Exception {
-            var input =
-                    """
+            var input = """
                 {
                   "openapi": "3.1.0",
                   "info": { "title": "API", "version": "1" },
@@ -2976,8 +2919,7 @@ class DiscriminatorFlattenerTest {
                   }
                 }
                 """;
-            var expected =
-                    """
+            var expected = """
                 {
                   "openapi": "3.1.0",
                   "info": { "title": "API", "version": "1" },

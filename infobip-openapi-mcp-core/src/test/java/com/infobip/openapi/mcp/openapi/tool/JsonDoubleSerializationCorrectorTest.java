@@ -17,8 +17,7 @@ class JsonDoubleSerializationCorrectorTest {
     @Test
     void shouldReturnEmptyWhenNoDoubleSerializationDetected() throws Exception {
         // Given - normal JSON without double serialization
-        var inputJson =
-                """
+        var inputJson = """
             {
               "message": "Hello World",
               "count": 42,
@@ -39,15 +38,13 @@ class JsonDoubleSerializationCorrectorTest {
     @Test
     void shouldDetectAndCorrectDoubleSerializedJsonObject() throws Exception {
         // Given - JSON with double-serialized object
-        var inputJson =
-                """
+        var inputJson = """
             {
               "messages": "{\\"destinations\\":[{\\"to\\":\\"some destination\\"}],\\"content\\":{\\"text\\":\\"Hello\\"}}"
             }
             """;
 
-        var expectedOutputJson =
-                """
+        var expectedOutputJson = """
             {
               "messages": {
                 "destinations": [{"to": "some destination"}],
@@ -72,15 +69,13 @@ class JsonDoubleSerializationCorrectorTest {
     @Test
     void shouldDetectAndCorrectDoubleSerializedJsonArray() throws Exception {
         // Given - JSON with double-serialized array
-        var inputJson =
-                """
+        var inputJson = """
             {
               "messages": "[{\\"destinations\\":[{\\"to\\":\\"destination1\\"}],\\"content\\":{\\"text\\":\\"Hello1\\"}},{\\"destinations\\":[{\\"to\\":\\"destination2\\"}],\\"content\\":{\\"text\\":\\"Hello2\\"}}]"
             }
             """;
 
-        var expectedOutputJson =
-                """
+        var expectedOutputJson = """
             {
               "messages": [
                 {
@@ -111,15 +106,13 @@ class JsonDoubleSerializationCorrectorTest {
     @Test
     void shouldHandleNestedDoubleSerializedJson() throws Exception {
         // Given - JSON with nested double serialization (two levels deep)
-        var inputJson =
-                """
+        var inputJson = """
             {
               "data": "{\\"nested\\":\\"{\\\\\\"value\\\\\\":\\\\\\"deep\\\\\\"}\\",\\"other\\":\\"value\\"}"
             }
             """;
 
-        var expectedOutputJson =
-                """
+        var expectedOutputJson = """
             {
               "data": {
                 "nested": {
@@ -146,8 +139,7 @@ class JsonDoubleSerializationCorrectorTest {
     @Test
     void shouldNotModifyValidJsonStrings() throws Exception {
         // Given - JSON with legitimate string values that shouldn't be parsed
-        var inputJson =
-                """
+        var inputJson = """
             {
               "validJsonString": "This is just a string with {quotes} and [brackets]",
               "anotherString": "Not JSON: {incomplete",
@@ -168,8 +160,7 @@ class JsonDoubleSerializationCorrectorTest {
     @Test
     void shouldHandleMixedContentCorrectly() throws Exception {
         // Given - JSON with mixed normal and double-serialized fields
-        var inputJson =
-                """
+        var inputJson = """
             {
               "normalField": "normal value",
               "numberField": 123,
@@ -178,8 +169,7 @@ class JsonDoubleSerializationCorrectorTest {
             }
             """;
 
-        var expectedOutputJson =
-                """
+        var expectedOutputJson = """
             {
               "normalField": "normal value",
               "numberField": 123,
@@ -206,15 +196,13 @@ class JsonDoubleSerializationCorrectorTest {
     @Test
     void shouldHandleComplexDoubleSerializedStructure() throws Exception {
         // Given - the exact example from the Jira issue
-        var inputJson =
-                """
+        var inputJson = """
             {
               "messages": "[{\\"destinations\\":[{\\"to\\":\\"some destination\\"}],\\"content\\":{\\"text\\":\\"Hello\\"}}]"
             }
             """;
 
-        var expectedOutputJson =
-                """
+        var expectedOutputJson = """
             {
               "messages": [
                 {
@@ -241,13 +229,11 @@ class JsonDoubleSerializationCorrectorTest {
     @Test
     void shouldHandleArraysWithDoubleSerializedElements() throws Exception {
         // Given - array containing double-serialized elements
-        var inputJson =
-                """
+        var inputJson = """
             ["{\\"type\\":\\"message1\\"}", "normal string", "{\\"type\\":\\"message2\\"}"]
             """;
 
-        var expectedOutputJson =
-                """
+        var expectedOutputJson = """
             [
               {"type": "message1"},
               "normal string",
@@ -271,8 +257,7 @@ class JsonDoubleSerializationCorrectorTest {
     @Test
     void shouldHandleEmptyAndWhitespaceStrings() throws Exception {
         // Given - JSON with empty and whitespace strings
-        var inputJson =
-                """
+        var inputJson = """
             {
               "empty": "",
               "whitespace": "   "
@@ -292,8 +277,7 @@ class JsonDoubleSerializationCorrectorTest {
     @Test
     void shouldHandleMalformedJsonGracefully() throws Exception {
         // Given - JSON with malformed strings that look like JSON
-        var inputJson =
-                """
+        var inputJson = """
             {
               "malformed1": "{\\"incomplete\\": ",
               "malformed2": "[\\"unclosed array\\"",
@@ -315,15 +299,13 @@ class JsonDoubleSerializationCorrectorTest {
     @Test
     void shouldHandleSpecialCharactersInJson() throws Exception {
         // Given - JSON with special characters that could cause issues
-        var inputJson =
-                """
+        var inputJson = """
             {
               "data": "{\\"specialChars\\":\\"Special: áéíóú, 中文, emoji: 🚀\\",\\"quotes\\":\\"String with \\\\\\"quotes\\\\\\" inside\\",\\"backslashes\\":\\"Path: C:\\\\\\\\Users\\\\\\\\test\\\\\\\\file.txt\\"}"
             }
             """;
 
-        var expectedOutputJson =
-                """
+        var expectedOutputJson = """
             {
               "data": {
                 "specialChars": "Special: áéíóú, 中文, emoji: 🚀",
@@ -349,8 +331,7 @@ class JsonDoubleSerializationCorrectorTest {
     @Test
     void shouldHandleMixedMalformedAndValidDoubleSerializedJson() throws Exception {
         // Given - JSON with both malformed and valid double-serialized content
-        var inputJson =
-                """
+        var inputJson = """
             {
               "malformedField": "{\\"incomplete\\": ",
               "validDoubleSerializedField": "{\\"nested\\":\\"value\\"}",
@@ -359,8 +340,7 @@ class JsonDoubleSerializationCorrectorTest {
             }
             """;
 
-        var expectedOutputJson =
-                """
+        var expectedOutputJson = """
             {
               "malformedField": "{\\"incomplete\\": ",
               "validDoubleSerializedField": {
@@ -391,8 +371,7 @@ class JsonDoubleSerializationCorrectorTest {
             "{\\"message\\":\\"Hello\\",\\"data\\":{\\"count\\":42}}"
             """;
 
-        var expectedOutputJson =
-                """
+        var expectedOutputJson = """
             {
               "message": "Hello",
               "data": {
@@ -447,8 +426,7 @@ class JsonDoubleSerializationCorrectorTest {
     @Test
     void shouldReturnEmptyWhenRequestBodyHasNonJsonMediaType() throws Exception {
         // Given - body with non-JSON media type
-        var content =
-                """
+        var content = """
             {
               "messages": "{\\"destinations\\":[{\\"to\\":\\"some destination\\"}],\\"content\\":{\\"text\\":\\"Hello\\"}}"
             }

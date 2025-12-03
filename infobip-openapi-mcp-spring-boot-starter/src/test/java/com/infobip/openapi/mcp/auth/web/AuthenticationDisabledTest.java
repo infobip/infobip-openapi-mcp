@@ -27,15 +27,13 @@ class AuthenticationDisabledTest extends OpenApiTestBase {
         var headers = new HttpHeaders();
         headers.setAccept(List.of(MediaType.APPLICATION_JSON, MediaType.TEXT_EVENT_STREAM));
         headers.setContentType(MediaType.APPLICATION_JSON);
-        var entity = new HttpEntity<>(
-                """
+        var entity = new HttpEntity<>("""
                 {
                     "jsonrpc": "2.0",
                     "method": "tools/list",
                     "id": 1
                 }
-                """,
-                headers);
+                """, headers);
 
         // when
         var response =
