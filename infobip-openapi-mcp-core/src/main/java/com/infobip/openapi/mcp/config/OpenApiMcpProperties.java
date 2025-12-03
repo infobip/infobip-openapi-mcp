@@ -112,7 +112,9 @@ public record OpenApiMcpProperties(
          * @param maxLength Maximum length for tool names. If specified, names will be trimmed to this length.
          *                 Must be positive if provided.
          */
-        public record Naming(@NotNull NamingStrategyType strategy, @Positive Integer maxLength) {
+        public record Naming(
+                @NotNull NamingStrategyType strategy,
+                @Positive Integer maxLength) {
             private static final NamingStrategyType DEFAULT_STRATEGY = NamingStrategyType.SANITIZED_OPERATION_ID;
 
             /**
@@ -131,7 +133,8 @@ public record OpenApiMcpProperties(
          * @param parametersKey   The key name used to wrap parameters in combined schemas. Default is "_params".
          * @param requestBodyKey  The key name used to wrap request body in combined schemas. Default is "_body".
          */
-        public record Schema(@NotNull String parametersKey, @NotNull String requestBodyKey) {
+        public record Schema(
+                @NotNull String parametersKey, @NotNull String requestBodyKey) {
             private static final String DEFAULT_PARAMETERS_KEY = "_params";
             private static final String DEFAULT_REQUEST_BODY_KEY = "_body";
 

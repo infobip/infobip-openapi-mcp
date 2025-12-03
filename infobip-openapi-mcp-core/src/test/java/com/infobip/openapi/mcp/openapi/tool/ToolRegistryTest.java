@@ -63,8 +63,7 @@ class ToolRegistryTest {
     @Test
     void shouldReturnEmptyListWhenNoPathsInOpenAPI() {
         // Given
-        var openApi = parseOpenAPI(
-                """
+        var openApi = parseOpenAPI("""
             {
               "openapi": "3.1.0",
               "info": {
@@ -85,8 +84,7 @@ class ToolRegistryTest {
     @Test
     void shouldReturnEmptyListWhenPathsAreEmpty() {
         // Given
-        var openApi = parseOpenAPI(
-                """
+        var openApi = parseOpenAPI("""
             {
               "openapi": "3.1.0",
               "info": {
@@ -108,8 +106,7 @@ class ToolRegistryTest {
     @Test
     void shouldCreateToolSpecificationForGetOperationWithQueryParameter() {
         // Given
-        var openApi = parseOpenAPI(
-                """
+        var openApi = parseOpenAPI("""
             {
               "openapi": "3.1.0",
               "info": {
@@ -147,8 +144,7 @@ class ToolRegistryTest {
         then(registeredTool.tool().name()).isEqualTo("getUsers");
         then(registeredTool.tool().description()).isEqualTo("Get all users");
 
-        var expectedSchema =
-                """
+        var expectedSchema = """
             {
               "type": "object",
               "properties": {
@@ -165,8 +161,7 @@ class ToolRegistryTest {
     @Test
     void shouldCreateToolSpecificationForPostOperationWithRequestBody() {
         // Given
-        var openApi = parseOpenAPI(
-                """
+        var openApi = parseOpenAPI("""
             {
               "openapi": "3.1.0",
               "info": {
@@ -211,8 +206,7 @@ class ToolRegistryTest {
         then(registeredTool.tool().name()).isEqualTo("createUser");
         then(registeredTool.tool().description()).isEqualTo("Create a new user");
 
-        var expectedSchema =
-                """
+        var expectedSchema = """
             {
               "type": "object",
               "properties": {
@@ -230,8 +224,7 @@ class ToolRegistryTest {
     @Test
     void shouldCreateMultipleToolSpecificationsForMultipleOperations() {
         // Given
-        var openApi = parseOpenAPI(
-                """
+        var openApi = parseOpenAPI("""
             {
               "openapi": "3.1.0",
               "info": {
@@ -291,8 +284,7 @@ class ToolRegistryTest {
                         "getUsers".equals(registeredTool.tool().name()))
                 .findFirst()
                 .orElseThrow();
-        var expectedGetUsersSchema =
-                """
+        var expectedGetUsersSchema = """
             {
               "type": "object",
               "properties": {
@@ -310,8 +302,7 @@ class ToolRegistryTest {
                         "createUser".equals(registeredTool.tool().name()))
                 .findFirst()
                 .orElseThrow();
-        var expectedCreateUserSchema =
-                """
+        var expectedCreateUserSchema = """
             {
               "type": "object",
               "properties": {
@@ -328,8 +319,7 @@ class ToolRegistryTest {
     @Test
     void shouldThrowToolRegistrationExceptionWhenOperationIdIsMissing() {
         // Given
-        var openApi = parseOpenAPI(
-                """
+        var openApi = parseOpenAPI("""
             {
               "openapi": "3.1.0",
               "info": {
@@ -358,8 +348,7 @@ class ToolRegistryTest {
     @Test
     void shouldHandleOperationsWithoutDescriptions() {
         // Given
-        var openApi = parseOpenAPI(
-                """
+        var openApi = parseOpenAPI("""
             {
               "openapi": "3.1.0",
               "info": {
@@ -389,8 +378,7 @@ class ToolRegistryTest {
     @Test
     void shouldSetToolTitleFromOperationSummary() {
         // Given
-        var openApi = parseOpenAPI(
-                """
+        var openApi = parseOpenAPI("""
             {
               "openapi": "3.1.0",
               "info": {
@@ -424,8 +412,7 @@ class ToolRegistryTest {
     @Test
     void shouldHandleOperationsWithoutSummary() {
         // Given
-        var openApi = parseOpenAPI(
-                """
+        var openApi = parseOpenAPI("""
             {
               "openapi": "3.1.0",
               "info": {
@@ -458,8 +445,7 @@ class ToolRegistryTest {
     @Test
     void shouldSetDifferentTitlesForMultipleOperations() {
         // Given
-        var openApi = parseOpenAPI(
-                """
+        var openApi = parseOpenAPI("""
             {
               "openapi": "3.1.0",
               "info": {
@@ -507,8 +493,7 @@ class ToolRegistryTest {
     @Test
     void shouldHandleOperationWithoutParametersOrRequestBody() {
         // Given
-        var openApi = parseOpenAPI(
-                """
+        var openApi = parseOpenAPI("""
             {
               "openapi": "3.1.0",
               "info": {
@@ -535,8 +520,7 @@ class ToolRegistryTest {
         var registeredTool = result.getFirst();
         then(registeredTool.tool().name()).isEqualTo("healthCheck");
 
-        var expectedEmptyObjectSchema =
-                """
+        var expectedEmptyObjectSchema = """
             {
               "type": "object",
               "properties": {}
@@ -552,8 +536,7 @@ class ToolRegistryTest {
     @Test
     void shouldUseCorrectMapperForOpenAPI30() {
         // Given
-        var openApi = parseOpenAPI(
-                """
+        var openApi = parseOpenAPI("""
             {
               "openapi": "3.0.0",
               "info": {
@@ -606,8 +589,7 @@ class ToolRegistryTest {
 
         // Then
         then(result).hasSize(1);
-        var expectedSchema =
-                """
+        var expectedSchema = """
             {
               "type": "object",
               "properties": {
@@ -638,8 +620,7 @@ class ToolRegistryTest {
     @Test
     void shouldUseCorrectMapperForOpenAPI31() {
         // Given
-        var openApi = parseOpenAPI(
-                """
+        var openApi = parseOpenAPI("""
             {
               "openapi": "3.1.0",
               "info": {
@@ -706,8 +687,7 @@ class ToolRegistryTest {
 
         // Then
         then(result).hasSize(1);
-        var expectedSchema =
-                """
+        var expectedSchema = """
             {
               "type": "object",
               "properties": {
@@ -752,8 +732,7 @@ class ToolRegistryTest {
     @Test
     void shouldInvokeToolHandlerWithDecomposedArguments() {
         // Given
-        var openApi = parseOpenAPI(
-                """
+        var openApi = parseOpenAPI("""
             {
               "openapi": "3.1.0",
               "info": {
@@ -836,8 +815,7 @@ class ToolRegistryTest {
     @Test
     void shouldPrependSummaryToDescriptionWhenBothPresent() {
         // Given
-        var openApi = parseOpenAPI(
-                """
+        var openApi = parseOpenAPI("""
             {
               "openapi": "3.1.0",
               "info": {
@@ -871,8 +849,7 @@ class ToolRegistryTest {
     @Test
     void shouldPrependSummaryToDescriptionWhenFeatureEnabled() {
         // Given
-        var openApi = parseOpenAPI(
-                """
+        var openApi = parseOpenAPI("""
             {
               "openapi": "3.1.0",
               "info": {
@@ -910,8 +887,7 @@ class ToolRegistryTest {
         toolRegistry = new ToolRegistry(
                 openApiRegistry, namingStrategy, inputSchemaComposer, toolHandler, mapperFactory, properties);
 
-        var openApi = parseOpenAPI(
-                """
+        var openApi = parseOpenAPI("""
             {
               "openapi": "3.1.0",
               "info": {
@@ -949,8 +925,7 @@ class ToolRegistryTest {
         toolRegistry = new ToolRegistry(
                 openApiRegistry, namingStrategy, inputSchemaComposer, toolHandler, mapperFactory, properties);
 
-        var openApi = parseOpenAPI(
-                """
+        var openApi = parseOpenAPI("""
             {
               "openapi": "3.1.0",
               "info": {
@@ -982,8 +957,7 @@ class ToolRegistryTest {
     @Test
     void shouldReturnDescriptionWhenOnlyDescriptionPresent() {
         // Given
-        var openApi = parseOpenAPI(
-                """
+        var openApi = parseOpenAPI("""
             {
               "openapi": "3.1.0",
               "info": {
@@ -1015,8 +989,7 @@ class ToolRegistryTest {
     @Test
     void shouldReturnDescriptionWhenSummaryIsEmpty() {
         // Given
-        var openApi = parseOpenAPI(
-                """
+        var openApi = parseOpenAPI("""
             {
               "openapi": "3.1.0",
               "info": {
@@ -1049,8 +1022,7 @@ class ToolRegistryTest {
     @Test
     void shouldReturnDescriptionWhenSummaryIsBlank() {
         // Given
-        var openApi = parseOpenAPI(
-                """
+        var openApi = parseOpenAPI("""
             {
               "openapi": "3.1.0",
               "info": {
@@ -1083,8 +1055,7 @@ class ToolRegistryTest {
     @Test
     void shouldUseSummaryAsDescriptionWhenOnlySummaryPresent() {
         // Given
-        var openApi = parseOpenAPI(
-                """
+        var openApi = parseOpenAPI("""
             {
               "openapi": "3.1.0",
               "info": {
@@ -1117,8 +1088,7 @@ class ToolRegistryTest {
     @Test
     void shouldUseSummaryAsDescriptionWhenDescriptionIsEmpty() {
         // Given
-        var openApi = parseOpenAPI(
-                """
+        var openApi = parseOpenAPI("""
             {
               "openapi": "3.1.0",
               "info": {
@@ -1152,8 +1122,7 @@ class ToolRegistryTest {
     @Test
     void shouldUseSummaryAsDescriptionWhenDescriptionIsBlank() {
         // Given
-        var openApi = parseOpenAPI(
-                """
+        var openApi = parseOpenAPI("""
             {
               "openapi": "3.1.0",
               "info": {
@@ -1187,8 +1156,7 @@ class ToolRegistryTest {
     @Test
     void shouldPrependSummaryForMultipleOperations() {
         // Given
-        var openApi = parseOpenAPI(
-                """
+        var openApi = parseOpenAPI("""
             {
               "openapi": "3.1.0",
               "info": {
@@ -1237,8 +1205,7 @@ class ToolRegistryTest {
     @Test
     void shouldHandleMixedOperationsWithAndWithoutSummary() {
         // Given
-        var openApi = parseOpenAPI(
-                """
+        var openApi = parseOpenAPI("""
             {
               "openapi": "3.1.0",
               "info": {

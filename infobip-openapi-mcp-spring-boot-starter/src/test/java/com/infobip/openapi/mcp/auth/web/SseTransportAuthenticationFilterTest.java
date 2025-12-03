@@ -26,15 +26,13 @@ class SseTransportAuthenticationFilterTest extends AuthenticationTestBase {
         headers.set("X-Forwarded-For", "192.0.2.1, 198.51.100.10, 127.0.0.1");
         headers.setAccept(List.of(MediaType.APPLICATION_JSON, MediaType.TEXT_EVENT_STREAM));
         headers.setContentType(MediaType.APPLICATION_JSON);
-        var entity = new HttpEntity<>(
-                """
+        var entity = new HttpEntity<>("""
                 {
                     "jsonrpc": "2.0",
                     "method": "tools/list",
                     "id": 1
                 }
-                """,
-                headers);
+                """, headers);
 
         // when
         var response = restTemplate.exchange(
@@ -61,15 +59,13 @@ class SseTransportAuthenticationFilterTest extends AuthenticationTestBase {
         headers.set("Authorization", "Bearer valid-token");
         headers.setAccept(List.of(MediaType.APPLICATION_JSON, MediaType.TEXT_EVENT_STREAM));
         headers.setContentType(MediaType.APPLICATION_JSON);
-        var entity = new HttpEntity<>(
-                """
+        var entity = new HttpEntity<>("""
                 {
                     "jsonrpc": "2.0",
                     "method": "tools/list",
                     "id": 1
                 }
-                """,
-                headers);
+                """, headers);
 
         // when
         var response = restTemplate.exchange(
@@ -97,15 +93,13 @@ class SseTransportAuthenticationFilterTest extends AuthenticationTestBase {
         headers.set("X-Forwarded-For", "198.51.100.10");
         headers.setAccept(List.of(MediaType.APPLICATION_JSON, MediaType.TEXT_EVENT_STREAM));
         headers.setContentType(MediaType.APPLICATION_JSON);
-        var entity = new HttpEntity<>(
-                """
+        var entity = new HttpEntity<>("""
                 {
                     "jsonrpc": "2.0",
                     "method": "tools/list",
                     "id": 1
                 }
-                """,
-                headers);
+                """, headers);
 
         // when
         var response = restTemplate.exchange(
@@ -131,15 +125,13 @@ class SseTransportAuthenticationFilterTest extends AuthenticationTestBase {
         headers.set("Authorization", "Bearer valid-token");
         headers.setAccept(List.of(MediaType.APPLICATION_JSON, MediaType.TEXT_EVENT_STREAM));
         headers.setContentType(MediaType.APPLICATION_JSON);
-        var entity = new HttpEntity<>(
-                """
+        var entity = new HttpEntity<>("""
                 {
                     "jsonrpc": "2.0",
                     "method": "tools/list",
                     "id": 1
                 }
-                """,
-                headers);
+                """, headers);
 
         // when - using SSE message endpoint
         var response = restTemplate.exchange(
@@ -167,15 +159,13 @@ class SseTransportAuthenticationFilterTest extends AuthenticationTestBase {
         headers.set("Authorization", "Bearer invalid-token");
         headers.setAccept(List.of(MediaType.APPLICATION_JSON, MediaType.TEXT_EVENT_STREAM));
         headers.setContentType(MediaType.APPLICATION_JSON);
-        var entity = new HttpEntity<>(
-                """
+        var entity = new HttpEntity<>("""
                 {
                     "jsonrpc": "2.0",
                     "method": "tools/list",
                     "id": 1
                 }
-                """,
-                headers);
+                """, headers);
 
         // when - using SSE message endpoint
         var response = restTemplate.exchange(
@@ -199,15 +189,13 @@ class SseTransportAuthenticationFilterTest extends AuthenticationTestBase {
         headers.set("Authorization", "Bearer any-token");
         headers.setAccept(List.of(MediaType.APPLICATION_JSON, MediaType.TEXT_EVENT_STREAM));
         headers.setContentType(MediaType.APPLICATION_JSON);
-        var entity = new HttpEntity<>(
-                """
+        var entity = new HttpEntity<>("""
                 {
                     "jsonrpc": "2.0",
                     "method": "tools/list",
                     "id": 1
                 }
-                """,
-                headers);
+                """, headers);
 
         // when
         var response = restTemplate.exchange(
@@ -247,15 +235,13 @@ class SseTransportAuthenticationFilterTest extends AuthenticationTestBase {
         headers.set("Authorization", "Bearer test-token");
         headers.setAccept(List.of(MediaType.APPLICATION_JSON, MediaType.TEXT_EVENT_STREAM));
         headers.setContentType(MediaType.APPLICATION_JSON);
-        var entity = new HttpEntity<>(
-                """
+        var entity = new HttpEntity<>("""
                 {
                     "jsonrpc": "2.0",
                     "method": "tools/list",
                     "id": 1
                 }
-                """,
-                headers);
+                """, headers);
 
         // First call - should get 401
         var response1 = restTemplate.exchange(

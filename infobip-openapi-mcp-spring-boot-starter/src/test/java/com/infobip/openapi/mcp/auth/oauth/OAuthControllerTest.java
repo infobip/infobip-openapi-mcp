@@ -48,8 +48,7 @@ public class OAuthControllerTest extends OAuthTestBase {
         // Given
         var givenXForwardedFor = "www.example.com";
         var givenXForwardedHost = "forwarded.example.com";
-        var givenResponseBody =
-                """
+        var givenResponseBody = """
                 {
                   "issuer": "https://auth-server.example.com",
                   "authorization_endpoint": "https://auth-server.example.com/auth",
@@ -84,8 +83,7 @@ public class OAuthControllerTest extends OAuthTestBase {
     @Test
     void shouldUseResolvedScopes() throws JSONException {
         // Given
-        var givenOpenApiScopes =
-                """
+        var givenOpenApiScopes = """
                 {
                     "openapi": "3.1.0",
                     "info": {"title": "Test API", "version": "1.0.0"},
@@ -101,8 +99,7 @@ public class OAuthControllerTest extends OAuthTestBase {
                     }
                 }
                 """;
-        var givenResponseBody =
-                """
+        var givenResponseBody = """
                 {
                   "issuer": "http://auth-server",
                   "authorization_endpoint": "http://auth-server/auth",
@@ -126,8 +123,7 @@ public class OAuthControllerTest extends OAuthTestBase {
         // Then
         then(response.getHeaders().getContentType().toString()).isEqualTo("application/json;charset=UTF-8");
 
-        var expectedJson =
-                """
+        var expectedJson = """
                 {
                   "issuer": "http://auth-server",
                   "authorization_endpoint": "http://auth-server/auth",
@@ -145,8 +141,7 @@ public class OAuthControllerTest extends OAuthTestBase {
         @Test
         void shouldUseAllScopes() throws JSONException {
             // Given
-            var givenOpenApiScopes =
-                    """
+            var givenOpenApiScopes = """
                     {
                         "openapi": "3.1.0",
                         "info": {"title": "Test API", "version": "1.0.0"},
@@ -162,8 +157,7 @@ public class OAuthControllerTest extends OAuthTestBase {
                         }
                     }
                     """;
-            var givenResponseBody =
-                    """
+            var givenResponseBody = """
                     {
                       "issuer": "http://auth-server",
                       "authorization_endpoint": "http://auth-server/auth",
@@ -192,8 +186,7 @@ public class OAuthControllerTest extends OAuthTestBase {
     @Test
     void shouldReturnProtectedResource() throws JSONException {
         // Given
-        var givenOpenApi =
-                """
+        var givenOpenApi = """
                 {
                     "openapi": "3.1.0",
                     "info": {"title": "User management", "version": "1.0.0"},
@@ -217,8 +210,7 @@ public class OAuthControllerTest extends OAuthTestBase {
         then(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         then(response.getHeaders().getContentType().toString()).isEqualTo("application/json;charset=UTF-8");
 
-        var expectedJson =
-                """
+        var expectedJson = """
                 {
                   "resource": "http://localhost:%d/mcp",
                   "resource_name": "User management",
@@ -229,16 +221,14 @@ public class OAuthControllerTest extends OAuthTestBase {
                     "access_token"
                   ]
                 }
-                """
-                        .formatted(port, staticWireMockServer.port());
+                """.formatted(port, staticWireMockServer.port());
         JSONAssert.assertEquals(expectedJson, response.getBody(), JSONCompareMode.NON_EXTENSIBLE);
     }
 
     @Test
     void shouldReturnProtectedResourceWithScopes() throws JSONException {
         // Given
-        var givenOpenApiWithScopes =
-                """
+        var givenOpenApiWithScopes = """
                 {
                     "openapi": "3.1.0",
                     "info": {"title": "User management", "version": "1.0.0"},
@@ -266,8 +256,7 @@ public class OAuthControllerTest extends OAuthTestBase {
         then(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         then(response.getHeaders().getContentType().toString()).isEqualTo("application/json;charset=UTF-8");
 
-        var expectedJson =
-                """
+        var expectedJson = """
                 {
                   "resource": "http://localhost:%d/mcp",
                   "resource_name": "User management",
@@ -282,8 +271,7 @@ public class OAuthControllerTest extends OAuthTestBase {
                     "user:write"
                   ]
                 }
-                """
-                        .formatted(port, staticWireMockServer.port());
+                """.formatted(port, staticWireMockServer.port());
         JSONAssert.assertEquals(expectedJson, response.getBody(), JSONCompareMode.NON_EXTENSIBLE);
     }
 }

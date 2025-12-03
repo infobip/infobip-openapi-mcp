@@ -44,9 +44,7 @@
         <!-- Dependencies: -->
         <spring-ai.version>1.1.0</spring-ai.version>
         <spring-boot.version>3.5.7</spring-boot.version>
-        <lombok.version>1.18.42</lombok.version>
         <jspecify.version>1.0.0</jspecify.version>
-        <appache-commons.version>3.19.0</appache-commons.version>
         <junit.version>5.14.1</junit.version>
         <mockito.version>5.20.0</mockito.version>
         <assertj.version>3.27.6</assertj.version>
@@ -73,11 +71,6 @@
 
             <!-- Utilities-->
             <dependency>
-                <groupId>org.projectlombok</groupId>
-                <artifactId>lombok</artifactId>
-                <version>${lombok.version}</version>
-            </dependency>
-            <dependency>
                 <groupId>org.jspecify</groupId>
                 <artifactId>jspecify</artifactId>
                 <version>${jspecify.version}</version>
@@ -87,7 +80,15 @@
                 <!-- TODO: try removing after upgrading swagger parser -->
                 <groupId>org.apache.commons</groupId>
                 <artifactId>commons-lang3</artifactId>
-                <version>${appache-commons.version}</version>
+                <version>3.19.0</version>
+            </dependency>
+            <dependency>
+                <!-- TODO: remove after https://github.com/swagger-api/swagger-parser/issues/2085 is
+                resolved. Javax version of XmlElement is used by SwaggerAnnotationIntrospector class in
+                swagger-parser. -->
+                <groupId>javax.xml.bind</groupId>
+                <artifactId>jaxb-api</artifactId>
+                <version>2.3.1</version>
             </dependency>
 
             <!-- Testing -->
@@ -144,7 +145,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>
-                <version>3.4.2</version>
+                <version>3.5.0</version>
                 <executions>
                     <execution>
                         <goals>
@@ -172,7 +173,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-source-plugin</artifactId>
-                <version>3.3.1</version>
+                <version>3.4.0</version>
                 <executions>
                     <execution>
                         <id>attach-sources</id>
@@ -197,7 +198,7 @@
             <plugin>
                 <groupId>com.diffplug.spotless</groupId>
                 <artifactId>spotless-maven-plugin</artifactId>
-                <version>3.0.0</version>
+                <version>3.1.0</version>
                 <configuration>
                     <java>
                         <palantirJavaFormat />
@@ -251,7 +252,7 @@
                     <plugin>
                         <groupId>com.rudikershaw.gitbuildhook</groupId>
                         <artifactId>git-build-hook-maven-plugin</artifactId>
-                        <version>3.6.0</version>
+                        <version>3.5.0</version>
                         <configuration>
                             <installHooks>
                                 <!-- The location of a git hook to install into the default hooks

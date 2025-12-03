@@ -135,11 +135,9 @@ public abstract class ParameterPackingTestBase extends IntegrationTestBase {
                     .stubFor(post(urlEqualTo(givenApiCallUrl))
                             .withHeader("headerParam", equalTo(givenHeaderParam))
                             .withCookie("cookieParam", equalTo(givenCookieParam))
-                            .withRequestBody(equalToJson(
-                                    """
+                            .withRequestBody(equalToJson("""
                                     {"bodyParam": "%s"}
-                                    """
-                                            .formatted(givenBodyParam)))
+                                    """.formatted(givenBodyParam)))
                             .willReturn(aResponse().withStatus(200).withBody(givenApiResponse)));
 
             // When

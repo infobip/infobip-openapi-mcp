@@ -11,8 +11,8 @@
 	<artifactId>infobip-openapi-mcp-core</artifactId>
 
 	<properties>
-        <jakarta-servlet.version>6.0.0</jakarta-servlet.version>
-		<swagger-parser.version>2.1.35</swagger-parser.version>
+        <jakarta-servlet.version>6.1.0</jakarta-servlet.version>
+		<swagger-parser.version>2.1.36</swagger-parser.version>
 	</properties>
 
 	<dependencies>
@@ -50,23 +50,9 @@
 			<artifactId>swagger-parser-v3</artifactId>
 			<version>${swagger-parser.version}</version>
 		</dependency>
-        <dependency>
-            <!-- Snyk mitigation -->
-            <groupId>org.apache.commons</groupId>
-            <artifactId>commons-lang3</artifactId>
-            <version>3.19.0</version>
-        </dependency>
 		<dependency>
 			<groupId>org.jspecify</groupId>
 			<artifactId>jspecify</artifactId>
-		</dependency>
-		<dependency>
-			<!-- TODO: remove after https://github.com/swagger-api/swagger-parser/issues/2085 is
-			resolved. Javax version of XmlElement is used by SwaggerAnnotationIntrospector class in
-			swagger-parser. -->
-			<groupId>javax.xml.bind</groupId>
-			<artifactId>jaxb-api</artifactId>
-			<version>2.3.1</version>
 		</dependency>
 
 		<!-- Testing -->
@@ -110,10 +96,5 @@
             <artifactId>spring-boot-test</artifactId>
             <scope>test</scope>
         </dependency>
-		<dependency>
-			<groupId>org.projectlombok</groupId>
-			<artifactId>lombok</artifactId>
-			<scope>test</scope>
-		</dependency>
 	</dependencies>
 </project>

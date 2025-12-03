@@ -7,7 +7,8 @@ import org.jspecify.annotations.Nullable;
 import org.springframework.http.MediaType;
 
 @NullMarked
-public record DecomposedRequestData(ParametersByType parametersByType, @Nullable Body requestBody) {
+public record DecomposedRequestData(
+        ParametersByType parametersByType, @Nullable Body requestBody) {
 
     public static final MediaType SUPPORTED_MEDIA_TYPE = MediaType.APPLICATION_JSON;
 

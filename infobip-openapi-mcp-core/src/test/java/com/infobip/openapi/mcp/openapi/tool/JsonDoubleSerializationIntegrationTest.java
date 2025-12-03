@@ -96,16 +96,14 @@ class JsonDoubleSerializationIntegrationTest {
         @Test
         void shouldDetectAndRetryWithCorrectedJsonOnBadRequest() throws Exception {
             // Given - Double-serialized JSON (the problematic case)
-            var inputJson =
-                    """
+            var inputJson = """
                     {
                       "messages": "[{\\"destinations\\":[{\\"to\\":\\"some destination\\"}],\\"content\\":{\\"text\\":\\"Hello\\"}}]"
                     }
                     """;
 
             // Expected corrected JSON (what it should be after mitigation)
-            var correctedJson =
-                    """
+            var correctedJson = """
                     {
                       "messages": [
                         {
@@ -142,8 +140,7 @@ class JsonDoubleSerializationIntegrationTest {
 
             // Then - Should succeed after retry with corrected payload
             then(result.isError()).isFalse();
-            var expectedResponse =
-                    """
+            var expectedResponse = """
                     {
                       "messageId": "12345",
                       "status": "sent"
@@ -160,8 +157,7 @@ class JsonDoubleSerializationIntegrationTest {
         @Test
         void shouldNotRetryWhenFirstRequestSucceeds() throws Exception {
             // Given - Valid JSON that should work on first try (no double serialization)
-            var validJson =
-                    """
+            var validJson = """
                     {
                       "messages": [
                         {
@@ -189,8 +185,7 @@ class JsonDoubleSerializationIntegrationTest {
 
             // Then - Should succeed on first try
             then(result.isError()).isFalse();
-            var expectedResponse =
-                    """
+            var expectedResponse = """
                     {
                       "messageId": "67890",
                       "status": "sent"
@@ -205,8 +200,7 @@ class JsonDoubleSerializationIntegrationTest {
         @Test
         void shouldNotRetryWhenStatusIsNot400() throws Exception {
             // Given - JSON payload that fails with 403 (not 400)
-            var inputJson =
-                    """
+            var inputJson = """
                     {
                       "invalidField": "value"
                     }
@@ -231,8 +225,7 @@ class JsonDoubleSerializationIntegrationTest {
 
             // Then - Should fail without retry (not 400 status)
             then(result.isError()).isTrue();
-            var expectedErrorResponse =
-                    """
+            var expectedErrorResponse = """
                     {
                       "error": "Forbidden",
                       "message": "Access denied"
@@ -248,8 +241,7 @@ class JsonDoubleSerializationIntegrationTest {
         @Test
         void shouldHandleComplexNestedDoubleSerializationCorrectly() throws Exception {
             // Given - Complex nested double-serialized JSON structure
-            var inputJson =
-                    """
+            var inputJson = """
                     {
                       "data": "{\\"nested\\":\\"{\\\\\\"value\\\\\\":\\\\\\"deep\\\\\\",\\\\\\"number\\\\\\":42}\\",\\"other\\":\\"value\\"}",
                       "metadata": {"version": "1.0"}
@@ -257,8 +249,7 @@ class JsonDoubleSerializationIntegrationTest {
                     """;
 
             // Expected corrected JSON structure
-            var correctedJson =
-                    """
+            var correctedJson = """
                     {
                       "data": {
                         "nested": {
@@ -295,8 +286,7 @@ class JsonDoubleSerializationIntegrationTest {
 
             // Then - Should succeed after retry with fully corrected payload
             then(result.isError()).isFalse();
-            var expectedResponse =
-                    """
+            var expectedResponse = """
                     {
                       "processed": true,
                       "id": "nested-123"
@@ -311,15 +301,13 @@ class JsonDoubleSerializationIntegrationTest {
         @Test
         void shouldHandleNetworkErrorDuringRetryGracefully() throws Exception {
             // Given - Double-serialized JSON that triggers retry, but retry fails with network error
-            var inputJson =
-                    """
+            var inputJson = """
                     {
                       "messages": "[{\\"destinations\\":[{\\"to\\":\\"some destination\\"}],\\"content\\":{\\"text\\":\\"Hello\\"}}]"
                     }
                     """;
 
-            var correctedJson =
-                    """
+            var correctedJson = """
                     {
                       "messages": [
                         {
@@ -353,8 +341,7 @@ class JsonDoubleSerializationIntegrationTest {
 
             // Then - Should return 502 Bad Gateway for network error, not throw exception
             then(result.isError()).isTrue();
-            var expectedErrorResponse =
-                    """
+            var expectedErrorResponse = """
                     {
                       "error": "Bad Gateway",
                       "description": "The server received an invalid response from an upstream server."
@@ -367,16 +354,14 @@ class JsonDoubleSerializationIntegrationTest {
         @Test
         void shouldReturnOriginalErrorWhenCorrectedPayloadAlsoFails() throws Exception {
             // Given - Double-serialized JSON that even after correction still fails
-            var inputJson =
-                    """
+            var inputJson = """
                     {
                       "data": "{\\"required_field_missing\\":\\"value\\"}"
                     }
                     """;
 
             // Expected corrected JSON (but will still fail validation)
-            var correctedJson =
-                    """
+            var correctedJson = """
                     {
                       "data": {
                         "required_field_missing": "value"
@@ -407,8 +392,7 @@ class JsonDoubleSerializationIntegrationTest {
 
             // Then - Should return the second error (from corrected payload attempt)
             then(result.isError()).isTrue();
-            var expectedErrorResponse =
-                    """
+            var expectedErrorResponse = """
                     {
                       "error": "Missing required field: name"
                     }
@@ -427,8 +411,7 @@ class JsonDoubleSerializationIntegrationTest {
         @Test
         void shouldNotRetryWhenFeatureIsDisabled() throws Exception {
             // Given - Double-serialized JSON that would normally be mitigated
-            var inputJson =
-                    """
+            var inputJson = """
                     {
                       "messages": "[{\\"destinations\\":[{\\"to\\":\\"destination\\"}],\\"content\\":{\\"text\\":\\"Hello\\"}}]"
                     }
@@ -452,8 +435,7 @@ class JsonDoubleSerializationIntegrationTest {
 
             // Then - Should fail without retry
             then(result.isError()).isTrue();
-            var expectedErrorResponse =
-                    """
+            var expectedErrorResponse = """
                     {
                       "error": "Bad request",
                       "message": "Invalid JSON structure"
@@ -485,8 +467,7 @@ class JsonDoubleSerializationIntegrationTest {
 
             // Then - Should not retry (no body to mitigate)
             then(result.isError()).isTrue();
-            var expectedErrorResponse =
-                    """
+            var expectedErrorResponse = """
                     {
                       "error": "Bad request"
                     }
@@ -512,8 +493,7 @@ class JsonDoubleSerializationIntegrationTest {
 
             // Then - Should not retry (no JSON to mitigate)
             then(result.isError()).isTrue();
-            var expectedErrorResponse =
-                    """
+            var expectedErrorResponse = """
                     {
                       "error": "Invalid format"
                     }

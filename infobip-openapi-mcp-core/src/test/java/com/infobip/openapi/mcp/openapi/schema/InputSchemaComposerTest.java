@@ -66,8 +66,7 @@ class InputSchemaComposerTest {
             then(schema.getRequired()).containsExactly("userId");
 
             var json = jsonRepresentation(schema);
-            var expectedJson =
-                    """
+            var expectedJson = """
                     {
                       "type": "object",
                       "properties": {
@@ -106,8 +105,7 @@ class InputSchemaComposerTest {
             then(schema.getProperties()).containsKeys("name", "email");
 
             var json = jsonRepresentation(schema);
-            var expectedJson =
-                    """
+            var expectedJson = """
                     {
                       "type": "object",
                       "properties": {
@@ -139,8 +137,7 @@ class InputSchemaComposerTest {
             then(schema.getProperties()).containsKeys("_params", "_body");
 
             var json = jsonRepresentation(schema);
-            var expectedJson =
-                    """
+            var expectedJson = """
                     {
                       "type": "object",
                       "properties": {
@@ -216,8 +213,7 @@ class InputSchemaComposerTest {
 
             // Verify JSON representation
             var json = jsonRepresentation(schema);
-            var expectedJson =
-                    """
+            var expectedJson = """
                     {
                       "type": "object",
                       "properties": {
@@ -282,8 +278,7 @@ class InputSchemaComposerTest {
             then(paramSchema.getDescription()).isEqualTo("Parameter description");
 
             var json = jsonRepresentation(schema);
-            var expectedJson =
-                    """
+            var expectedJson = """
                     {
                       "type": "object",
                       "properties": {
@@ -322,8 +317,7 @@ class InputSchemaComposerTest {
             then(paramSchema.getDescription()).isEqualTo("Schema description");
 
             var json = jsonRepresentation(schema);
-            var expectedJson =
-                    """
+            var expectedJson = """
                     {
                       "type": "object",
                       "properties": {
@@ -400,8 +394,7 @@ class InputSchemaComposerTest {
             then(result.getDescription()).isEqualTo("Request body description");
 
             var json = jsonRepresentation(result);
-            var expectedJson =
-                    """
+            var expectedJson = """
                     {
                       "type": "object",
                       "properties": {
@@ -443,8 +436,7 @@ class InputSchemaComposerTest {
             then(result.getDescription()).isEqualTo("Existing schema description");
 
             var json = jsonRepresentation(result);
-            var expectedJson =
-                    """
+            var expectedJson = """
                     {
                       "type": "object",
                       "properties": {
@@ -495,8 +487,7 @@ class InputSchemaComposerTest {
             then(originalSchema.getProperties()).hasSize(2);
 
             var json = jsonRepresentation(result);
-            var expectedJson =
-                    """
+            var expectedJson = """
                     {
                       "type": "object",
                       "properties": {
@@ -1486,8 +1477,7 @@ class InputSchemaComposerTest {
             then(schema.getProperties()).containsKey("_body");
 
             var json = jsonRepresentation(schema);
-            var expectedJson =
-                    """
+            var expectedJson = """
                     {
                       "type": "object",
                       "properties": {
@@ -1533,8 +1523,7 @@ class InputSchemaComposerTest {
             then(schema.getProperties()).containsKey("_body");
 
             var json = jsonRepresentation(schema);
-            var expectedJson =
-                    """
+            var expectedJson = """
                     {
                       "type": "object",
                       "properties": {
@@ -1579,8 +1568,7 @@ class InputSchemaComposerTest {
             then(schema.getOneOf()).isNotNull();
 
             var json = jsonRepresentation(schema);
-            var expectedJson =
-                    """
+            var expectedJson = """
                     {
                       "type": "object",
                       "properties": {
@@ -1622,8 +1610,7 @@ class InputSchemaComposerTest {
             then(schema.getProperties()).containsKey("_body");
 
             var json = jsonRepresentation(schema);
-            var expectedJson =
-                    """
+            var expectedJson = """
                     {
                       "type": "object",
                       "properties": {
@@ -1669,8 +1656,7 @@ class InputSchemaComposerTest {
             then(schema.getProperties()).containsKey("_body");
 
             var json = jsonRepresentation(schema);
-            var expectedJson =
-                    """
+            var expectedJson = """
                     {
                       "type": "object",
                       "properties": {
@@ -1714,8 +1700,7 @@ class InputSchemaComposerTest {
             then(schema.getProperties()).containsKeys("_params", "_body");
 
             var json = jsonRepresentation(schema);
-            var expectedJson =
-                    """
+            var expectedJson = """
                     {
                       "type": "object",
                       "properties": {
@@ -1770,8 +1755,7 @@ class InputSchemaComposerTest {
             then(schema.getProperties()).containsKeys("_params", "_body");
 
             var json = jsonRepresentation(schema);
-            var expectedJson =
-                    """
+            var expectedJson = """
                     {
                       "type": "object",
                       "properties": {
@@ -1814,8 +1798,7 @@ class InputSchemaComposerTest {
             then(schema.getProperties()).containsKeys("_params", "_body");
 
             var json = jsonRepresentation(schema);
-            var expectedJson =
-                    """
+            var expectedJson = """
                     {
                       "type": "object",
                       "properties": {
@@ -2077,8 +2060,7 @@ class InputSchemaComposerTest {
                       },
                       "required": ["%s", "%s"]
                     }
-                    """,
-                    customParametersKey, customRequestBodyKey, customParametersKey, customRequestBodyKey);
+                    """, customParametersKey, customRequestBodyKey, customParametersKey, customRequestBodyKey);
             JSONAssert.assertEquals(expectedJson, json, JSONCompareMode.STRICT);
         }
 
@@ -2179,8 +2161,7 @@ class InputSchemaComposerTest {
             then(result).isNotNull();
 
             var json = jsonRepresentation(result);
-            var expectedJson = String.format(
-                    """
+            var expectedJson = String.format("""
                     {
                       "type": "object",
                       "properties": {
@@ -2192,8 +2173,7 @@ class InputSchemaComposerTest {
                       "description": "String request body",
                       "required": ["%s"]
                     }
-                    """,
-                    customRequestBodyKey, customRequestBodyKey);
+                    """, customRequestBodyKey, customRequestBodyKey);
             JSONAssert.assertEquals(expectedJson, json, JSONCompareMode.STRICT);
         }
 
