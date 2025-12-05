@@ -11,7 +11,7 @@ import org.springframework.validation.annotation.Validated;
 /**
  * Authentication configuration properties for OpenAPI MCP Server.
  *
- * @param enabled                  Enable API authentication. Default is true.
+ * @param enabled                  Enable API authentication. Default is false.
  * @param authUrl                  The API endpoint URL to validate credentials against.
  * @param connectTimeout           Connection timeout for the validation API call. Default is 5 seconds.
  * @param readTimeout              Read timeout for the validation API call. Default is 5 seconds.
@@ -19,7 +19,7 @@ import org.springframework.validation.annotation.Validated;
  *                                 This is useful for cases where you want to control the response format
  *                                 or content returned to the client. If set to true, the response will
  *                                 be overridden by the model provided by {@link com.infobip.openapi.mcp.error.ErrorModelProvider}.
- *                                 Default is true.
+ *                                 Default is false.
  */
 @Validated
 @ConfigurationProperties(prefix = AuthProperties.PREFIX)
