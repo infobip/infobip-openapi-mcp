@@ -6,10 +6,15 @@ import org.springframework.validation.annotation.Validated;
 /**
  * Scope discovery properties for OpenAPI MCP Server.
  *
- * @param enabled         Enable OAuth scope discovery. Default is false.
- * @param scopeExtensions Scope extensions to read scopes from. Default is an empty string.
- * @param mandatoryScopes Mandatory scopes that must be present. Scopes should be comma-separated.
- *                        Default is an empty string.
+ * @param enabled                Enable OAuth scope discovery. Default is false.
+ * @param scopeExtensions        Scope extensions to read scopes from. Default is an empty string.
+ * @param mandatoryScopes        Mandatory scopes that must be present. Scopes should be comma-separated.
+ *                               Default is an empty string.
+ * @param calculateMinimalScopes Algorithm for calculating the minimal set of scopes that can access all API endpoints.
+ *                              Two values are supported: NONE, which skips calculation and requests all discovered
+ *                               scopes, and GREEDY which uses a greedy algorithm to find a smaller set of scopes that
+ *                               sill covers all operations.
+ *                               Default is NONE.
  */
 @Validated
 @ConfigurationProperties(prefix = ScopeProperties.PREFIX)
