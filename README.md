@@ -270,7 +270,7 @@ You can disable this behavior by setting externalized configuration property
 
 ## Architecture
 
-![Infobip OpenAPI MCP framework architecture](images/architecture.png)
+![Infobip OpenAPI MCP framework architecture](images/architecture.jpg)
 
 ### Dependencies
 
