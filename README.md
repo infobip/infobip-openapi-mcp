@@ -17,11 +17,9 @@ Some of the core features include:
 - Adapting OpenAPI specification to work with MCP tools. APIs have more flexibility in their inputs, e.g. they accept
   path and query parameters, while MCP tools expect to receive all inputs as a single JSON object. The framework will
   detect these cases and wrap / unwrap inputs accordingly.
-- OpenAPI specification allows referencing and reusing schemas and subschemas. This is not allowed in MCP tool
-  definitions, so the framework has a flattening step in which schema references are resolved and embedded.
-- API calls that are made in response to MCP tool calls are enriched by default with contextual information about the
-  MCP client that initiated them. This mechanism is extendable, and every application that uses the framework can
-  specify its own enrichers.
+- OpenAPI specification allows advanced features in request schema definitions, such as discriminators for polymorphic
+  models. This is not allowed in pure JSON schema used by MCP, so the framework has a transformation step in which
+  discriminators are resolved and embedded in a way compatible with JSON schema.
 
 > [!IMPORTANT]
 > The OpenAPI MCP framework allows you to expose any HTTP API documented with OpenAPI to LLM agents. Since LLMs will
@@ -33,6 +31,8 @@ Some of the core features include:
 > specifications you can review and store them as a static files inside your application resources. That way you can be
 > sure specifications won't change unexpectedly.
 
+### Authentication
+
 Authentication and authorization is important for MCP servers, and can be tricky to implement. In case of exposing HTTP
 APIs as MCP tools the security posture of the API is bases for everything. The OpenAPI MCP framework adapts it to MCP
 specification in few key ways:
@@ -43,8 +43,8 @@ specification in few key ways:
 - There is the option of supporting authorization checking API endpoint that framework invokes before processing MCP
   interactions to validate client credentials.
 
-Lastly, by delegating authentication to dedicated API endpoint, the framework supports classic API key and Basic auth
-types, in addition to OAuth.
+Lastly, by delegating authentication to dedicated API endpoint, the framework supports arbitrary auth type, such as
+classic API key and Basic auth types, in addition to OAuth.
 
 There are more technical features that enable customizing various behaviors, like:
 
@@ -221,6 +221,19 @@ that sets the `User-Agent` header to the value defined in externalized configura
 > API
 > call from being made.
 
+### JSON serialization
+
+Both MCP client libraries and underlying LLMs can sometimes produce invalid JSON documents and send them to MCP server
+tools. The OpenAPI MCP framework implements a helper to address one of the common errors: embedding JSON sub-objects
+into strings. This is a common failure mode in which a sub-object property of a complex request model is sent to MCP
+server inside a JSON string. The framework will first send this request to HTTP API as normal, but will likely receive a
+HTTP status code `400` response. In that case framework will attempt to unwrap string property values and look for a
+JSON object or a JSON array inside it. If it detects such a case, it sends another HTTP API requests with the corrected
+request body.
+
+You can disable this behavior by setting externalized configuration property
+`infobip.openapi.mcp.tools.json-double-serialization-mitigation: false`.
+
 ### Properties
 
 [External configuration properties][11] that can be used to configure framework behavior:
@@ -228,7 +241,7 @@ that sets the `User-Agent` header to the value defined in externalized configura
 | Property                                                                           | Description                                                                                                                                                                                                                                                                                                                                             | Default        |
 |------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------|
 | `infobip.openapi.mcp.open-api-url`                                                 | URL to the OpenAPI specification. This should point to a valid OpenAPI document (e.g., JSON or YAML).                                                                                                                                                                                                                                                   | `-`            |
-| `infobip.openapi.mcp.api-baseUrl`                                                  | Base URL for the API. This is used to construct the full URLs for the API endpoints.                                                                                                                                                                                                                                                                    | `-`            |
+| `infobip.openapi.mcp.api-base-url`                                                 | Base URL for the API. This is used to construct the full URLs for the API endpoints.                                                                                                                                                                                                                                                                    | `-`            |
 | `infobip.openapi.mcp.connect-timeout`                                              | Connection timeout for HTTP requests to the downstream API. The default is set to 5 seconds.                                                                                                                                                                                                                                                            | 5 seconds      |
 | `infobip.openapi.mcp.read-timeout`                                                 | Read timeout for HTTP requests to the downstream API. The default is set to 5 seconds.                                                                                                                                                                                                                                                                  | 5 seconds      |
 | `infobip.openapi.mcp.user-agent`                                                   | User agent string for HTTP requests to the downstream API. If not specified, no User-Agent header will be set.                                                                                                                                                                                                                                          | `openapi-mcp`  |
