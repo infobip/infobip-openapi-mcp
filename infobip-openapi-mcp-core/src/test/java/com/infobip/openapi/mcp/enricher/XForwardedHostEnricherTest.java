@@ -20,11 +20,11 @@ class XForwardedHostEnricherTest {
     private RestClient.RequestHeadersSpec<?> spec;
 
     private McpRequestContext createTestContext(MockHttpServletRequest request) {
-        return new McpRequestContext(request, null, null, null);
+        return new McpRequestContext(request);
     }
 
     private McpRequestContext createTestContextWithoutRequest() {
-        return new McpRequestContext(null, null, null, null);
+        return new McpRequestContext();
     }
 
     @Test

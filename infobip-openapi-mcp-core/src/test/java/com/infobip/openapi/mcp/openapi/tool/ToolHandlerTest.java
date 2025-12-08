@@ -800,14 +800,14 @@ class ToolHandlerTest {
      * Helper method to create a simple test context without HTTP request.
      */
     private McpRequestContext createTestContext() {
-        return new McpRequestContext(null, null, null, null);
+        return new McpRequestContext();
     }
 
     /**
      * Helper method to create a test context with HTTP request.
      */
     private McpRequestContext createTestContext(MockHttpServletRequest request) {
-        return new McpRequestContext(request, null, null, null);
+        return new McpRequestContext(request);
     }
 
     /**

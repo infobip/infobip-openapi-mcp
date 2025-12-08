@@ -18,9 +18,7 @@ import com.infobip.openapi.mcp.openapi.filter.OpenApiFilter;
 import com.infobip.openapi.mcp.openapi.filter.OpenApiFilterChain;
 import com.infobip.openapi.mcp.openapi.filter.PatternPropertyRemover;
 import com.infobip.openapi.mcp.openapi.schema.InputSchemaComposer;
-import com.infobip.openapi.mcp.openapi.tool.RegisteredTool;
-import com.infobip.openapi.mcp.openapi.tool.ToolHandler;
-import com.infobip.openapi.mcp.openapi.tool.ToolRegistry;
+import com.infobip.openapi.mcp.openapi.tool.*;
 import com.infobip.openapi.mcp.openapi.tool.naming.NamingStrategy;
 import com.infobip.openapi.mcp.openapi.tool.naming.NamingStrategyFactory;
 import com.infobip.openapi.mcp.util.OpenApiMapperFactory;
@@ -171,8 +169,8 @@ class OpenApiMcpConfiguration {
             havingValue = "false",
             matchIfMissing = true)
     public List<McpServerFeatures.SyncToolSpecification> toolSpecificationsSSE(
-            ToolRegistry toolRegistry, McpRequestContextFactory contextFactory) {
-        return registerTools(toolRegistry, contextFactory);
+            ToolRegistry toolRegistry, McpRequestContextFactory contextFactory, List<ToolCallFilter> filters) {
+        return registerTools(toolRegistry, contextFactory, filters);
     }
 
     @Bean
@@ -183,8 +181,8 @@ class OpenApiMcpConfiguration {
             havingValue = "false",
             matchIfMissing = true)
     public List<McpServerFeatures.SyncToolSpecification> toolSpecificationsStreamable(
-            ToolRegistry toolRegistry, McpRequestContextFactory contextFactory) {
-        return registerTools(toolRegistry, contextFactory);
+            ToolRegistry toolRegistry, McpRequestContextFactory contextFactory, List<ToolCallFilter> filters) {
+        return registerTools(toolRegistry, contextFactory, filters);
     }
 
     @Bean
@@ -195,15 +193,15 @@ class OpenApiMcpConfiguration {
             havingValue = "false",
             matchIfMissing = true)
     public List<McpStatelessServerFeatures.SyncToolSpecification> toolSpecificationsStateless(
-            ToolRegistry toolRegistry, McpRequestContextFactory contextFactory) {
-        return registerStatelessTools(toolRegistry, contextFactory);
+            ToolRegistry toolRegistry, McpRequestContextFactory contextFactory, List<ToolCallFilter> filters) {
+        return registerStatelessTools(toolRegistry, contextFactory, filters);
     }
 
     @Bean
     @ConditionalOnProperty(prefix = McpServerProperties.CONFIG_PREFIX, name = "stdio", havingValue = "true")
     public List<McpServerFeatures.SyncToolSpecification> toolSpecificationsStdio(
-            ToolRegistry toolRegistry, McpRequestContextFactory contextFactory) {
-        return registerTools(toolRegistry, contextFactory);
+            ToolRegistry toolRegistry, McpRequestContextFactory contextFactory, List<ToolCallFilter> filters) {
+        return registerTools(toolRegistry, contextFactory, filters);
     }
 
     @Bean
@@ -301,16 +299,18 @@ class OpenApiMcpConfiguration {
      * These tools receive both the server exchange context and the call tool request.
      */
     private List<McpServerFeatures.SyncToolSpecification> registerTools(
-            ToolRegistry toolRegistry, McpRequestContextFactory contextFactory) {
-        return registerAfterLoadingOpenApiRegistry(
-                toolRegistry, registeredTool -> McpServerFeatures.SyncToolSpecification.builder()
-                        .tool(registeredTool.tool())
-                        .callHandler((mcpSyncServerExchange, callToolRequest) -> {
-                            var context =
-                                    contextFactory.forStatefulTransport(mcpSyncServerExchange, callToolRequest.name());
-                            return registeredTool.toolHandler().apply(callToolRequest, context);
-                        })
-                        .build());
+            ToolRegistry toolRegistry, McpRequestContextFactory contextFactory, List<ToolCallFilter> filters) {
+        return registerAfterLoadingOpenApiRegistry(toolRegistry, registeredTool -> {
+            var chainFactory = new OrderingToolCallFilterChainFactory(registeredTool, filters);
+            return McpServerFeatures.SyncToolSpecification.builder()
+                    .tool(registeredTool.tool())
+                    .callHandler((mcpSyncServerExchange, callToolRequest) -> {
+                        var context = contextFactory.forStatefulTransport(
+                                mcpSyncServerExchange, callToolRequest.name(), registeredTool.fullOperation());
+                        return chainFactory.get().doFilter(context, callToolRequest);
+                    })
+                    .build();
+        });
     }
 
     /**
@@ -318,15 +318,17 @@ class OpenApiMcpConfiguration {
      * These tools receive the transport context and the call tool request.
      */
     private List<McpStatelessServerFeatures.SyncToolSpecification> registerStatelessTools(
-            ToolRegistry toolRegistry, McpRequestContextFactory contextFactory) {
-        return registerAfterLoadingOpenApiRegistry(
-                toolRegistry, registeredTool -> McpStatelessServerFeatures.SyncToolSpecification.builder()
-                        .tool(registeredTool.tool())
-                        .callHandler((mcpTransportContext, callToolRequest) -> {
-                            var context =
-                                    contextFactory.forStatelessTransport(mcpTransportContext, callToolRequest.name());
-                            return registeredTool.toolHandler().apply(callToolRequest, context);
-                        })
-                        .build());
+            ToolRegistry toolRegistry, McpRequestContextFactory contextFactory, List<ToolCallFilter> filters) {
+        return registerAfterLoadingOpenApiRegistry(toolRegistry, registeredTool -> {
+            var chainFactory = new OrderingToolCallFilterChainFactory(registeredTool, filters);
+            return McpStatelessServerFeatures.SyncToolSpecification.builder()
+                    .tool(registeredTool.tool())
+                    .callHandler((mcpTransportContext, callToolRequest) -> {
+                        var context = contextFactory.forStatelessTransport(
+                                mcpTransportContext, callToolRequest.name(), registeredTool.fullOperation());
+                        return chainFactory.get().doFilter(context, callToolRequest);
+                    })
+                    .build();
+        });
     }
 }

@@ -1,5 +1,6 @@
 package com.infobip.openapi.mcp;
 
+import com.infobip.openapi.mcp.openapi.tool.FullOperation;
 import io.modelcontextprotocol.common.McpTransportContext;
 import io.modelcontextprotocol.server.McpSyncServerExchange;
 import jakarta.servlet.http.HttpServletRequest;
@@ -39,15 +40,18 @@ public class McpRequestContextFactory {
      * MCP transport types.
      * </p>
      *
-     * @param exchange the MCP server exchange containing session information
-     * @param toolName the name of the MCP tool being invoked, or null if not in tool invocation context
+     * @param exchange      the MCP server exchange containing session information
+     * @param toolName      the name of the MCP tool being invoked, or null if not in tool invocation context
+     * @param fullOperation the set of information from OpenAPI specification that
+     *                      defines the API endpoint backing this tool
      * @return a new context instance with stateful transport metadata and tool name
      */
-    public McpRequestContext forStatefulTransport(McpSyncServerExchange exchange, @Nullable String toolName) {
+    public McpRequestContext forStatefulTransport(
+            McpSyncServerExchange exchange, @Nullable String toolName, FullOperation fullOperation) {
         var httpServletRequest = getCurrentHttpServletRequest();
         var sessionId = exchange.sessionId();
         var clientInfo = exchange.getClientInfo();
-        return new McpRequestContext(httpServletRequest, sessionId, clientInfo, toolName);
+        return new McpRequestContext(httpServletRequest, sessionId, clientInfo, toolName, fullOperation);
     }
 
     /**
@@ -58,14 +62,16 @@ public class McpRequestContextFactory {
      * </p>
      *
      * @param transportContext the MCP transport context (may be null, currently unused)
-     * @param toolName the name of the MCP tool being invoked, or null if not in tool invocation context
+     * @param toolName         the name of the MCP tool being invoked, or null if not in tool invocation context
+     * @param fullOperation    the set of information from OpenAPI specification that
+     *                         defines the API endpoint backing this tool
      * @return a new context instance without session metadata but with tool name
      */
     public McpRequestContext forStatelessTransport(
-            @Nullable McpTransportContext transportContext, @Nullable String toolName) {
+            @Nullable McpTransportContext transportContext, @Nullable String toolName, FullOperation fullOperation) {
         var httpServletRequest = getCurrentHttpServletRequest();
         // Stateless transport doesn't have session or client info (yet)
-        return new McpRequestContext(httpServletRequest, null, null, toolName);
+        return new McpRequestContext(httpServletRequest, null, null, toolName, fullOperation);
     }
 
     /**
@@ -80,7 +86,7 @@ public class McpRequestContextFactory {
      * @return a new context instance with the provided request and no session metadata
      */
     public McpRequestContext forServletFilter(HttpServletRequest request) {
-        return new McpRequestContext(request, null, null, null);
+        return new McpRequestContext(request);
     }
 
     /**
