@@ -102,7 +102,7 @@ public class ToolRegistry {
                         var decomposedArguments =
                                 inputSchemaComposer.decompose(callToolRequest, fullOperation.operation());
                         return toolHandler.handleToolCall(fullOperation, decomposedArguments, context);
-                    });
+                    }, fullOperation);
                 })
                 .toList();
         this.registeredToolsCache = List.copyOf(registeredTools);
