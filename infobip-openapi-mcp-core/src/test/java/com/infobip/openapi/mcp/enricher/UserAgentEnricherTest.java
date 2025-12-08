@@ -24,7 +24,7 @@ class UserAgentEnricherTest {
     private RestClient.RequestHeadersSpec<?> spec;
 
     private McpRequestContext createTestContext() {
-        return new McpRequestContext(null, null, null, null);
+        return new McpRequestContext();
     }
 
     @Test

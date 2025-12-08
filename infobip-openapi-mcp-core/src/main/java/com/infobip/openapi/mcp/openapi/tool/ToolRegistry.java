@@ -98,11 +98,14 @@ public class ToolRegistry {
                             .inputSchema(resolveJsonSchema(fullOperation))
                             .build();
 
-                    return new RegisteredTool(tool, (callToolRequest, context) -> {
-                        var decomposedArguments =
-                                inputSchemaComposer.decompose(callToolRequest, fullOperation.operation());
-                        return toolHandler.handleToolCall(fullOperation, decomposedArguments, context);
-                    }, fullOperation);
+                    return new RegisteredTool(
+                            tool,
+                            (callToolRequest, context) -> {
+                                var decomposedArguments =
+                                        inputSchemaComposer.decompose(callToolRequest, fullOperation.operation());
+                                return toolHandler.handleToolCall(fullOperation, decomposedArguments, context);
+                            },
+                            fullOperation);
                 })
                 .toList();
         this.registeredToolsCache = List.copyOf(registeredTools);

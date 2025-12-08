@@ -5,9 +5,13 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 
+import com.infobip.openapi.mcp.openapi.tool.FullOperation;
 import io.modelcontextprotocol.common.McpTransportContext;
 import io.modelcontextprotocol.server.McpSyncServerExchange;
 import io.modelcontextprotocol.spec.McpSchema;
+import io.swagger.v3.oas.models.OpenAPI;
+import io.swagger.v3.oas.models.Operation;
+import io.swagger.v3.oas.models.PathItem;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -49,7 +53,7 @@ class McpRequestContextFactoryTest {
             mockedHolder.when(RequestContextHolder::currentRequestAttributes).thenReturn(requestAttributes);
 
             // when
-            var context = factory.forStatefulTransport(exchange, null);
+            var context = factory.forStatefulTransport(exchange, null, givenOperation());
 
             // then
             then(context).isNotNull();
@@ -73,7 +77,7 @@ class McpRequestContextFactoryTest {
                     .thenThrow(new IllegalStateException("No request context available"));
 
             // when
-            var context = factory.forStatefulTransport(exchange, null);
+            var context = factory.forStatefulTransport(exchange, null, givenOperation());
 
             // then
             then(context).isNotNull();
@@ -97,7 +101,7 @@ class McpRequestContextFactoryTest {
                     .thenThrow(new IllegalStateException("No request context available"));
 
             // when
-            var context = factory.forStatefulTransport(exchange, null);
+            var context = factory.forStatefulTransport(exchange, null, givenOperation());
 
             // then
             then(context).isNotNull();
@@ -120,7 +124,7 @@ class McpRequestContextFactoryTest {
                     .thenThrow(new IllegalStateException("No request context available"));
 
             // when
-            var context = factory.forStatefulTransport(exchange, null);
+            var context = factory.forStatefulTransport(exchange, null, givenOperation());
 
             // then
             then(context).isNotNull();
@@ -141,7 +145,7 @@ class McpRequestContextFactoryTest {
             mockedHolder.when(RequestContextHolder::currentRequestAttributes).thenReturn(requestAttributes);
 
             // when
-            var context = factory.forStatelessTransport(null, null);
+            var context = factory.forStatelessTransport(null, null, givenOperation());
 
             // then
             then(context).isNotNull();
@@ -160,7 +164,7 @@ class McpRequestContextFactoryTest {
                     .thenThrow(new IllegalStateException("No request context available"));
 
             // when
-            var context = factory.forStatelessTransport(null, null);
+            var context = factory.forStatelessTransport(null, null, givenOperation());
 
             // then
             then(context).isNotNull();
@@ -181,7 +185,7 @@ class McpRequestContextFactoryTest {
             mockedHolder.when(RequestContextHolder::currentRequestAttributes).thenReturn(requestAttributes);
 
             // when
-            var context = factory.forStatelessTransport(transportContext, null);
+            var context = factory.forStatelessTransport(transportContext, null, givenOperation());
 
             // then
             then(context).isNotNull();
@@ -205,7 +209,7 @@ class McpRequestContextFactoryTest {
             mockedHolder.when(RequestContextHolder::currentRequestAttributes).thenReturn(nonServletAttributes);
 
             // when
-            var context = factory.forStatefulTransport(exchange, null);
+            var context = factory.forStatefulTransport(exchange, null, givenOperation());
 
             // then
             then(context).isNotNull();
@@ -231,7 +235,7 @@ class McpRequestContextFactoryTest {
             mockedHolder.when(RequestContextHolder::currentRequestAttributes).thenReturn(requestAttributes);
 
             // when
-            var context = factory.forStatefulTransport(exchange, null);
+            var context = factory.forStatefulTransport(exchange, null, givenOperation());
 
             // then
             then(context).isNotNull();
@@ -256,7 +260,7 @@ class McpRequestContextFactoryTest {
             mockedHolder.when(RequestContextHolder::currentRequestAttributes).thenReturn(requestAttributes);
 
             // when
-            var context = factory.forStatelessTransport(null, null);
+            var context = factory.forStatelessTransport(null, null, givenOperation());
 
             // then
             then(context).isNotNull();
@@ -323,7 +327,7 @@ class McpRequestContextFactoryTest {
             mockedHolder.when(RequestContextHolder::currentRequestAttributes).thenReturn(requestAttributes);
 
             // when
-            var context = factory.forStatefulTransport(exchange, toolName);
+            var context = factory.forStatefulTransport(exchange, toolName, givenOperation());
 
             // then
             then(context).isNotNull();
@@ -348,7 +352,7 @@ class McpRequestContextFactoryTest {
                     .thenThrow(new IllegalStateException("No request context available"));
 
             // when
-            var context = factory.forStatefulTransport(exchange, toolName);
+            var context = factory.forStatefulTransport(exchange, toolName, givenOperation());
 
             // then
             then(context).isNotNull();
@@ -373,7 +377,7 @@ class McpRequestContextFactoryTest {
                     .thenThrow(new IllegalStateException("No request context available"));
 
             // when
-            var context = factory.forStatefulTransport(exchange, toolName);
+            var context = factory.forStatefulTransport(exchange, toolName, givenOperation());
 
             // then
             then(context).isNotNull();
@@ -397,7 +401,7 @@ class McpRequestContextFactoryTest {
                     .thenThrow(new IllegalStateException("No request context available"));
 
             // when
-            var context = factory.forStatefulTransport(exchange, toolName);
+            var context = factory.forStatefulTransport(exchange, toolName, givenOperation());
 
             // then
             then(context).isNotNull();
@@ -420,7 +424,7 @@ class McpRequestContextFactoryTest {
             mockedHolder.when(RequestContextHolder::currentRequestAttributes).thenReturn(requestAttributes);
 
             // when
-            var context = factory.forStatelessTransport(null, toolName);
+            var context = factory.forStatelessTransport(null, toolName, givenOperation());
 
             // then
             then(context).isNotNull();
@@ -442,7 +446,7 @@ class McpRequestContextFactoryTest {
                     .thenThrow(new IllegalStateException("No request context available"));
 
             // when
-            var context = factory.forStatelessTransport(null, toolName);
+            var context = factory.forStatelessTransport(null, toolName, givenOperation());
 
             // then
             then(context).isNotNull();
@@ -465,7 +469,7 @@ class McpRequestContextFactoryTest {
             mockedHolder.when(RequestContextHolder::currentRequestAttributes).thenReturn(requestAttributes);
 
             // when
-            var context = factory.forStatelessTransport(transportContext, toolName);
+            var context = factory.forStatelessTransport(transportContext, toolName, givenOperation());
 
             // then
             then(context).isNotNull();
@@ -485,6 +489,7 @@ class McpRequestContextFactoryTest {
         var requestAttributes = new ServletRequestAttributes(mockRequest);
         var sessionId = "session-complete-with-tool";
         var toolName = "post_messages";
+        var fullOperation = givenOperation();
 
         given(exchange.sessionId()).willReturn(sessionId);
         given(exchange.getClientInfo()).willReturn(clientInfo);
@@ -495,7 +500,7 @@ class McpRequestContextFactoryTest {
             mockedHolder.when(RequestContextHolder::currentRequestAttributes).thenReturn(requestAttributes);
 
             // when
-            var context = factory.forStatefulTransport(exchange, toolName);
+            var context = factory.forStatefulTransport(exchange, toolName, fullOperation);
 
             // then
             then(context).isNotNull();
@@ -504,6 +509,7 @@ class McpRequestContextFactoryTest {
             then(context.clientInfo()).isEqualTo(clientInfo);
             then(context.clientInfo().name()).isEqualTo("Claude Desktop");
             then(context.clientInfo().version()).isEqualTo("2025-06-18");
+            then(context.openApiOperation()).isEqualTo(fullOperation);
             then(context.toolName()).isEqualTo(toolName);
         }
     }
@@ -523,7 +529,7 @@ class McpRequestContextFactoryTest {
             mockedHolder.when(RequestContextHolder::currentRequestAttributes).thenReturn(requestAttributes);
 
             // when
-            var context = factory.forStatefulTransport(exchange, toolName);
+            var context = factory.forStatefulTransport(exchange, toolName, givenOperation());
 
             // then
             then(context).isNotNull();
@@ -549,12 +555,16 @@ class McpRequestContextFactoryTest {
                     .thenThrow(new IllegalStateException("No request context available"));
 
             // when
-            var context = factory.forStatefulTransport(exchange, toolName);
+            var context = factory.forStatefulTransport(exchange, toolName, givenOperation());
 
             // then
             then(context).isNotNull();
             then(context.sessionId()).isEqualTo(sessionId);
             then(context.toolName()).isEqualTo(toolName);
         }
+    }
+
+    private FullOperation givenOperation() {
+        return new FullOperation("/", PathItem.HttpMethod.GET, new Operation(), new OpenAPI());
     }
 }

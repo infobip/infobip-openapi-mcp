@@ -2,10 +2,9 @@ package com.infobip.openapi.mcp.openapi.tool;
 
 import com.infobip.openapi.mcp.McpRequestContext;
 import io.modelcontextprotocol.spec.McpSchema;
+import java.util.function.BiFunction;
 import org.jspecify.annotations.NullMarked;
 import org.springframework.core.Ordered;
-
-import java.util.function.BiFunction;
 
 /**
  * Represents a registered tool with its corresponding MCP tool schema and handler function.
@@ -26,8 +25,8 @@ import java.util.function.BiFunction;
 public record RegisteredTool(
         McpSchema.Tool tool,
         BiFunction<McpSchema.CallToolRequest, McpRequestContext, McpSchema.CallToolResult> toolHandler,
-        FullOperation fullOperation) implements ToolCallFilter, Ordered {
-
+        FullOperation fullOperation)
+        implements ToolCallFilter, Ordered {
 
     @Override
     public McpSchema.CallToolResult doFilter(McpRequestContext ctx, McpSchema.CallToolRequest req, Chain chain) {

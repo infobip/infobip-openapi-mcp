@@ -1266,6 +1266,6 @@ class ToolRegistryTest {
      * Helper method to create a simple test context without HTTP request.
      */
     private McpRequestContext createTestContext() {
-        return new McpRequestContext(null, null, null, null);
+        return new McpRequestContext();
     }
 }

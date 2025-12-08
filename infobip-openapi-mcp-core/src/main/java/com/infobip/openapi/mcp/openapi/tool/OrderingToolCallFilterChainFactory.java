@@ -2,13 +2,12 @@ package com.infobip.openapi.mcp.openapi.tool;
 
 import com.infobip.openapi.mcp.McpRequestContext;
 import io.modelcontextprotocol.spec.McpSchema;
-import org.jspecify.annotations.NonNull;
-import org.springframework.core.annotation.AnnotationAwareOrderComparator;
-
 import java.util.Collection;
 import java.util.List;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
+import org.jspecify.annotations.NonNull;
+import org.springframework.core.annotation.AnnotationAwareOrderComparator;
 
 public class OrderingToolCallFilterChainFactory implements Supplier<ToolCallFilter.Chain> {
 

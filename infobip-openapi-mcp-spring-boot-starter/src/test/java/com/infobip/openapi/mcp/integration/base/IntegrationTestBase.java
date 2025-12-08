@@ -5,8 +5,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import com.infobip.openapi.mcp.McpRequestContextFactory;
 import com.infobip.openapi.mcp.auth.web.AuthenticationTestBase;
 import com.infobip.openapi.mcp.openapi.OpenApiRegistry;
-import com.infobip.openapi.mcp.openapi.tool.RegisteredTool;
-import com.infobip.openapi.mcp.openapi.tool.ToolRegistry;
+import com.infobip.openapi.mcp.openapi.tool.*;
 import io.modelcontextprotocol.client.McpClient;
 import io.modelcontextprotocol.client.McpSyncClient;
 import io.modelcontextprotocol.client.transport.HttpClientSseClientTransport;
@@ -16,8 +15,13 @@ import io.modelcontextprotocol.server.McpStatelessServerFeatures;
 import io.modelcontextprotocol.server.McpStatelessSyncServer;
 import io.modelcontextprotocol.server.McpSyncServer;
 import io.modelcontextprotocol.spec.McpError;
+import io.swagger.v3.oas.models.OpenAPI;
+import io.swagger.v3.oas.models.Operation;
+import io.swagger.v3.oas.models.PathItem;
 import java.net.http.HttpRequest;
 import java.time.Duration;
+import java.util.List;
+import java.util.Objects;
 import java.util.function.Consumer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -45,6 +49,9 @@ abstract class IntegrationTestBase extends AuthenticationTestBase {
 
     @Autowired
     McpServerProperties mcpServerProperties;
+
+    @Autowired(required = false)
+    List<ToolCallFilter> toolCallFilters;
 
     protected McpSyncClient mcpSyncClient = null;
 
@@ -132,27 +139,33 @@ abstract class IntegrationTestBase extends AuthenticationTestBase {
 
     private void addTool(RegisteredTool tool) {
         try {
+            var chainFactory = new OrderingToolCallFilterChainFactory(
+                    tool, Objects.requireNonNullElseGet(toolCallFilters, List::of));
             if (this.mcpSyncServer != null) {
                 this.mcpSyncServer.addTool(McpServerFeatures.SyncToolSpecification.builder()
                         .tool(tool.tool())
                         .callHandler((mcpSyncServerExchange, callToolRequest) -> {
-                            var context =
-                                    contextFactory.forStatefulTransport(mcpSyncServerExchange, callToolRequest.name());
-                            return tool.toolHandler().apply(callToolRequest, context);
+                            var context = contextFactory.forStatefulTransport(
+                                    mcpSyncServerExchange, callToolRequest.name(), givenFullOperation());
+                            return chainFactory.get().doFilter(context, callToolRequest);
                         })
                         .build());
             } else if (this.mcpStatelessSyncServer != null) {
                 this.mcpStatelessSyncServer.addTool(McpStatelessServerFeatures.SyncToolSpecification.builder()
                         .tool(tool.tool())
                         .callHandler((mcpTransportContext, callToolRequest) -> {
-                            var context =
-                                    contextFactory.forStatelessTransport(mcpTransportContext, callToolRequest.name());
-                            return tool.toolHandler().apply(callToolRequest, context);
+                            var context = contextFactory.forStatelessTransport(
+                                    mcpTransportContext, callToolRequest.name(), givenFullOperation());
+                            return chainFactory.get().doFilter(context, callToolRequest);
                         })
                         .build());
             }
         } catch (McpError ignored) {
         }
+    }
+
+    private FullOperation givenFullOperation() {
+        return new FullOperation("/", PathItem.HttpMethod.GET, new Operation(), new OpenAPI());
     }
 
     private void removeTool(RegisteredTool tool) {
