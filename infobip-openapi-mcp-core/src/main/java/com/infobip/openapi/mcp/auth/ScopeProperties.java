@@ -39,6 +39,7 @@ public record ScopeProperties(
     }
 
     public enum ScopeAlgorithm {
-        NONE, GREEDY
+        NONE,
+        GREEDY
     }
 }
