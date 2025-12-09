@@ -6,24 +6,13 @@ on:
   pull_request:
 
 jobs:
-  security:
-
+  snyk:
     runs-on: ubuntu-latest
-
-    permissions:
-      security-events: write
-
-      # TODO: remove before going public
-      # If your repository is private, also add:
-      actions: read
-      contents: read
-
     steps:
       - uses: actions/checkout@master
       - name: Run Snyk to check for vulnerabilities
         uses: snyk/actions/maven-3-jdk-21@master
-        continue-on-error: true # To make sure that SARIF upload gets called
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
-          args: --sarif-file-output=snyk.sarif --severity-threshold=high --all-projects
+          args: --severity-threshold=medium --all-projects
