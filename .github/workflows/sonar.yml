@@ -16,6 +16,8 @@ jobs:
     name: SonarQube Scan
     runs-on: ubuntu-latest
     steps:
+      - name: Mask username
+        run: echo "::add-mask::${{ secrets.STATIC_CODE_ANALYSIS_USERNAME }}"
       - uses: actions/checkout@v6
       - name: Set up JDK
         uses: actions/setup-java@v4

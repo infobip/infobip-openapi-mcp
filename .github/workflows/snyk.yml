@@ -11,6 +11,8 @@ jobs:
     permissions:
       security-events: write
     steps:
+      - name: Mask username
+        run: echo "::add-mask::${{ secrets.STATIC_CODE_ANALYSIS_USERNAME }}"
       - uses: actions/checkout@master
       - name: Run Snyk to check for vulnerabilities
         uses: snyk/actions/maven-3-jdk-21@master
