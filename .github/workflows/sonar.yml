@@ -4,6 +4,12 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to scan'
+        required: true
+        default: 'main'
 
 jobs:
   sonar:
