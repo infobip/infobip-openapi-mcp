@@ -1,0 +1,26 @@
+name: SonarQube Scan
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  sonar:
+    name: SonarQube Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: 21
+          distribution: 'temurin'
+          cache: maven
+      - name: SonarQube code scan
+        run: |
+          mvn -B verify sonar:sonar \
+          -Dsonar.host.url=https://sonarcloud.io \
+          -Dsonar.organization=infobip \
+          -Dsonar.projectKey=infobip_infobip-openapi-mcp \
+          -Dsonar.login=${{ secrets.SONAR_TOKEN }}
