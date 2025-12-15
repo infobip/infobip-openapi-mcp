@@ -7,6 +7,14 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.util.Optional;
 import org.springframework.web.util.UriComponentsBuilder;
 
+/**
+ * Provider for constructing WWW-Authenticate response headers according to RFC 6750.
+ * <p>
+ * This provider builds WWW-Authenticate headers that include OAuth 2.0 metadata such as
+ * the resource metadata URL (pointing to the well-known OAuth configuration), discovered
+ * scopes, and optional error information for insufficient scope scenarios.
+ * </p>
+ */
 public class WwwAuthenticateProvider {
 
     private final OAuthProperties oAuthProperties;
@@ -25,10 +33,31 @@ public class WwwAuthenticateProvider {
         this.xForwardedHostCalculator = xForwardedHostCalculator;
     }
 
+    /**
+     * Builds a WWW-Authenticate header for Bearer token authentication.
+     * <p>
+     * The header includes the resource metadata URL pointing to the OAuth well-known
+     * configuration endpoint and any discovered scopes if available.
+     * </p>
+     *
+     * @param request the HTTP servlet request used to determine the resource metadata URL
+     * @return the formatted WWW-Authenticate header value
+     */
     public String buildWwwAuthenticateHeader(HttpServletRequest request) {
         return buildWwwAuthenticateHeader(request, false);
     }
 
+    /**
+     * Builds a WWW-Authenticate header with an insufficient_scope error.
+     * <p>
+     * This method is used when a request lacks the required scope to access a resource.
+     * The header includes the resource metadata URL, any discovered scopes if available,
+     * and an error attribute set to "insufficient_scope".
+     * </p>
+     *
+     * @param request the HTTP servlet request used to determine the resource metadata URL
+     * @return the formatted WWW-Authenticate header value with error information
+     */
     public String buildWwwAuthenticateHeaderWithScopeError(HttpServletRequest request) {
         return buildWwwAuthenticateHeader(request, true);
     }

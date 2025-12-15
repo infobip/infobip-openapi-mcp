@@ -105,8 +105,8 @@ class OpenApiMcpConfiguration {
     }
 
     @Bean
-    public XForwardedForEnricher xForwardedForEnricher(XForwardedForCalculator XForwardedForCalculator) {
-        return new XForwardedForEnricher(XForwardedForCalculator);
+    public XForwardedForEnricher xForwardedForEnricher(XForwardedForCalculator xForwardedForCalculator) {
+        return new XForwardedForEnricher(xForwardedForCalculator);
     }
 
     @Bean
