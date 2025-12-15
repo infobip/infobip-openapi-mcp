@@ -1,0 +1,35 @@
+name: SonarQube Scan
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to scan'
+        required: true
+        default: 'main'
+
+jobs:
+  sonar:
+    name: SonarQube Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Mask username
+        run: echo "::add-mask::${{ secrets.STATIC_CODE_ANALYSIS_USERNAME }}"
+      - uses: actions/checkout@v6
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: 21
+          distribution: 'temurin'
+          cache: maven
+      - name: SonarQube code scan
+        run: |
+          mvn -B verify sonar:sonar \
+          -Dsonar.host.url=https://sonarcloud.io \
+          -Dsonar.organization=infobip \
+          -Dsonar.projectKey=infobip-openapi-mcp \
+          -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco-aggregate/jacoco.xml \
+          -Dsonar.login=${{ secrets.SONAR_TOKEN }}
