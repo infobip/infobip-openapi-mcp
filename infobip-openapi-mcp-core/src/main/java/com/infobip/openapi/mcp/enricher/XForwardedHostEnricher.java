@@ -2,13 +2,9 @@ package com.infobip.openapi.mcp.enricher;
 
 import com.infobip.openapi.mcp.McpRequestContext;
 import com.infobip.openapi.mcp.util.XForwardedHostCalculator;
-import jakarta.servlet.http.HttpServletRequest;
-import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.HttpHeaders;
 import org.springframework.web.client.RestClient;
-import org.springframework.web.util.UriComponents;
 
 /**
  * API request enricher that forwards host, protocol, and port information to downstream API requests.
