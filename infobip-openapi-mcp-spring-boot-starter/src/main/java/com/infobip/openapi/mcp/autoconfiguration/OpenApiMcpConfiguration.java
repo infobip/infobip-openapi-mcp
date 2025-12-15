@@ -110,8 +110,8 @@ class OpenApiMcpConfiguration {
     }
 
     @Bean
-    public XForwardedHostEnricher xForwardedHostEnricher() {
-        return new XForwardedHostEnricher();
+    public XForwardedHostEnricher xForwardedHostEnricher(XForwardedHostCalculator xForwardedHostCalculator) {
+        return new XForwardedHostEnricher(xForwardedHostCalculator);
     }
 
     @Bean
