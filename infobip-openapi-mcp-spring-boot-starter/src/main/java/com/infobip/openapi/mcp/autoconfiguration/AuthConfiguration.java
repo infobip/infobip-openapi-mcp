@@ -4,13 +4,11 @@ import static com.infobip.openapi.mcp.autoconfiguration.Qualifiers.AUTHORIZATION
 
 import com.infobip.openapi.mcp.McpRequestContextFactory;
 import com.infobip.openapi.mcp.auth.AuthProperties;
-import com.infobip.openapi.mcp.auth.OAuthProperties;
-import com.infobip.openapi.mcp.auth.scope.ScopeDiscoveryService;
+import com.infobip.openapi.mcp.auth.scope.JwtScopeService;
+import com.infobip.openapi.mcp.auth.scope.WwwAuthenticateProvider;
 import com.infobip.openapi.mcp.auth.web.InitialAuthenticationFilter;
-import com.infobip.openapi.mcp.config.OpenApiMcpProperties;
 import com.infobip.openapi.mcp.enricher.ApiRequestEnricherChain;
 import com.infobip.openapi.mcp.error.ErrorModelWriter;
-import com.infobip.openapi.mcp.util.XForwardedHostCalculator;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -53,26 +51,22 @@ class AuthConfiguration {
     public FilterRegistrationBean<InitialAuthenticationFilter> initialAuthenticationFilterRegistration(
             @Qualifier(AUTHORIZATION_REST_CLIENT_QUALIFIER) RestClient restClient,
             AuthProperties authProperties,
-            Optional<OAuthProperties> oAuthProperties,
             ErrorModelWriter errorModelWriter,
             McpServerProperties mcpServerProperties,
-            OpenApiMcpProperties openApiMcpProperties,
             Optional<McpServerSseProperties> mcpServerSseProperties,
             Optional<McpServerStreamableHttpProperties> mcpServerStreamableHttpProperties,
             ApiRequestEnricherChain enricherChain,
             McpRequestContextFactory contextFactory,
-            Optional<ScopeDiscoveryService> scopeDiscoveryService,
-            XForwardedHostCalculator xForwardedHostCalculator) {
+            Optional<WwwAuthenticateProvider> wwwAuthenticateProvider,
+            Optional<JwtScopeService> jwtScopeService) {
         var filter = new InitialAuthenticationFilter(
                 restClient,
                 authProperties,
-                oAuthProperties,
-                openApiMcpProperties,
                 errorModelWriter,
                 enricherChain,
                 contextFactory,
-                scopeDiscoveryService,
-                xForwardedHostCalculator);
+                wwwAuthenticateProvider,
+                jwtScopeService);
 
         var registration = new FilterRegistrationBean<>(filter);
         registration.setUrlPatterns(

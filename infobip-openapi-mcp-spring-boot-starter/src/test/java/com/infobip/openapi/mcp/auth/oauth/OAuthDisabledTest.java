@@ -5,6 +5,7 @@ import static org.assertj.core.api.BDDAssertions.then;
 
 import com.infobip.openapi.mcp.auth.AuthProperties;
 import com.infobip.openapi.mcp.auth.OAuthProperties;
+import com.infobip.openapi.mcp.auth.scope.WwwAuthenticateProvider;
 import com.infobip.openapi.mcp.autoconfiguration.OAuthController;
 import com.infobip.openapi.mcp.openapi.OpenApiTestBase;
 import org.junit.jupiter.api.Nested;
@@ -15,7 +16,7 @@ import org.springframework.test.context.ActiveProfiles;
 class OAuthDisabledTest extends OpenApiTestBase {
 
     @Test
-    void shouldNotRegisterOAuthRouterAndRestClient() {
+    void shouldNotRegisterOAuthRouterAndRestClientAndWwwAuthenticateProvider() {
         // Given
         var givenAuthEnabled = givenPropertyEnabled(AuthProperties.PREFIX);
         var givenOAuthEnabled = givenPropertyEnabled(OAuthProperties.PREFIX);
@@ -23,6 +24,7 @@ class OAuthDisabledTest extends OpenApiTestBase {
         // When
         var controller = applicationContext.getBeansOfType(OAuthController.class);
         var routerExits = applicationContext.containsBean(OAUTH_REST_CLIENT_QUALIFIER);
+        var wwwAuthenticateProvider = applicationContext.getBeansOfType(WwwAuthenticateProvider.class);
 
         // Then
         then(givenAuthEnabled).isFalse();
@@ -30,6 +32,7 @@ class OAuthDisabledTest extends OpenApiTestBase {
 
         then(controller).isEmpty();
         then(routerExits).isFalse();
+        then(wwwAuthenticateProvider).isEmpty();
     }
 
     @Nested

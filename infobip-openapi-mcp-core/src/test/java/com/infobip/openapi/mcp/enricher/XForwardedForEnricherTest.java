@@ -4,7 +4,7 @@ import static org.assertj.core.api.BDDAssertions.then;
 import static org.mockito.BDDMockito.*;
 
 import com.infobip.openapi.mcp.McpRequestContext;
-import com.infobip.openapi.mcp.util.XFFCalculator;
+import com.infobip.openapi.mcp.util.XForwardedForCalculator;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -30,7 +30,7 @@ class XForwardedForEnricherTest {
     @Test
     void shouldAddXForwardedForHeaderWhenPresent() {
         // given
-        var enricher = new XForwardedForEnricher(new XFFCalculator());
+        var enricher = new XForwardedForEnricher(new XForwardedForCalculator());
         var mockRequest = new MockHttpServletRequest();
         mockRequest.setRemoteAddr("203.0.113.195");
         var context = createTestContext(mockRequest);
@@ -50,7 +50,7 @@ class XForwardedForEnricherTest {
     @Test
     void shouldAddXForwardedForHeaderWithMultipleIPs() {
         // given
-        var enricher = new XForwardedForEnricher(new XFFCalculator());
+        var enricher = new XForwardedForEnricher(new XForwardedForCalculator());
         var mockRequest = new MockHttpServletRequest();
         mockRequest.addHeader("X-Forwarded-For", "203.0.113.195, 198.51.100.1");
         mockRequest.setRemoteAddr("198.51.100.2");
@@ -68,7 +68,7 @@ class XForwardedForEnricherTest {
     @Test
     void shouldNotAddHeaderWhenXForwardedForIsNull() {
         // given
-        var enricher = new XForwardedForEnricher(new XFFCalculator());
+        var enricher = new XForwardedForEnricher(new XForwardedForCalculator());
         var mockRequest = new MockHttpServletRequest();
         mockRequest.setRemoteAddr(null);
         // No X-Forwarded-For header and no remote address set
@@ -84,7 +84,7 @@ class XForwardedForEnricherTest {
     @Test
     void shouldNotAddHeaderWhenXForwardedForIsEmpty() {
         // given
-        var enricher = new XForwardedForEnricher(new XFFCalculator());
+        var enricher = new XForwardedForEnricher(new XForwardedForCalculator());
         var mockRequest = new MockHttpServletRequest();
         mockRequest.addHeader("X-Forwarded-For", "");
         mockRequest.setRemoteAddr("");
@@ -100,7 +100,7 @@ class XForwardedForEnricherTest {
     @Test
     void shouldNotAddHeaderWhenXForwardedForIsBlank() {
         // given
-        var enricher = new XForwardedForEnricher(new XFFCalculator());
+        var enricher = new XForwardedForEnricher(new XForwardedForCalculator());
         var mockRequest = new MockHttpServletRequest();
         mockRequest.addHeader("X-Forwarded-For", "   ");
         mockRequest.setRemoteAddr("   ");
@@ -116,7 +116,7 @@ class XForwardedForEnricherTest {
     @Test
     void shouldNotAddHeaderWhenRequestIsNull() {
         // given
-        var enricher = new XForwardedForEnricher(new XFFCalculator());
+        var enricher = new XForwardedForEnricher(new XForwardedForCalculator());
         var context = createTestContextWithoutRequest();
 
         // when
@@ -129,7 +129,7 @@ class XForwardedForEnricherTest {
     @Test
     void shouldHandleIPv6Address() {
         // given
-        var enricher = new XForwardedForEnricher(new XFFCalculator());
+        var enricher = new XForwardedForEnricher(new XForwardedForCalculator());
         var mockRequest = new MockHttpServletRequest();
         mockRequest.setRemoteAddr("2001:db8:85a3:8d3:1319:8a2e:370:7348");
         var context = createTestContext(mockRequest);

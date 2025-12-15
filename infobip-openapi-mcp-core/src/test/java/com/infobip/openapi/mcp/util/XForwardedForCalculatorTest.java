@@ -10,12 +10,12 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
-public class XFFCalculatorTest {
+public class XForwardedForCalculatorTest {
 
     @Mock
     private HttpServletRequest givenServerRequest;
 
-    private final XFFCalculator xffCalculator = new XFFCalculator();
+    private final XForwardedForCalculator XForwardedForCalculator = new XForwardedForCalculator();
 
     @Test
     void shouldAppendClientIpWhenNotIncludedInXForwardedForHeader() {
@@ -27,7 +27,7 @@ public class XFFCalculatorTest {
         when(givenServerRequest.getRemoteAddr()).thenReturn(givenClientIp);
 
         // When
-        var actualResult = xffCalculator.calculateXFF(givenServerRequest);
+        var actualResult = XForwardedForCalculator.calculateXFF(givenServerRequest);
 
         // Then
         then(actualResult).isEqualTo("192.0.2.1, 198.51.100.1, 203.0.113.1");
@@ -43,7 +43,7 @@ public class XFFCalculatorTest {
         when(givenServerRequest.getRemoteAddr()).thenReturn(givenClientIp);
 
         // When
-        var actualResult = xffCalculator.calculateXFF(givenServerRequest);
+        var actualResult = XForwardedForCalculator.calculateXFF(givenServerRequest);
 
         // Then
         then(actualResult).isEqualTo(givenHeader);
@@ -58,7 +58,7 @@ public class XFFCalculatorTest {
         when(givenServerRequest.getRemoteAddr()).thenReturn(givenClientIp);
 
         // When
-        var actualResult = xffCalculator.calculateXFF(givenServerRequest);
+        var actualResult = XForwardedForCalculator.calculateXFF(givenServerRequest);
 
         // Then
         then(actualResult).isEqualTo(givenClientIp);
@@ -73,7 +73,7 @@ public class XFFCalculatorTest {
         when(givenServerRequest.getRemoteAddr()).thenReturn(givenClientIp);
 
         // When
-        var actualResult = xffCalculator.calculateXFF(givenServerRequest);
+        var actualResult = XForwardedForCalculator.calculateXFF(givenServerRequest);
 
         // Then
         then(actualResult).isEqualTo(givenClientIp);
@@ -86,7 +86,7 @@ public class XFFCalculatorTest {
         when(givenServerRequest.getRemoteAddr()).thenReturn(null);
 
         // When
-        var actualResult = xffCalculator.calculateXFF(givenServerRequest);
+        var actualResult = XForwardedForCalculator.calculateXFF(givenServerRequest);
 
         // Then
         then(actualResult).isNull();
@@ -99,7 +99,7 @@ public class XFFCalculatorTest {
         when(givenServerRequest.getRemoteAddr()).thenReturn("");
 
         // When
-        var actualResult = xffCalculator.calculateXFF(givenServerRequest);
+        var actualResult = XForwardedForCalculator.calculateXFF(givenServerRequest);
 
         // Then
         then(actualResult).isNull();
@@ -114,7 +114,7 @@ public class XFFCalculatorTest {
         when(givenServerRequest.getRemoteAddr()).thenReturn(null);
 
         // When
-        var actualResult = xffCalculator.calculateXFF(givenServerRequest);
+        var actualResult = XForwardedForCalculator.calculateXFF(givenServerRequest);
 
         // Then
         then(actualResult).isEqualTo(givenHeader);
@@ -129,7 +129,7 @@ public class XFFCalculatorTest {
         when(givenServerRequest.getRemoteAddr()).thenReturn("");
 
         // When
-        var actualResult = xffCalculator.calculateXFF(givenServerRequest);
+        var actualResult = XForwardedForCalculator.calculateXFF(givenServerRequest);
 
         // Then
         then(actualResult).isEqualTo(givenHeader);

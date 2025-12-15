@@ -16,7 +16,7 @@ import com.infobip.openapi.mcp.error.ErrorModelWriter;
 import com.infobip.openapi.mcp.infrastructure.metrics.MetricService;
 import com.infobip.openapi.mcp.infrastructure.metrics.NoOpMetricService;
 import com.infobip.openapi.mcp.openapi.schema.DecomposedRequestData;
-import com.infobip.openapi.mcp.util.XFFCalculator;
+import com.infobip.openapi.mcp.util.XForwardedForCalculator;
 import io.modelcontextprotocol.spec.McpSchema;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.Operation;
@@ -77,7 +77,7 @@ class ToolHandlerTest {
         errorModelWriter = new ErrorModelWriter(objectMapper, errorModelProvider);
 
         // Create enrichers (auth is handled explicitly, not via enricher)
-        var xffCalculator = new XFFCalculator();
+        var xffCalculator = new XForwardedForCalculator();
         var xffEnricher = new XForwardedForEnricher(xffCalculator);
         var enricherChain = new ApiRequestEnricherChain(List.of(xffEnricher));
 

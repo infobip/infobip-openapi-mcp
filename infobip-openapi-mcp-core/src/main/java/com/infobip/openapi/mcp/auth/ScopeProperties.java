@@ -27,6 +27,10 @@ public record ScopeProperties(
      * Constructor with defaults for optional properties.
      */
     public ScopeProperties {
+        if (!enabled) {
+            enabled = true;
+        }
+
         if (scopeExtensions == null) {
             scopeExtensions = "";
         }
