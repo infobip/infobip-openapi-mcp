@@ -132,29 +132,33 @@ public class XForwardedHostEnricher implements ApiRequestEnricher {
             return spec;
         }
 
-        var uriBuilder = xForwardedHostCalculator.hostBuilder(request);
-        var uriComponents = uriBuilder.build();
+        try {
+            var uriBuilder = xForwardedHostCalculator.hostBuilder(request);
+            var uriComponents = uriBuilder.build();
 
-        var host = uriComponents.getHost();
-        if (host == null || host.isBlank()) {
-            LOGGER.trace("No host available from request");
-            return spec;
-        }
+            var host = uriComponents.getHost();
+            if (host == null || host.isBlank()) {
+                LOGGER.trace("No host available from request");
+                return spec;
+            }
 
-        // Set X-Forwarded-Host
-        spec = spec.header(X_FORWARDED_HOST_HEADER, host);
+            // Set X-Forwarded-Host
+            spec = spec.header(X_FORWARDED_HOST_HEADER, host);
 
-        // Set X-Forwarded-Proto
-        var scheme = uriComponents.getScheme();
-        if (scheme != null && !scheme.isBlank()) {
-            spec = spec.header(X_FORWARDED_PROTO_HEADER, scheme);
-        }
+            // Set X-Forwarded-Proto
+            var scheme = uriComponents.getScheme();
+            if (scheme != null && !scheme.isBlank()) {
+                spec = spec.header(X_FORWARDED_PROTO_HEADER, scheme);
+            }
 
-        // Set X-Forwarded-Port
-        var port = uriComponents.getPort();
-        var PORT_NOT_SET = -1;
-        if (port != PORT_NOT_SET) {
-            spec = spec.header(X_FORWARDED_PORT_HEADER, String.valueOf(port));
+            // Set X-Forwarded-Port
+            var port = uriComponents.getPort();
+            var DEFAULT_PROTO_PORT_USED = -1;
+            if (port != DEFAULT_PROTO_PORT_USED) {
+                spec = spec.header(X_FORWARDED_PORT_HEADER, String.valueOf(port));
+            }
+        } catch (RuntimeException e) {
+            LOGGER.warn("Failed to build URI components for X-Forwarded-Host enrichment", e);
         }
 
         return spec;
