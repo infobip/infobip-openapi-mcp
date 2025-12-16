@@ -300,5 +300,4 @@ class XForwardedHostEnricherTest {
         then(spec).should().header(X_FORWARDED_PROTO_HEADER, DEFAULT_PROTOCOL);
         then(spec).should().header(X_FORWARDED_PORT_HEADER, "443");
     }
-
 }
