@@ -7,35 +7,6 @@ import sys
 import urllib.error
 import urllib.request
 
-
-def get_repo_info():
-    """Extract owner and repo name from git remote URL."""
-    try:
-        import subprocess
-
-        result = subprocess.run(
-            ["git", "remote", "get-url", "origin"],
-            capture_output=True,
-            text=True,
-            check=True,
-        )
-        remote_url = result.stdout.strip()
-
-        # Parse various git URL formats
-        # SSH: git@github.com:owner/repo.git
-        # HTTPS: https://github.com/owner/repo.git
-        match = re.search(r"[:/]([^/]+)/([^/]+?)(\.git)?$", remote_url)
-        if match:
-            owner = match.group(1)
-            repo = match.group(2)
-            return owner, repo
-        else:
-            raise ValueError(f"Could not parse repository URL: {remote_url}")
-    except Exception as e:
-        print(f"Error getting repository info: {e}", file=sys.stderr)
-        sys.exit(1)
-
-
 def get_latest_tag():
     """Get the latest git tag."""
     try:
@@ -132,7 +103,8 @@ def main():
         sys.exit(1)
 
     # Get repository information
-    owner, repo = get_repo_info()
+    owner = "infobip"
+    repo = "infobip-openapi-mcp"
     print(f"Repository: {owner}/{repo}")
 
     # Get the latest tag and extract version
