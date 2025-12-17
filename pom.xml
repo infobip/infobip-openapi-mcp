@@ -3,10 +3,10 @@
 
     <groupId>com.infobip.openapi.mcp</groupId>
     <artifactId>infobip-openapi-mcp</artifactId>
-    <version>0.0.8-SNAPSHOT</version>
+    <version>0.1.2-SNAPSHOT</version>
     <packaging>pom</packaging>
 
-    <name>infobip-openapi-mcp</name>
+    <name>Infobip OpenAPI MCP framework</name>
     <url>https://github.com/infobip/infobip-openapi-mcp</url>
     <description>Framework for exposing OpenAPI documented HTTP APIs as MCP servers.</description>
 
@@ -23,9 +23,17 @@
         </license>
     </licenses>
 
-    <developers />
+    <developers>
+        <developer>
+            <name>Infobip</name>
+            <email>devrel@infobip.com</email>
+            <organization>Infobip ltd.</organization>
+            <organizationUrl>https://www.infobip.com</organizationUrl>
+        </developer>
+    </developers>
 
     <scm>
+        <url>https://github.com/infobip/infobip-openapi-mcp</url>
         <connection>scm:git:https://github.com/infobip/infobip-openapi-mcp.git</connection>
         <developerConnection>scm:git:https://github.com/infobip/infobip-openapi-mcp.git</developerConnection>
         <tag>HEAD</tag>

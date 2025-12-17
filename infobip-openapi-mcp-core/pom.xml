@@ -5,10 +5,11 @@
 	<parent>
 		<groupId>com.infobip.openapi.mcp</groupId>
 		<artifactId>infobip-openapi-mcp</artifactId>
-		<version>0.0.8-SNAPSHOT</version>
+		<version>0.1.2-SNAPSHOT</version>
 	</parent>
 
 	<artifactId>infobip-openapi-mcp-core</artifactId>
+	<name>Infobip OpenAPI MCP core library</name>
 
 	<properties>
         <jakarta-servlet.version>6.1.0</jakarta-servlet.version>
