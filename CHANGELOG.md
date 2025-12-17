@@ -1,0 +1,26 @@
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+
+### Added
+
+- Mapping OpenAPI specification to MCP tools
+  - Multiple tool naming strategies (OperationId, SanitizedOperationId, Endpoint) with length trimming support
+  - OpenAPI filter system for programmatic specification customization
+  - Discriminator resolution for polymorphic models to ensure JSON Schema compatibility
+- Translating MCP tool calls to API requests
+  - OpenAPI to MCP tool mapping with automatic schema adaptation for path, query, and body parameters
+  - API request enricher framework for customizing HTTP requests to downstream APIs
+  - JSON double serialization mitigation for handling malformed LLM outputs
+- Authentication and OAuth
+  - Custom auth types, such as API key, are supported via configurable authentication API endpoint
+  - OAuth authentication support with automatic authorization server discovery 
+  - OAuth scope discovery from OpenAPI specifications with minimal scope calculation algorithms
+- MCP transports and Spring Boot integration
+  - Support for stdio, SSE and streamable HTTP MCP transport protocols
+  - Spring Boot auto-configuration with externalized configuration properties
