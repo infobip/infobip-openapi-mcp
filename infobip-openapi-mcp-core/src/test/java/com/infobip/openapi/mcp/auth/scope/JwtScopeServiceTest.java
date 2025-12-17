@@ -28,6 +28,8 @@ class JwtScopeServiceTest {
     @Mock
     private ScopeDiscoveryService scopeDiscoveryService;
 
+    private static final String SCOPE_CLAIM = "scope";
+
     @ParameterizedTest
     @ValueSource(strings = {"Bearer", "bearer", "bEaRer", "BEARER"})
     void shouldDecodeValidJwtFromBearerTokenWhileCaseInsensitive(String givenValidPrefix) throws ParseException {
@@ -37,11 +39,11 @@ class JwtScopeServiceTest {
         var givenAuthHeader = givenValidPrefix + " " + givenJwt;
 
         // When
-        var actualClaims = jwtScopeService.decodeJwtToken(givenAuthHeader);
+        var actualScopes = jwtScopeService.decodeJwtTokenAndExtractScopes(givenAuthHeader);
 
         // Then
-        then(actualClaims).isNotNull();
-        then(actualClaims.getClaimAsString("scope")).isEqualTo(givenScopes);
+        then(actualScopes).isNotEmpty();
+        then(actualScopes).contains(givenScopes.split(" "));
         BDDMockito.then(scopeDiscoveryService).shouldHaveNoInteractions();
     }
 
@@ -53,21 +55,21 @@ class JwtScopeServiceTest {
         var givenAuthHeaderWithWhitespace = "Bearer   " + givenJwt + "   ";
 
         // When
-        var actualClaims = jwtScopeService.decodeJwtToken(givenAuthHeaderWithWhitespace);
+        var actualScopes = jwtScopeService.decodeJwtTokenAndExtractScopes(givenAuthHeaderWithWhitespace);
 
         // Then
-        then(actualClaims).isNotNull();
-        then(actualClaims.getClaimAsString("scope")).isEqualTo(givenScopes);
+        then(actualScopes).isNotEmpty();
+        then(actualScopes).contains(givenScopes.split(" "));
         BDDMockito.then(scopeDiscoveryService).shouldHaveNoInteractions();
     }
 
     @Test
     void shouldReturnNullWhenAuthHeaderIsNull() {
         // When
-        var actualClaims = jwtScopeService.decodeJwtToken(null);
+        var actualScopes = jwtScopeService.decodeJwtTokenAndExtractScopes(null);
 
         // Then
-        then(actualClaims).isNull();
+        then(actualScopes).isEmpty();
         BDDMockito.then(scopeDiscoveryService).shouldHaveNoInteractions();
     }
 
@@ -77,10 +79,10 @@ class JwtScopeServiceTest {
         var givenAuthHeader = "Bearer invalid.malformed.jwt";
 
         // When
-        var actualClaims = jwtScopeService.decodeJwtToken(givenAuthHeader);
+        var actualScopes = jwtScopeService.decodeJwtTokenAndExtractScopes(givenAuthHeader);
 
         // Then
-        then(actualClaims).isNull();
+        then(actualScopes).isEmpty();
         BDDMockito.then(scopeDiscoveryService).shouldHaveNoInteractions();
     }
 
@@ -93,22 +95,23 @@ class JwtScopeServiceTest {
         var givenAuthHeader = givenInvalidFormat + " " + givenJwt;
 
         // When
-        var actualClaims = jwtScopeService.decodeJwtToken(givenAuthHeader);
+        var actualScopes = jwtScopeService.decodeJwtTokenAndExtractScopes(givenAuthHeader);
 
         // Then
-        then(actualClaims).isNull();
+        then(actualScopes).isEmpty();
         BDDMockito.then(scopeDiscoveryService).shouldHaveNoInteractions();
     }
 
     @Test
     void shouldExtractScopesFromJwtClaims() {
         // Given
-        var givenClaims = new JWTClaimsSet.Builder()
-                .claim("scope", "read:users write:users admin:config")
-                .build();
+        var givenScopes = "read:users write:users admin:config";
+        var givenClaims = new JWTClaimsSet.Builder().claim("scope", givenScopes).build();
+        var givenJwt = givenJwtTokenWithClaimSet(givenClaims);
+        var givenAuthHeader = "Bearer " + givenJwt;
 
         // When
-        var actualScopes = jwtScopeService.extractScopes(givenClaims);
+        var actualScopes = jwtScopeService.decodeJwtTokenAndExtractScopes(givenAuthHeader);
 
         // Then
         then(actualScopes).hasSize(3);
@@ -119,11 +122,12 @@ class JwtScopeServiceTest {
     @Test
     void shouldReturnEmptySetWhenScopeClaimNotPresent() {
         // Given
-        var givenClaimsWithoutScope =
-                new JWTClaimsSet.Builder().subject("user123").build();
+        var givenClaimsWithoutScope = new JWTClaimsSet.Builder().build();
+        var givenJwt = givenJwtTokenWithClaimSet(givenClaimsWithoutScope);
+        var givenAuthHeader = "Bearer " + givenJwt;
 
         // When
-        var actualScopes = jwtScopeService.extractScopes(givenClaimsWithoutScope);
+        var actualScopes = jwtScopeService.decodeJwtTokenAndExtractScopes(givenAuthHeader);
 
         // Then
         then(actualScopes).isEmpty();
@@ -133,11 +137,14 @@ class JwtScopeServiceTest {
     @Test
     void shouldReturnEmptySetWhenScopeClaimIsBlank() {
         // Given
-        var givenClaimsWithBlankScope =
-                new JWTClaimsSet.Builder().claim("scope", "   ").build();
+        var givenScopes = "   ";
+        var givenClaimWithBlankScope =
+                new JWTClaimsSet.Builder().claim(SCOPE_CLAIM, givenScopes).build();
+        var givenJwt = givenJwtTokenWithClaimSet(givenClaimWithBlankScope);
+        var givenAuthHeader = "Bearer " + givenJwt;
 
         // When
-        var actualScopes = jwtScopeService.extractScopes(givenClaimsWithBlankScope);
+        var actualScopes = jwtScopeService.decodeJwtTokenAndExtractScopes(givenAuthHeader);
 
         // Then
         then(actualScopes).isEmpty();
@@ -147,12 +154,14 @@ class JwtScopeServiceTest {
     @Test
     void shouldHandleMultipleConsecutiveSpacesInScopes() {
         // Given
-        var givenClaimsWithSpaces = new JWTClaimsSet.Builder()
-                .claim("scope", "read:users  write:users   admin:config")
-                .build();
+        var givenScopes = "read:users  write:users      admin:config";
+        var givenClaimsWithSpaces =
+                new JWTClaimsSet.Builder().claim(SCOPE_CLAIM, givenScopes).build();
+        var givenJwt = givenJwtTokenWithClaimSet(givenClaimsWithSpaces);
+        var givenAuthHeader = "Bearer " + givenJwt;
 
         // When
-        var actualScopes = jwtScopeService.extractScopes(givenClaimsWithSpaces);
+        var actualScopes = jwtScopeService.decodeJwtTokenAndExtractScopes(givenAuthHeader);
 
         // Then
         then(actualScopes).contains("read:users", "write:users", "admin:config");
@@ -160,15 +169,15 @@ class JwtScopeServiceTest {
     }
 
     @Test
-    void shouldVerifyScopesWhenTokenScopesContainAllRequired() {
+    void shouldVerifyScopesWhenTokenScopesFromHeaderContainAllRequired() {
         // Given
+        var givenAuthHeader = "Bearer " + givenJwtToken("read:users write:users admin:config");
         var givenRequiredScopes = Set.of("read:users", "write:users");
-        var givenTokenScopes = Set.of("read:users", "write:users", "admin:config");
 
         given(scopeDiscoveryService.getDiscoveredScopes()).willReturn(givenRequiredScopes);
 
         // When
-        var isValid = jwtScopeService.verifyScopes(givenTokenScopes);
+        var isValid = jwtScopeService.verifyScopesFromHeader(givenAuthHeader);
 
         // Then
         then(isValid).isTrue();
@@ -176,15 +185,15 @@ class JwtScopeServiceTest {
     }
 
     @Test
-    void shouldVerifyScopesWithExactMatch() {
+    void shouldVerifyScopesFromHeaderWithExactMatch() {
         // Given
+        var givenAuthHeader = "Bearer " + givenJwtToken("read:users write:users");
         var givenRequiredScopes = Set.of("read:users", "write:users");
-        var givenTokenScopes = Set.of("read:users", "write:users");
 
         given(scopeDiscoveryService.getDiscoveredScopes()).willReturn(givenRequiredScopes);
 
         // When
-        var isValid = jwtScopeService.verifyScopes(givenTokenScopes);
+        var isValid = jwtScopeService.verifyScopesFromHeader(givenAuthHeader);
 
         // Then
         then(isValid).isTrue();
@@ -194,13 +203,13 @@ class JwtScopeServiceTest {
     @Test
     void shouldSucceedWhenRequiredScopesEmpty() {
         // Given
+        var givenAuthHeader = "Bearer " + givenJwtToken("");
         var givenRequiredScopes = Set.<String>of();
-        var givenTokenScopes = Set.of("any:scope");
 
         given(scopeDiscoveryService.getDiscoveredScopes()).willReturn(givenRequiredScopes);
 
         // When
-        var isValid = jwtScopeService.verifyScopes(givenTokenScopes);
+        var isValid = jwtScopeService.verifyScopesFromHeader(givenAuthHeader);
 
         // Then
         then(isValid).isTrue();
@@ -210,13 +219,13 @@ class JwtScopeServiceTest {
     @Test
     void shouldFailVerificationWhenTokenScopesMissingRequired() {
         // Given
+        var givenAuthHeader = "Bearer " + givenJwtToken("read:users write:users");
         var givenRequiredScopes = Set.of("read:users", "write:users", "admin:config");
-        var givenTokenScopes = Set.of("read:users", "write:users");
 
         given(scopeDiscoveryService.getDiscoveredScopes()).willReturn(givenRequiredScopes);
 
         // When
-        var isValid = jwtScopeService.verifyScopes(givenTokenScopes);
+        var isValid = jwtScopeService.verifyScopesFromHeader(givenAuthHeader);
 
         // Then
         then(isValid).isFalse();
@@ -226,10 +235,25 @@ class JwtScopeServiceTest {
     private String givenJwtToken(String scopes) {
         try {
             var claimSet = new JWTClaimsSet.Builder()
-                    .claim("scope", scopes)
+                    .claim(SCOPE_CLAIM, scopes)
                     .subject("test-user")
                     .build();
 
+            var header = new JWSHeader(JWSAlgorithm.HS256);
+            var signedJwt = new SignedJWT(header, claimSet);
+
+            var secret = "secret-secret-secret-secret-secret-secret".getBytes();
+            var signer = new MACSigner(secret);
+            signedJwt.sign(signer);
+
+            return signedJwt.serialize();
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to generate JWT token for test", e);
+        }
+    }
+
+    private String givenJwtTokenWithClaimSet(JWTClaimsSet claimSet) {
+        try {
             var header = new JWSHeader(JWSAlgorithm.HS256);
             var signedJwt = new SignedJWT(header, claimSet);
 

@@ -6,6 +6,7 @@ import java.text.ParseException;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,23 +45,40 @@ public class JwtScopeService {
     }
 
     /**
+     * Verifies that the token from authorization header is jwt token and contains all required scopes.
+     * Tokens must be prefixed with "Bearer". Bearer prefix is case-insensitive and leading/trailing
+     * whitespace around the token is ignored. Uses the "scope" claim, which is expected to be a
+     * space-separated string as per RFC 6749.
+     *
+     * @param authHeader The Authorization header value
+     * @return True if all required scopes are present, false otherwise
+     */
+    public boolean verifyScopesFromHeader(String authHeader) {
+        var tokenScopes = decodeJwtTokenAndExtractScopes(authHeader);
+        var requiredScopes = scopeDiscoveryService.getDiscoveredScopes();
+        return tokenScopes.containsAll(requiredScopes);
+    }
+
+    /**
      * Decodes a JWT token from the Authorization header. Tokens must be prefixed with "Bearer".
      * Bearer prefix is case-insensitive and leading/trailing whitespace around the token is ignored.
      *
      * @param authHeader The Authorization header value
-     * @return The decoded JWT claims, or null if decoding fails
+     * @return A set of scopes extracted from the token, or an empty set if decoding fails
      */
-    public JWTClaimsSet decodeJwtToken(String authHeader) {
+    Set<String> decodeJwtTokenAndExtractScopes(String authHeader) {
         if (authHeader == null || !authHeader.regionMatches(true, 0, "Bearer ", 0, 7)) {
-            return null;
+            return Set.of();
         }
 
         var token = authHeader.substring(7).trim();
         try {
-            return JWTParser.parse(token).getJWTClaimsSet();
-        } catch (Exception e) {
-            return null;
+            var claimsSet = JWTParser.parse(token).getJWTClaimsSet();
+            return extractScopes(claimsSet);
+        } catch (ParseException e) {
+            LOGGER.debug("No 'scope' claim found in JWT token.", e);
         }
+        return Set.of();
     }
 
     /**
@@ -70,29 +88,16 @@ public class JwtScopeService {
      * @param claims The JWT claims
      * @return A set of scopes extracted from the "scope" claim
      */
-    public Set<String> extractScopes(JWTClaimsSet claims) {
-        var scopes = new HashSet<String>();
-
-        try {
-            var scopeString = claims.getStringClaim("scope");
-            if (scopeString != null && !scopeString.isBlank()) {
-                scopes.addAll(Arrays.asList(scopeString.split(" ")));
-            }
-        } catch (ParseException e) {
-            LOGGER.debug("No 'scope' claim found in JWT token.", e);
+    private Set<String> extractScopes(@Nullable JWTClaimsSet claims) throws ParseException {
+        if (claims == null) {
+            return Set.of();
         }
 
-        return scopes;
-    }
+        var scopeString = claims.getStringClaim("scope");
+        if (scopeString != null && !scopeString.isBlank()) {
+            return new HashSet<>(Arrays.asList(scopeString.split(" ")));
+        }
 
-    /**
-     * Verifies that the token scopes include all required scopes.
-     *
-     * @param tokenScopes The scopes extracted from the JWT token
-     * @return True if all required scopes are present, false otherwise
-     */
-    public boolean verifyScopes(Set<String> tokenScopes) {
-        var requiredScopes = scopeDiscoveryService.getDiscoveredScopes();
-        return tokenScopes.containsAll(requiredScopes);
+        return Set.of();
     }
 }

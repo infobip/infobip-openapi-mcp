@@ -49,7 +49,6 @@
         <mockito.version>5.20.0</mockito.version>
         <assertj.version>3.27.6</assertj.version>
         <wiremock.version>3.13.1</wiremock.version>
-        <nimbus-jwt.version>10.6</nimbus-jwt.version>
     </properties>
 
     <dependencyManagement>

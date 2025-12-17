@@ -106,13 +106,9 @@ public class InitialAuthenticationFilter extends OncePerRequestFilter {
 
         if (jwtScopeService.isPresent()) {
             var jwtService = jwtScopeService.get();
-            var tokenClaims = jwtService.decodeJwtToken(authHeader);
-            if (tokenClaims != null) {
-                var scopes = jwtService.extractScopes(tokenClaims);
-                if (!jwtService.verifyScopes(scopes)) {
-                    writeWwwAuthenticateResponse(request, response, HttpStatus.FORBIDDEN);
-                    return;
-                }
+            if (!jwtService.verifyScopesFromHeader(authHeader)) {
+                writeWwwAuthenticateResponse(request, response, HttpStatus.FORBIDDEN);
+                return;
             }
         }
 
