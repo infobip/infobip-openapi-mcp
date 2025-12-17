@@ -63,7 +63,7 @@ public class ScopeDiscoveryDisabledTest extends OpenApiTestBase {
     @ActiveProfiles("integration-security")
     class ScopeDiscoveryDefaultTest extends OpenApiTestBase {
         @Test
-        void shouldNotRegisterScopeServiceWhenAuthEnabledButScopesDisabled() {
+        void shouldRegisterScopeServiceWhenAuthEnabledButScopesDisabled() {
             // Given
             var givenAuthEnabled = givenPropertyEnabled(AuthProperties.PREFIX);
             var givenOAuthEnabled = givenPropertyEnabled(OAuthProperties.PREFIX);
