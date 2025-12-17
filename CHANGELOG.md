@@ -15,6 +15,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Changed `infobip.openapi.mcp.security.auth.oauth.scope-discovery.enabled` to `true` by default.
 
+## 0.1.1
+
+### Added
+
+- Added pom metadata required for public maven release
+
 ## 0.1.0
 
 ### Added
