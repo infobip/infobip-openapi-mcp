@@ -133,16 +133,10 @@ public class XForwardedHostEnricher implements ApiRequestEnricher {
         }
 
         try {
-            var uriBuilder = xForwardedHostCalculator.hostBuilder(request);
-            var uriComponents = uriBuilder.build();
-
-            var host = uriComponents.getHost();
-            if (host == null || host.isBlank()) {
-                LOGGER.trace("No host available from request");
-                return spec;
-            }
+            var uriComponents = xForwardedHostCalculator.hostBuilder(request).build();
 
             // Set X-Forwarded-Host
+            var host = uriComponents.getHost();
             spec = spec.header(X_FORWARDED_HOST_HEADER, host);
 
             // Set X-Forwarded-Proto
@@ -153,12 +147,12 @@ public class XForwardedHostEnricher implements ApiRequestEnricher {
 
             // Set X-Forwarded-Port
             var port = uriComponents.getPort();
-            var DEFAULT_PROTO_PORT_USED = -1;
-            if (port != DEFAULT_PROTO_PORT_USED) {
+            var missingPortValue = -1;
+            if (port != missingPortValue) {
                 spec = spec.header(X_FORWARDED_PORT_HEADER, String.valueOf(port));
             }
         } catch (RuntimeException e) {
-            LOGGER.warn("Failed to build URI components for X-Forwarded-Host enrichment", e);
+            LOGGER.warn("Failed to build URI components for X-Forwarded-Host enrichment: {}", e.getMessage());
         }
 
         return spec;
