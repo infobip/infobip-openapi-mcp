@@ -9,6 +9,7 @@
 	</parent>
 
 	<artifactId>infobip-openapi-mcp-core</artifactId>
+	<name>Infobip OpenAPI MCP core library</name>
 
 	<properties>
         <jakarta-servlet.version>6.1.0</jakarta-servlet.version>

@@ -9,6 +9,7 @@
 	</parent>
 
 	<artifactId>infobip-openapi-mcp-spring-boot-starter</artifactId>
+    <name>Infobip OpenAPI MCP Spring Boot starter</name>
 
     <properties />
 
