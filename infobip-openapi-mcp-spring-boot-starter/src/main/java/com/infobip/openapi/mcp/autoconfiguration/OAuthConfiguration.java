@@ -3,6 +3,11 @@ package com.infobip.openapi.mcp.autoconfiguration;
 import static com.infobip.openapi.mcp.autoconfiguration.Qualifiers.OAUTH_REST_CLIENT_QUALIFIER;
 
 import com.infobip.openapi.mcp.auth.OAuthProperties;
+import com.infobip.openapi.mcp.auth.scope.ScopeDiscoveryService;
+import com.infobip.openapi.mcp.auth.scope.WwwAuthenticateProvider;
+import com.infobip.openapi.mcp.config.OpenApiMcpProperties;
+import com.infobip.openapi.mcp.util.XForwardedHostCalculator;
+import java.util.Optional;
 import org.springframework.ai.mcp.server.common.autoconfigure.McpServerStdioDisabledCondition;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
@@ -27,5 +32,15 @@ class OAuthConfiguration {
         factory.setReadTimeout(oAuthProperties.readTimeout());
 
         return RestClient.builder().requestFactory(factory).build();
+    }
+
+    @Bean
+    public WwwAuthenticateProvider wwwAuthenticateProvider(
+            OAuthProperties oAuthProperties,
+            Optional<ScopeDiscoveryService> scopeDiscoveryService,
+            OpenApiMcpProperties openApiMcpProperties,
+            XForwardedHostCalculator xForwardedHostCalculator) {
+        return new WwwAuthenticateProvider(
+                oAuthProperties, scopeDiscoveryService, openApiMcpProperties, xForwardedHostCalculator);
     }
 }

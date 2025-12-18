@@ -1,7 +1,7 @@
 package com.infobip.openapi.mcp.enricher;
 
 import com.infobip.openapi.mcp.McpRequestContext;
-import com.infobip.openapi.mcp.util.XFFCalculator;
+import com.infobip.openapi.mcp.util.XForwardedForCalculator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.client.RestClient;
@@ -32,10 +32,10 @@ public class XForwardedForEnricher implements ApiRequestEnricher {
     private static final Logger LOGGER = LoggerFactory.getLogger(XForwardedForEnricher.class);
     private static final String X_FORWARDED_FOR_HEADER = "X-Forwarded-For";
 
-    private final XFFCalculator xffCalculator;
+    private final XForwardedForCalculator xForwardedForCalculator;
 
-    public XForwardedForEnricher(XFFCalculator xffCalculator) {
-        this.xffCalculator = xffCalculator;
+    public XForwardedForEnricher(XForwardedForCalculator xForwardedForCalculator) {
+        this.xForwardedForCalculator = xForwardedForCalculator;
     }
 
     @Override
@@ -46,7 +46,7 @@ public class XForwardedForEnricher implements ApiRequestEnricher {
             return spec;
         }
 
-        var xForwardedForHeader = xffCalculator.calculateXFF(request);
+        var xForwardedForHeader = xForwardedForCalculator.calculateXFF(request);
         if (xForwardedForHeader != null && !xForwardedForHeader.isBlank()) {
             spec.header(X_FORWARDED_FOR_HEADER, xForwardedForHeader);
             LOGGER.debug("Added X-Forwarded-For header to downstream call: {}", xForwardedForHeader);

@@ -9,6 +9,7 @@ import com.infobip.openapi.mcp.openapi.OpenApiTestBase;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.TestPropertySource;
 
 @ActiveProfiles("test-auth-disabled")
 public class ScopeDiscoveryDisabledTest extends OpenApiTestBase {
@@ -31,6 +32,55 @@ public class ScopeDiscoveryDisabledTest extends OpenApiTestBase {
 
         then(givenScopeServices).isEmpty();
         then(givenMinimalSetCalculators).isEmpty();
+    }
+
+    @Nested
+    @ActiveProfiles("integration-security")
+    @TestPropertySource(properties = "infobip.openapi.mcp.security.auth.oauth.scope-discovery.enabled = false")
+    class AuthEnabledScopeDiscoveryDisabledTest extends OpenApiTestBase {
+        @Test
+        void shouldNotRegisterScopeServiceWhenAuthEnabledButScopesDisabled() {
+            // Given
+            var givenAuthEnabled = givenPropertyEnabled(AuthProperties.PREFIX);
+            var givenOAuthEnabled = givenPropertyEnabled(OAuthProperties.PREFIX);
+            var givenScopeDiscoveryEnabled = givenPropertyEnabled(ScopeProperties.PREFIX);
+
+            // When
+            var givenScopeServices = applicationContext.getBeansOfType(ScopeDiscoveryService.class);
+            var givenMinimalSetCalculators = applicationContext.getBeansOfType(MinimalSetCalculator.class);
+
+            // Then
+            then(givenAuthEnabled).isTrue();
+            then(givenOAuthEnabled).isTrue();
+            then(givenScopeDiscoveryEnabled).isFalse();
+
+            then(givenScopeServices).isEmpty();
+            then(givenMinimalSetCalculators).isEmpty();
+        }
+    }
+
+    @Nested
+    @ActiveProfiles("integration-security")
+    class ScopeDiscoveryDefaultTest extends OpenApiTestBase {
+        @Test
+        void shouldRegisterScopeServiceWhenAuthEnabledButScopesDisabled() {
+            // Given
+            var givenAuthEnabled = givenPropertyEnabled(AuthProperties.PREFIX);
+            var givenOAuthEnabled = givenPropertyEnabled(OAuthProperties.PREFIX);
+            var givenScopeDiscoveryEnabled = givenPropertyEnabled(ScopeProperties.PREFIX);
+
+            // When
+            var givenScopeServices = applicationContext.getBeansOfType(ScopeDiscoveryService.class);
+            var givenMinimalSetCalculators = applicationContext.getBeansOfType(MinimalSetCalculator.class);
+
+            // Then
+            then(givenAuthEnabled).isTrue();
+            then(givenOAuthEnabled).isTrue();
+            then(givenScopeDiscoveryEnabled).isTrue();
+
+            then(givenScopeServices).isNotEmpty();
+            then(givenMinimalSetCalculators).isNotEmpty();
+        }
     }
 
     @Nested

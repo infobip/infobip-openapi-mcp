@@ -3,7 +3,7 @@ package com.infobip.openapi.mcp.util;
 import jakarta.servlet.http.HttpServletRequest;
 import org.jspecify.annotations.Nullable;
 
-public class XFFCalculator {
+public class XForwardedForCalculator {
     public @Nullable String calculateXFF(HttpServletRequest request) {
         var xForwardedForHeader = request.getHeader("X-Forwarded-For");
         var clientIp = request.getRemoteAddr();

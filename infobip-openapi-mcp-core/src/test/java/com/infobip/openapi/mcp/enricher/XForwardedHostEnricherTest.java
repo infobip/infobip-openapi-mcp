@@ -16,6 +16,8 @@ import org.springframework.web.client.RestClient;
 @ExtendWith(MockitoExtension.class)
 class XForwardedHostEnricherTest {
 
+    private final XForwardedHostEnricher xForwardedHostEnricher = new XForwardedHostEnricher();
+
     @Mock
     private RestClient.RequestHeadersSpec<?> spec;
 
@@ -30,13 +32,12 @@ class XForwardedHostEnricherTest {
     @Test
     void shouldForwardXForwardedHostHeaderWhenPresent() {
         // given
-        var enricher = new XForwardedHostEnricher();
         var mockRequest = new MockHttpServletRequest();
         mockRequest.addHeader("X-Forwarded-Host", "api.example.com");
         var context = createTestContext(mockRequest);
 
         // when
-        enricher.enrich(spec, context);
+        xForwardedHostEnricher.enrich(spec, context);
 
         // then
         var headerCaptor = ArgumentCaptor.forClass(String.class);
@@ -50,13 +51,12 @@ class XForwardedHostEnricherTest {
     @Test
     void shouldForwardComplexHostValue() {
         // given
-        var enricher = new XForwardedHostEnricher();
         var mockRequest = new MockHttpServletRequest();
         mockRequest.addHeader("X-Forwarded-Host", "subdomain.api.example.com:8080");
         var context = createTestContext(mockRequest);
 
         // when
-        enricher.enrich(spec, context);
+        xForwardedHostEnricher.enrich(spec, context);
 
         // then
         var valueCaptor = ArgumentCaptor.forClass(String.class);
@@ -67,13 +67,12 @@ class XForwardedHostEnricherTest {
     @Test
     void shouldNotAddHeaderWhenXForwardedHostIsMissing() {
         // given
-        var enricher = new XForwardedHostEnricher();
         var mockRequest = new MockHttpServletRequest();
         // No X-Forwarded-Host header added
         var context = createTestContext(mockRequest);
 
         // when
-        enricher.enrich(spec, context);
+        xForwardedHostEnricher.enrich(spec, context);
 
         // then
         verifyNoInteractions(spec);
@@ -82,13 +81,12 @@ class XForwardedHostEnricherTest {
     @Test
     void shouldNotAddHeaderWhenXForwardedHostIsEmpty() {
         // given
-        var enricher = new XForwardedHostEnricher();
         var mockRequest = new MockHttpServletRequest();
         mockRequest.addHeader("X-Forwarded-Host", "");
         var context = createTestContext(mockRequest);
 
         // when
-        enricher.enrich(spec, context);
+        xForwardedHostEnricher.enrich(spec, context);
 
         // then
         verifyNoInteractions(spec);
@@ -97,13 +95,12 @@ class XForwardedHostEnricherTest {
     @Test
     void shouldNotAddHeaderWhenXForwardedHostIsBlank() {
         // given
-        var enricher = new XForwardedHostEnricher();
         var mockRequest = new MockHttpServletRequest();
         mockRequest.addHeader("X-Forwarded-Host", "   ");
         var context = createTestContext(mockRequest);
 
         // when
-        enricher.enrich(spec, context);
+        xForwardedHostEnricher.enrich(spec, context);
 
         // then
         verifyNoInteractions(spec);
@@ -112,11 +109,10 @@ class XForwardedHostEnricherTest {
     @Test
     void shouldNotAddHeaderWhenRequestIsNull() {
         // given
-        var enricher = new XForwardedHostEnricher();
         var context = createTestContextWithoutRequest();
 
         // when
-        enricher.enrich(spec, context);
+        xForwardedHostEnricher.enrich(spec, context);
 
         // then
         verifyNoInteractions(spec);
@@ -125,13 +121,12 @@ class XForwardedHostEnricherTest {
     @Test
     void shouldForwardIPv4HostAddress() {
         // given
-        var enricher = new XForwardedHostEnricher();
         var mockRequest = new MockHttpServletRequest();
         mockRequest.addHeader("X-Forwarded-Host", "192.168.1.100");
         var context = createTestContext(mockRequest);
 
         // when
-        enricher.enrich(spec, context);
+        xForwardedHostEnricher.enrich(spec, context);
 
         // then
         var valueCaptor = ArgumentCaptor.forClass(String.class);
@@ -142,13 +137,12 @@ class XForwardedHostEnricherTest {
     @Test
     void shouldForwardIPv6HostAddress() {
         // given
-        var enricher = new XForwardedHostEnricher();
         var mockRequest = new MockHttpServletRequest();
         mockRequest.addHeader("X-Forwarded-Host", "[2001:db8::1]");
         var context = createTestContext(mockRequest);
 
         // when
-        enricher.enrich(spec, context);
+        xForwardedHostEnricher.enrich(spec, context);
 
         // then
         var valueCaptor = ArgumentCaptor.forClass(String.class);
@@ -159,14 +153,13 @@ class XForwardedHostEnricherTest {
     @Test
     void shouldUseHostHeaderWhenXForwardedHostMissing() {
         // given
-        var enricher = new XForwardedHostEnricher();
         var mockRequest = new MockHttpServletRequest();
         mockRequest.addHeader("Host", "api.example.com");
         // No X-Forwarded-Host header
         var context = createTestContext(mockRequest);
 
         // when
-        enricher.enrich(spec, context);
+        xForwardedHostEnricher.enrich(spec, context);
 
         // then
         var headerCaptor = ArgumentCaptor.forClass(String.class);
@@ -180,14 +173,13 @@ class XForwardedHostEnricherTest {
     @Test
     void shouldPreferXForwardedHostOverHost() {
         // given
-        var enricher = new XForwardedHostEnricher();
         var mockRequest = new MockHttpServletRequest();
         mockRequest.addHeader("X-Forwarded-Host", "original.example.com");
         mockRequest.addHeader("Host", "proxy.example.com");
         var context = createTestContext(mockRequest);
 
         // when
-        enricher.enrich(spec, context);
+        xForwardedHostEnricher.enrich(spec, context);
 
         // then
         var valueCaptor = ArgumentCaptor.forClass(String.class);
@@ -198,14 +190,13 @@ class XForwardedHostEnricherTest {
     @Test
     void shouldUseHostWithPort() {
         // given
-        var enricher = new XForwardedHostEnricher();
         var mockRequest = new MockHttpServletRequest();
         mockRequest.addHeader("Host", "api.example.com:8080");
         // No X-Forwarded-Host header
         var context = createTestContext(mockRequest);
 
         // when
-        enricher.enrich(spec, context);
+        xForwardedHostEnricher.enrich(spec, context);
 
         // then
         var valueCaptor = ArgumentCaptor.forClass(String.class);
@@ -216,14 +207,13 @@ class XForwardedHostEnricherTest {
     @Test
     void shouldUseHostWithIPv4() {
         // given
-        var enricher = new XForwardedHostEnricher();
         var mockRequest = new MockHttpServletRequest();
         mockRequest.addHeader("Host", "192.168.1.100");
         // No X-Forwarded-Host header
         var context = createTestContext(mockRequest);
 
         // when
-        enricher.enrich(spec, context);
+        xForwardedHostEnricher.enrich(spec, context);
 
         // then
         var valueCaptor = ArgumentCaptor.forClass(String.class);
@@ -234,14 +224,13 @@ class XForwardedHostEnricherTest {
     @Test
     void shouldUseHostWithIPv6() {
         // given
-        var enricher = new XForwardedHostEnricher();
         var mockRequest = new MockHttpServletRequest();
         mockRequest.addHeader("Host", "[2001:db8::1]");
         // No X-Forwarded-Host header
         var context = createTestContext(mockRequest);
 
         // when
-        enricher.enrich(spec, context);
+        xForwardedHostEnricher.enrich(spec, context);
 
         // then
         var valueCaptor = ArgumentCaptor.forClass(String.class);
@@ -252,13 +241,12 @@ class XForwardedHostEnricherTest {
     @Test
     void shouldNotAddHeaderWhenBothMissing() {
         // given
-        var enricher = new XForwardedHostEnricher();
         var mockRequest = new MockHttpServletRequest();
         // No X-Forwarded-Host and no Host headers
         var context = createTestContext(mockRequest);
 
         // when
-        enricher.enrich(spec, context);
+        xForwardedHostEnricher.enrich(spec, context);
 
         // then
         verifyNoInteractions(spec);
@@ -267,14 +255,13 @@ class XForwardedHostEnricherTest {
     @Test
     void shouldNotAddHeaderWhenBothBlank() {
         // given
-        var enricher = new XForwardedHostEnricher();
         var mockRequest = new MockHttpServletRequest();
         mockRequest.addHeader("X-Forwarded-Host", "   ");
         mockRequest.addHeader("Host", "   ");
         var context = createTestContext(mockRequest);
 
         // when
-        enricher.enrich(spec, context);
+        xForwardedHostEnricher.enrich(spec, context);
 
         // then
         verifyNoInteractions(spec);

@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added scope challenge handling to be in compliance with MCP 2025-11-25 authorization specification, section [10.1](https://modelcontextprotocol.io/specification/2025-11-25/basic/authorization#runtime-insufficient-scope-errors). 
+
+### Changed
+
+- Changed `infobip.openapi.mcp.security.auth.oauth.scope-discovery.enabled` to `true` by default.
+
 ## 0.1.1
 
 ### Added
