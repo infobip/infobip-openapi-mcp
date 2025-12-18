@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `./examples` directory with a demo app that exposes [Open-Meteo API](https://open-meteo.com/en/docs) as MCP server.
+
+### Fixed
+
+- Updated documentation of `infobip.openapi.mcp.tools.naming.strategy` parameter to correctly document default value is `SANITIZED_OPERATION_ID`.
+
 ## 0.1.2
 
 ### Added
