@@ -39,6 +39,8 @@ open-meteo: docker run --rm -i open-meteo-mcp:latest - ✓ Connected
 
 Congratulations, you can now chat about the weather with Claude Code!
 
+![Recording of a terminal Claude Code session in which it reports the current weather for the town of Vodnjan, Croatia](./img/claude-code-open-meteo.gif)
+
 You can usually configure your agent by updating its config file manually. For example, you can connect [Claude Desktop][4] to the same MCP server by updating your `claude_desktop_config.json` file to contain following:
 
 ```json
@@ -64,13 +66,13 @@ that we can't write debug and other logs to stdout and have them available via d
 this the container writes logs into a file in a docker volume. You can list docker volumes with `docker volume ls`, and check logs with something like:
 
 ```shell
-cat /var/lib/docker/volumes/9d4...your.hash.will.differ.f21/_data/spring.log
+cat /var/lib/docker/volumes/9d4...hash_of_the_volume_on_your_machine...f21/_data/spring.log
 ```
 
 If running docker with colima under macOS access logs inside colima:
 
 ```shell
-colima ssh -- sudo cat /var/lib/docker/volumes/9d4...your.hash.will.differ.f21/_data/spring.log
+colima ssh -- sudo cat /var/lib/docker/volumes/9d4...hash_of_the_volume_on_your_machine...f21/_data/spring.log
 ```
 
 If you need logs to persist after MCP server exists (for example to troubleshoot startup issues) omit the `--rm` argument from the docker command.
