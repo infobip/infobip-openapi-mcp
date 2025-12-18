@@ -1,14 +1,22 @@
 package com.infobip.openapi.mcp.enricher;
 
-import static org.assertj.core.api.BDDAssertions.then;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
 
 import com.infobip.openapi.mcp.McpRequestContext;
+import com.infobip.openapi.mcp.util.XForwardedHostCalculator;
+import java.util.Optional;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.web.client.RestClient;
@@ -16,10 +24,22 @@ import org.springframework.web.client.RestClient;
 @ExtendWith(MockitoExtension.class)
 class XForwardedHostEnricherTest {
 
-    private final XForwardedHostEnricher xForwardedHostEnricher = new XForwardedHostEnricher();
+    @InjectMocks
+    private XForwardedHostEnricher givenXForwardedHostEnricher;
 
     @Mock
     private RestClient.RequestHeadersSpec<?> spec;
+
+    @Spy
+    private XForwardedHostCalculator xForwardedHostCalculator =
+            new XForwardedHostCalculator(Optional.empty(), Optional.empty());
+
+    private static final String X_FORWARDED_HOST_HEADER = "X-Forwarded-Host";
+    private static final String X_FORWARDED_PROTO_HEADER = "X-Forwarded-Proto";
+    private static final String X_FORWARDED_PORT_HEADER = "X-Forwarded-Port";
+    private static final String DEFAULT_HOST = "localhost";
+    private static final String DEFAULT_PROTOCOL = "http";
+    private final MockHttpServletRequest givenMockRequest = new MockHttpServletRequest();
 
     private McpRequestContext createTestContext(MockHttpServletRequest request) {
         return new McpRequestContext(request, null, null, null);
@@ -29,81 +49,72 @@ class XForwardedHostEnricherTest {
         return new McpRequestContext(null, null, null, null);
     }
 
+    @BeforeEach
+    void setUp() {
+        givenMockRequest.clearAttributes();
+        lenient().doReturn(spec).when(spec).header(anyString(), anyString());
+    }
+
     @Test
     void shouldForwardXForwardedHostHeaderWhenPresent() {
         // given
-        var mockRequest = new MockHttpServletRequest();
-        mockRequest.addHeader("X-Forwarded-Host", "api.example.com");
-        var context = createTestContext(mockRequest);
+        givenMockRequest.addHeader(X_FORWARDED_HOST_HEADER, "api.example.com");
+        var context = createTestContext(givenMockRequest);
 
         // when
-        xForwardedHostEnricher.enrich(spec, context);
+        givenXForwardedHostEnricher.enrich(spec, context);
 
         // then
-        var headerCaptor = ArgumentCaptor.forClass(String.class);
-        var valueCaptor = ArgumentCaptor.forClass(String.class);
-        verify(spec).header(headerCaptor.capture(), valueCaptor.capture());
-
-        then(headerCaptor.getValue()).isEqualTo("X-Forwarded-Host");
-        then(valueCaptor.getValue()).isEqualTo("api.example.com");
+        then(spec).should().header(X_FORWARDED_HOST_HEADER, "api.example.com");
+        then(spec).should().header(X_FORWARDED_PROTO_HEADER, DEFAULT_PROTOCOL);
+        then(spec).should(never()).header(eq(X_FORWARDED_PORT_HEADER), anyString());
     }
 
     @Test
     void shouldForwardComplexHostValue() {
         // given
-        var mockRequest = new MockHttpServletRequest();
-        mockRequest.addHeader("X-Forwarded-Host", "subdomain.api.example.com:8080");
-        var context = createTestContext(mockRequest);
+        givenMockRequest.addHeader(X_FORWARDED_HOST_HEADER, "subdomain.api.example.com");
+        givenMockRequest.addHeader(X_FORWARDED_PROTO_HEADER, "https");
+        givenMockRequest.addHeader(X_FORWARDED_PORT_HEADER, "8080");
+        var context = createTestContext(givenMockRequest);
 
         // when
-        xForwardedHostEnricher.enrich(spec, context);
+        givenXForwardedHostEnricher.enrich(spec, context);
 
         // then
-        var valueCaptor = ArgumentCaptor.forClass(String.class);
-        verify(spec).header(org.mockito.ArgumentMatchers.eq("X-Forwarded-Host"), valueCaptor.capture());
-        then(valueCaptor.getValue()).isEqualTo("subdomain.api.example.com:8080");
+        then(spec).should().header(X_FORWARDED_HOST_HEADER, "subdomain.api.example.com");
+        then(spec).should().header(X_FORWARDED_PROTO_HEADER, "https");
+        then(spec).should().header(X_FORWARDED_PORT_HEADER, "8080");
     }
 
     @Test
-    void shouldNotAddHeaderWhenXForwardedHostIsMissing() {
+    void shouldAddHostHeaderWhenXForwardedHostIsMissing() {
         // given
-        var mockRequest = new MockHttpServletRequest();
-        // No X-Forwarded-Host header added
-        var context = createTestContext(mockRequest);
+        var context = createTestContext(givenMockRequest);
 
         // when
-        xForwardedHostEnricher.enrich(spec, context);
+        givenXForwardedHostEnricher.enrich(spec, context);
 
         // then
-        verifyNoInteractions(spec);
+        then(spec).should().header(X_FORWARDED_HOST_HEADER, DEFAULT_HOST);
+        then(spec).should().header(X_FORWARDED_PROTO_HEADER, DEFAULT_PROTOCOL);
+        then(spec).shouldHaveNoMoreInteractions();
     }
 
-    @Test
-    void shouldNotAddHeaderWhenXForwardedHostIsEmpty() {
+    @ParameterizedTest
+    @ValueSource(strings = {"", "   "})
+    void shouldNotAddHeaderWhenXForwardedHostIsEmpty(String emptyValue) {
         // given
-        var mockRequest = new MockHttpServletRequest();
-        mockRequest.addHeader("X-Forwarded-Host", "");
-        var context = createTestContext(mockRequest);
+        givenMockRequest.addHeader(X_FORWARDED_HOST_HEADER, "");
+        var context = createTestContext(givenMockRequest);
 
         // when
-        xForwardedHostEnricher.enrich(spec, context);
+        givenXForwardedHostEnricher.enrich(spec, context);
 
         // then
-        verifyNoInteractions(spec);
-    }
-
-    @Test
-    void shouldNotAddHeaderWhenXForwardedHostIsBlank() {
-        // given
-        var mockRequest = new MockHttpServletRequest();
-        mockRequest.addHeader("X-Forwarded-Host", "   ");
-        var context = createTestContext(mockRequest);
-
-        // when
-        xForwardedHostEnricher.enrich(spec, context);
-
-        // then
-        verifyNoInteractions(spec);
+        then(spec).should().header(X_FORWARDED_HOST_HEADER, DEFAULT_HOST);
+        then(spec).should().header(X_FORWARDED_PROTO_HEADER, DEFAULT_PROTOCOL);
+        then(spec).shouldHaveNoMoreInteractions();
     }
 
     @Test
@@ -112,158 +123,181 @@ class XForwardedHostEnricherTest {
         var context = createTestContextWithoutRequest();
 
         // when
-        xForwardedHostEnricher.enrich(spec, context);
+        givenXForwardedHostEnricher.enrich(spec, context);
 
         // then
-        verifyNoInteractions(spec);
+        then(spec).shouldHaveNoInteractions();
     }
 
     @Test
     void shouldForwardIPv4HostAddress() {
         // given
-        var mockRequest = new MockHttpServletRequest();
-        mockRequest.addHeader("X-Forwarded-Host", "192.168.1.100");
-        var context = createTestContext(mockRequest);
+        givenMockRequest.addHeader(X_FORWARDED_HOST_HEADER, "192.168.1.100");
+        var context = createTestContext(givenMockRequest);
 
         // when
-        xForwardedHostEnricher.enrich(spec, context);
+        givenXForwardedHostEnricher.enrich(spec, context);
 
         // then
-        var valueCaptor = ArgumentCaptor.forClass(String.class);
-        verify(spec).header(org.mockito.ArgumentMatchers.eq("X-Forwarded-Host"), valueCaptor.capture());
-        then(valueCaptor.getValue()).isEqualTo("192.168.1.100");
+        then(spec).should().header(X_FORWARDED_HOST_HEADER, "192.168.1.100");
+        then(spec).should().header(X_FORWARDED_PROTO_HEADER, DEFAULT_PROTOCOL);
+        then(spec).shouldHaveNoMoreInteractions();
     }
 
     @Test
     void shouldForwardIPv6HostAddress() {
         // given
-        var mockRequest = new MockHttpServletRequest();
-        mockRequest.addHeader("X-Forwarded-Host", "[2001:db8::1]");
-        var context = createTestContext(mockRequest);
+        givenMockRequest.addHeader(X_FORWARDED_HOST_HEADER, "[2001:db8::1]");
+        givenMockRequest.addHeader(X_FORWARDED_PORT_HEADER, "1234");
+        var context = createTestContext(givenMockRequest);
 
         // when
-        xForwardedHostEnricher.enrich(spec, context);
+        givenXForwardedHostEnricher.enrich(spec, context);
 
         // then
-        var valueCaptor = ArgumentCaptor.forClass(String.class);
-        verify(spec).header(org.mockito.ArgumentMatchers.eq("X-Forwarded-Host"), valueCaptor.capture());
-        then(valueCaptor.getValue()).isEqualTo("[2001:db8::1]");
+        then(spec).should().header(X_FORWARDED_HOST_HEADER, "[2001:db8::1]");
+        then(spec).should().header(X_FORWARDED_PROTO_HEADER, DEFAULT_PROTOCOL);
+        then(spec).should().header(X_FORWARDED_PORT_HEADER, "1234");
     }
 
     @Test
     void shouldUseHostHeaderWhenXForwardedHostMissing() {
         // given
-        var mockRequest = new MockHttpServletRequest();
-        mockRequest.addHeader("Host", "api.example.com");
-        // No X-Forwarded-Host header
-        var context = createTestContext(mockRequest);
+        givenMockRequest.addHeader("Host", "api.example.com");
+        givenMockRequest.addHeader(X_FORWARDED_PROTO_HEADER, "https");
+        var context = createTestContext(givenMockRequest);
 
         // when
-        xForwardedHostEnricher.enrich(spec, context);
+        givenXForwardedHostEnricher.enrich(spec, context);
 
         // then
-        var headerCaptor = ArgumentCaptor.forClass(String.class);
-        var valueCaptor = ArgumentCaptor.forClass(String.class);
-        verify(spec).header(headerCaptor.capture(), valueCaptor.capture());
-
-        then(headerCaptor.getValue()).isEqualTo("X-Forwarded-Host");
-        then(valueCaptor.getValue()).isEqualTo("api.example.com");
+        then(spec).should().header(X_FORWARDED_HOST_HEADER, "api.example.com");
+        then(spec).should().header(X_FORWARDED_PROTO_HEADER, "https");
+        then(spec).shouldHaveNoMoreInteractions();
     }
 
     @Test
     void shouldPreferXForwardedHostOverHost() {
         // given
-        var mockRequest = new MockHttpServletRequest();
-        mockRequest.addHeader("X-Forwarded-Host", "original.example.com");
-        mockRequest.addHeader("Host", "proxy.example.com");
-        var context = createTestContext(mockRequest);
+        givenMockRequest.addHeader(X_FORWARDED_HOST_HEADER, "original.example.com");
+        givenMockRequest.addHeader(X_FORWARDED_PROTO_HEADER, "https");
+        givenMockRequest.addHeader("Host", "proxy.example.com");
+        var context = createTestContext(givenMockRequest);
 
         // when
-        xForwardedHostEnricher.enrich(spec, context);
+        givenXForwardedHostEnricher.enrich(spec, context);
 
         // then
-        var valueCaptor = ArgumentCaptor.forClass(String.class);
-        verify(spec).header(org.mockito.ArgumentMatchers.eq("X-Forwarded-Host"), valueCaptor.capture());
-        then(valueCaptor.getValue()).isEqualTo("original.example.com");
+        then(spec).should().header(X_FORWARDED_HOST_HEADER, "original.example.com");
+        then(spec).should().header(X_FORWARDED_PROTO_HEADER, "https");
+        then(spec).shouldHaveNoMoreInteractions();
     }
 
     @Test
     void shouldUseHostWithPort() {
         // given
-        var mockRequest = new MockHttpServletRequest();
-        mockRequest.addHeader("Host", "api.example.com:8080");
-        // No X-Forwarded-Host header
-        var context = createTestContext(mockRequest);
+        givenMockRequest.addHeader("Host", "api.example.com:8080");
+        var context = createTestContext(givenMockRequest);
 
         // when
-        xForwardedHostEnricher.enrich(spec, context);
+        givenXForwardedHostEnricher.enrich(spec, context);
 
         // then
-        var valueCaptor = ArgumentCaptor.forClass(String.class);
-        verify(spec).header(org.mockito.ArgumentMatchers.eq("X-Forwarded-Host"), valueCaptor.capture());
-        then(valueCaptor.getValue()).isEqualTo("api.example.com:8080");
+        then(spec).should().header(X_FORWARDED_HOST_HEADER, "api.example.com");
+        then(spec).should().header(X_FORWARDED_PROTO_HEADER, DEFAULT_PROTOCOL);
+        then(spec).should().header(X_FORWARDED_PORT_HEADER, "8080");
     }
 
     @Test
     void shouldUseHostWithIPv4() {
         // given
-        var mockRequest = new MockHttpServletRequest();
-        mockRequest.addHeader("Host", "192.168.1.100");
+        givenMockRequest.addHeader("Host", "192.168.1.100");
         // No X-Forwarded-Host header
-        var context = createTestContext(mockRequest);
+        var context = createTestContext(givenMockRequest);
 
         // when
-        xForwardedHostEnricher.enrich(spec, context);
+        givenXForwardedHostEnricher.enrich(spec, context);
 
         // then
-        var valueCaptor = ArgumentCaptor.forClass(String.class);
-        verify(spec).header(org.mockito.ArgumentMatchers.eq("X-Forwarded-Host"), valueCaptor.capture());
-        then(valueCaptor.getValue()).isEqualTo("192.168.1.100");
+        then(spec).should().header(X_FORWARDED_HOST_HEADER, "192.168.1.100");
+        then(spec).should().header(X_FORWARDED_PROTO_HEADER, DEFAULT_PROTOCOL);
+        then(spec).shouldHaveNoMoreInteractions();
     }
 
     @Test
     void shouldUseHostWithIPv6() {
         // given
-        var mockRequest = new MockHttpServletRequest();
-        mockRequest.addHeader("Host", "[2001:db8::1]");
-        // No X-Forwarded-Host header
-        var context = createTestContext(mockRequest);
+        givenMockRequest.addHeader("Host", "[2001:db8::1]");
+        givenMockRequest.addHeader(X_FORWARDED_PORT_HEADER, "4321");
+        var context = createTestContext(givenMockRequest);
 
         // when
-        xForwardedHostEnricher.enrich(spec, context);
+        givenXForwardedHostEnricher.enrich(spec, context);
 
         // then
-        var valueCaptor = ArgumentCaptor.forClass(String.class);
-        verify(spec).header(org.mockito.ArgumentMatchers.eq("X-Forwarded-Host"), valueCaptor.capture());
-        then(valueCaptor.getValue()).isEqualTo("[2001:db8::1]");
-    }
-
-    @Test
-    void shouldNotAddHeaderWhenBothMissing() {
-        // given
-        var mockRequest = new MockHttpServletRequest();
-        // No X-Forwarded-Host and no Host headers
-        var context = createTestContext(mockRequest);
-
-        // when
-        xForwardedHostEnricher.enrich(spec, context);
-
-        // then
-        verifyNoInteractions(spec);
+        then(spec).should().header(X_FORWARDED_HOST_HEADER, "[2001:db8::1]");
+        then(spec).should().header(X_FORWARDED_PROTO_HEADER, DEFAULT_PROTOCOL);
+        then(spec).should().header(X_FORWARDED_PORT_HEADER, "4321");
     }
 
     @Test
     void shouldNotAddHeaderWhenBothBlank() {
         // given
-        var mockRequest = new MockHttpServletRequest();
-        mockRequest.addHeader("X-Forwarded-Host", "   ");
-        mockRequest.addHeader("Host", "   ");
-        var context = createTestContext(mockRequest);
+        givenMockRequest.addHeader(X_FORWARDED_HOST_HEADER, "   ");
+        givenMockRequest.addHeader("Host", "   ");
+        var context = createTestContext(givenMockRequest);
 
         // when
-        xForwardedHostEnricher.enrich(spec, context);
+        givenXForwardedHostEnricher.enrich(spec, context);
 
         // then
-        verifyNoInteractions(spec);
+        then(spec).shouldHaveNoInteractions();
+    }
+
+    @Test
+    void shouldSetXForwardedPortForNonDefaultHttpsPort() {
+        // given
+        givenMockRequest.addHeader(X_FORWARDED_HOST_HEADER, "api.example.com");
+        givenMockRequest.addHeader(X_FORWARDED_PORT_HEADER, "8443");
+        givenMockRequest.addHeader(X_FORWARDED_PROTO_HEADER, "https");
+        var context = createTestContext(givenMockRequest);
+
+        // when
+        givenXForwardedHostEnricher.enrich(spec, context);
+
+        // then
+        then(spec).should().header(X_FORWARDED_HOST_HEADER, "api.example.com");
+        then(spec).should().header(X_FORWARDED_PROTO_HEADER, "https");
+        then(spec).should().header(X_FORWARDED_PORT_HEADER, "8443");
+    }
+
+    @Test
+    void shouldNotSetXForwardedPortForDefaultHttpPort() {
+        // given
+        givenMockRequest.addHeader("Host", "api.example.com:80");
+        var context = createTestContext(givenMockRequest);
+
+        // when
+        givenXForwardedHostEnricher.enrich(spec, context);
+
+        // then
+        then(spec).should().header(X_FORWARDED_HOST_HEADER, "api.example.com");
+        then(spec).should().header(X_FORWARDED_PROTO_HEADER, "http");
+        then(spec).shouldHaveNoMoreInteractions();
+    }
+
+    @Test
+    void shouldNotSetXForwardedPortForDefaultHttpsPort() {
+        // given
+        givenMockRequest.addHeader("Host", "api.example.com:443");
+        var context = createTestContext(givenMockRequest);
+
+        // when
+        givenXForwardedHostEnricher.enrich(spec, context);
+
+        // then
+        then(spec).should().header(X_FORWARDED_HOST_HEADER, "api.example.com");
+        then(spec).should().header(X_FORWARDED_PROTO_HEADER, DEFAULT_PROTOCOL);
+        then(spec).should().header(X_FORWARDED_PORT_HEADER, "443");
     }
 }
