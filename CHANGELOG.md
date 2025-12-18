@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## 0.1.2
+
 ### Added
 
 - Added scope challenge handling to be in compliance with MCP 2025-11-25 authorization specification, section [10.1](https://modelcontextprotocol.io/specification/2025-11-25/basic/authorization#runtime-insufficient-scope-errors). 
