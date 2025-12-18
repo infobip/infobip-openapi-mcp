@@ -108,7 +108,7 @@ public record OpenApiMcpProperties(
         /**
          * Configuration for tool naming strategies.
          *
-         * @param strategy  The naming strategy to use for generating tool names. Default is ENDPOINT.
+         * @param strategy  The naming strategy to use for generating tool names. Default is SANITIZED_OPERATION_ID.
          * @param maxLength Maximum length for tool names. If specified, names will be trimmed to this length.
          *                 Must be positive if provided.
          */

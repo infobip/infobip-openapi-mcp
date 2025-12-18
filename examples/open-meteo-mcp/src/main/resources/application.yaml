@@ -1,0 +1,32 @@
+infobip:
+  openapi:
+    mcp:
+      # Root URL of the open-meteo servers
+      api-base-url: https://api.open-meteo.com
+      # Pointing to the specific version of the OpenAPI specification
+      # helps with consistency by preventing unexpected changes.
+      open-api-url: https://raw.githubusercontent.com/open-meteo/open-meteo/refs/tags/1.4.17/openapi.yml
+      tools:
+        naming:
+          # Open-Meteo specification is missing operation IDs so we
+          # need to use HTTP methods & paths to construct tool names:
+          strategy: ENDPOINT
+          max-length: 16
+
+spring:
+  ai:
+    mcp:
+      server:
+        type: sync
+        stdio: on
+  main:
+    banner-mode: off
+logging:
+  level:
+    root: debug
+  # stdio transport expects to receive MCP defined messages on
+  # the stdio, so we need to send logs to a file. This specific
+  # directory is exposed as docker volume, so that we can access
+  # it from the host computer.
+  file:
+    path: /var/open-meteo-mcp
