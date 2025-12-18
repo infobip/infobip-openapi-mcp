@@ -15,7 +15,7 @@ import org.springframework.ai.mcp.server.common.autoconfigure.properties.McpServ
 import org.springframework.http.HttpHeaders;
 import org.springframework.mock.web.MockHttpServletRequest;
 
-public class XForwardedHostCalculatorTest {
+class XForwardedHostCalculatorTest {
 
     public static Stream<Arguments> testDataWithoutHeaders() {
         return Stream.of(

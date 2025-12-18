@@ -54,17 +54,13 @@ public record OAuthProperties(
      *                           Default is API_BASE_URL.
      * @param includeMcpEndpoint Whether to include the MCP endpoint in the WWW-Authenticate header URL. Default is false.
      */
-    public record WwwAuthenticateProperties(UrlSource urlSource, Boolean includeMcpEndpoint) {
+    public record WwwAuthenticateProperties(UrlSource urlSource, boolean includeMcpEndpoint) {
 
         public static final UrlSource DEFAULT_WWW_AUTHENTICATE_URL_SOURCE = UrlSource.API_BASE_URL;
-        public static final Boolean DEFAULT_INCLUDE_MCP_ENDPOINT = Boolean.FALSE;
 
         public WwwAuthenticateProperties {
             if (urlSource == null) {
                 urlSource = DEFAULT_WWW_AUTHENTICATE_URL_SOURCE;
-            }
-            if (includeMcpEndpoint == null) {
-                includeMcpEndpoint = DEFAULT_INCLUDE_MCP_ENDPOINT;
             }
         }
 

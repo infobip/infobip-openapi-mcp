@@ -11,7 +11,11 @@ infobip:
           user-agent: openapi-mcp-test
           override-external-response: false
           oauth:
+            enabled: true
             url: http://localhost:8080/auth/validate
+            scope-discovery:
+              enabled: true
+              mandatory-scopes: "required_scope"
 
 management:
   metrics:

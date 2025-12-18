@@ -3,12 +3,10 @@ package com.infobip.openapi.mcp.auth.web;
 import com.infobip.openapi.mcp.McpRequestContext;
 import com.infobip.openapi.mcp.McpRequestContextFactory;
 import com.infobip.openapi.mcp.auth.AuthProperties;
-import com.infobip.openapi.mcp.auth.OAuthProperties;
-import com.infobip.openapi.mcp.auth.scope.ScopeDiscoveryService;
-import com.infobip.openapi.mcp.config.OpenApiMcpProperties;
+import com.infobip.openapi.mcp.auth.scope.JwtScopeService;
+import com.infobip.openapi.mcp.auth.scope.WwwAuthenticateProvider;
 import com.infobip.openapi.mcp.enricher.ApiRequestEnricherChain;
 import com.infobip.openapi.mcp.error.ErrorModelWriter;
-import com.infobip.openapi.mcp.util.XForwardedHostCalculator;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -25,7 +23,6 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.filter.OncePerRequestFilter;
-import org.springframework.web.util.UriComponentsBuilder;
 
 /**
  * Authentication filter that validates credentials with an external auth service.
@@ -75,33 +72,27 @@ public class InitialAuthenticationFilter extends OncePerRequestFilter {
 
     private final RestClient restClient;
     private final AuthProperties authProperties;
-    private final Optional<OAuthProperties> oAuthProperties;
-    private final OpenApiMcpProperties openApiMcpProperties;
     private final ErrorModelWriter errorModelWriter;
     private final ApiRequestEnricherChain enricherChain;
     private final McpRequestContextFactory contextFactory;
-    private final Optional<ScopeDiscoveryService> scopeDiscoveryService;
-    private final XForwardedHostCalculator xForwardedHostCalculator;
+    private final Optional<WwwAuthenticateProvider> wwwAuthenticateProvider;
+    private final Optional<JwtScopeService> jwtScopeService;
 
     public InitialAuthenticationFilter(
             RestClient restClient,
             AuthProperties authProperties,
-            Optional<OAuthProperties> oAuthProperties,
-            OpenApiMcpProperties openApiMcpProperties,
             ErrorModelWriter errorModelWriter,
             ApiRequestEnricherChain enricherChain,
             McpRequestContextFactory contextFactory,
-            Optional<ScopeDiscoveryService> scopeDiscoveryService,
-            XForwardedHostCalculator xForwardedHostCalculator) {
+            Optional<WwwAuthenticateProvider> wwwAuthenticateProvider,
+            Optional<JwtScopeService> jwtScopeService) {
         this.authProperties = authProperties;
         this.restClient = restClient;
-        this.oAuthProperties = oAuthProperties;
-        this.openApiMcpProperties = openApiMcpProperties;
         this.errorModelWriter = errorModelWriter;
         this.enricherChain = enricherChain;
         this.contextFactory = contextFactory;
-        this.scopeDiscoveryService = scopeDiscoveryService;
-        this.xForwardedHostCalculator = xForwardedHostCalculator;
+        this.wwwAuthenticateProvider = wwwAuthenticateProvider;
+        this.jwtScopeService = jwtScopeService;
     }
 
     @Override
@@ -109,8 +100,16 @@ public class InitialAuthenticationFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
         var authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
         if (authHeader == null) {
-            writeUnauthorizedResponse(request, response);
+            writeWwwAuthenticateResponse(request, response, HttpStatus.UNAUTHORIZED);
             return;
+        }
+
+        if (jwtScopeService.isPresent()) {
+            var jwtService = jwtScopeService.get();
+            if (!jwtService.verifyScopesFromHeader(authHeader)) {
+                writeWwwAuthenticateResponse(request, response, HttpStatus.FORBIDDEN);
+                return;
+            }
         }
 
         try {
@@ -150,9 +149,11 @@ public class InitialAuthenticationFilter extends OncePerRequestFilter {
         if (externalResponse != null) {
             response.setStatus(externalResponse.getStatusCode().value());
 
-            if (response.getStatus() == HttpStatus.UNAUTHORIZED.value() && isOAuthEnabled()) {
-                response.setHeader(HttpHeaders.WWW_AUTHENTICATE, buildWwwAuthenticateHeader(request));
-            }
+            wwwAuthenticateProvider.ifPresent(provider -> {
+                if (response.getStatus() == HttpStatus.UNAUTHORIZED.value()) {
+                    response.setHeader(HttpHeaders.WWW_AUTHENTICATE, provider.buildWwwAuthenticateHeader(request));
+                }
+            });
 
             if (authProperties.overrideExternalResponse()) {
                 response.setContentType(MediaType.APPLICATION_JSON_VALUE);
@@ -187,50 +188,23 @@ public class InitialAuthenticationFilter extends OncePerRequestFilter {
         });
     }
 
-    private void writeUnauthorizedResponse(HttpServletRequest request, HttpServletResponse response)
-            throws IOException {
-        response.setStatus(HttpStatus.UNAUTHORIZED.value());
-        if (isOAuthEnabled()) {
-            response.setHeader(HttpHeaders.WWW_AUTHENTICATE, buildWwwAuthenticateHeader(request));
-        }
+    private void writeWwwAuthenticateResponse(
+            HttpServletRequest request, HttpServletResponse response, HttpStatus httpStatus) throws IOException {
+        response.setStatus(httpStatus.value());
+
+        wwwAuthenticateProvider.ifPresent(provider -> {
+            if (httpStatus == HttpStatus.UNAUTHORIZED) {
+                response.setHeader(HttpHeaders.WWW_AUTHENTICATE, provider.buildWwwAuthenticateHeader(request));
+            } else if (httpStatus == HttpStatus.FORBIDDEN) {
+                response.setHeader(
+                        HttpHeaders.WWW_AUTHENTICATE, provider.buildWwwAuthenticateHeaderWithScopeError(request));
+            }
+        });
+
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.setCharacterEncoding(StandardCharsets.UTF_8.name());
         response.getWriter()
                 .write( // NOSONAR safe content, XSS not possible
-                        errorModelWriter.writeErrorModelAsJson(HttpStatus.UNAUTHORIZED, request, null));
-    }
-
-    private String buildWwwAuthenticateHeader(HttpServletRequest request) {
-        var wwwAuthenticateProperties = this.oAuthProperties.get().wwwAuthenticate();
-        var scopeDiscoveryService = this.scopeDiscoveryService.get();
-
-        var builder =
-                switch (wwwAuthenticateProperties.urlSource()) {
-                    case API_BASE_URL -> UriComponentsBuilder.fromUri(openApiMcpProperties.apiBaseUrl());
-                    case X_FORWARDED_HOST ->
-                        wwwAuthenticateProperties.includeMcpEndpoint()
-                                ? xForwardedHostCalculator.hostWithRootPathBuilder(request)
-                                : xForwardedHostCalculator.hostBuilder(request);
-                };
-        var wellKnownUrl = builder.path(OAuthProperties.WELL_KNOWN_PATH).build().toUriString();
-
-        var stringBuilder = new StringBuilder();
-        stringBuilder.append("Bearer resource_metadata=");
-        stringBuilder.append("\"").append(wellKnownUrl).append("\"");
-
-        var discoveredScopes = scopeDiscoveryService.getDiscoveredScopes();
-        if (!discoveredScopes.isEmpty()) {
-            stringBuilder.append(", scope=");
-            stringBuilder
-                    .append("\"")
-                    .append(String.join(" ", discoveredScopes))
-                    .append("\"");
-        }
-
-        return stringBuilder.toString();
-    }
-
-    private boolean isOAuthEnabled() {
-        return oAuthProperties.map(OAuthProperties::enabled).orElse(false);
+                        errorModelWriter.writeErrorModelAsJson(httpStatus, request, null));
     }
 }

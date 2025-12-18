@@ -24,7 +24,7 @@ import com.infobip.openapi.mcp.openapi.tool.ToolRegistry;
 import com.infobip.openapi.mcp.openapi.tool.naming.NamingStrategy;
 import com.infobip.openapi.mcp.openapi.tool.naming.NamingStrategyFactory;
 import com.infobip.openapi.mcp.util.OpenApiMapperFactory;
-import com.infobip.openapi.mcp.util.XFFCalculator;
+import com.infobip.openapi.mcp.util.XForwardedForCalculator;
 import com.infobip.openapi.mcp.util.XForwardedHostCalculator;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.modelcontextprotocol.server.McpAsyncServer;
@@ -71,8 +71,8 @@ class OpenApiMcpConfiguration {
     }
 
     @Bean
-    public XFFCalculator xffCalculator() {
-        return new XFFCalculator();
+    public XForwardedForCalculator xffCalculator() {
+        return new XForwardedForCalculator();
     }
 
     @Bean
@@ -105,8 +105,8 @@ class OpenApiMcpConfiguration {
     }
 
     @Bean
-    public XForwardedForEnricher xForwardedForEnricher(XFFCalculator xffCalculator) {
-        return new XForwardedForEnricher(xffCalculator);
+    public XForwardedForEnricher xForwardedForEnricher(XForwardedForCalculator xForwardedForCalculator) {
+        return new XForwardedForEnricher(xForwardedForCalculator);
     }
 
     @Bean
