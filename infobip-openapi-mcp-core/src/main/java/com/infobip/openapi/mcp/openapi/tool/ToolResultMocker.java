@@ -1,7 +1,5 @@
 package com.infobip.openapi.mcp.openapi.tool;
 
-import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
-
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.infobip.openapi.mcp.McpRequestContext;
@@ -13,7 +11,10 @@ import io.swagger.v3.oas.models.media.Content;
 import io.swagger.v3.oas.models.media.MediaType;
 import io.swagger.v3.oas.models.responses.ApiResponse;
 import io.swagger.v3.oas.models.responses.ApiResponses;
+import java.util.Collection;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -25,6 +26,14 @@ import org.springframework.core.Ordered;
 
 @NullMarked
 public class ToolResultMocker implements ToolCallFilter, Ordered {
+
+    /**
+     * Runs before RegisteredTool, so that it can prevent
+     * actual HTTP API calls from being made.
+     */
+    public static final Integer ORDER = RegisteredTool.ORDER - 1;
+
+    public static final String SUPPORTED_MEDIA_TYPE = org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ToolResultMocker.class);
     private static final String MISSING_EXAMPLE_ERR_MSG = "Missing OpenAPI example for mocking";
@@ -39,9 +48,7 @@ public class ToolResultMocker implements ToolCallFilter, Ordered {
 
     @Override
     public int getOrder() {
-        // Runs before RegisteredTool, so that it can prevent
-        // actual HTTP API calls from being made.
-        return LOWEST_PRECEDENCE - 1;
+        return ToolResultMocker.ORDER;
     }
 
     @Override
@@ -84,7 +91,7 @@ public class ToolResultMocker implements ToolCallFilter, Ordered {
                 .map(extractor -> extractor.apply(responses))
                 .filter(Objects::nonNull)
                 .map(ApiResponse::getContent)
-                .map(this::extractJsonMediaType)
+                .map(this::extractSupportedMediaType)
                 .map(this::extractExampleValue)
                 .map(this::serializeToString)
                 .filter(Objects::nonNull)
@@ -98,37 +105,25 @@ public class ToolResultMocker implements ToolCallFilter, Ordered {
                 IntStream.range(200, 300).mapToObj(Integer::toString).map(status -> res -> res.get(status)));
     }
 
-    private @Nullable MediaType extractJsonMediaType(@Nullable Content content) {
+    private @Nullable MediaType extractSupportedMediaType(@Nullable Content content) {
         if (content == null) {
             return null;
         }
 
         return content.keySet().stream()
-                .filter(type -> type.contains(APPLICATION_JSON_VALUE))
+                .filter(type -> type.contains(SUPPORTED_MEDIA_TYPE))
                 .findFirst()
                 .map(content::get)
                 .orElse(null);
     }
 
     private @Nullable Object extractExampleValue(@Nullable MediaType mediaType) {
-        if (mediaType == null) {
-            return null;
-        }
-
-        var example = mediaType.getExample();
-        if (example != null) {
-            return example;
-        }
-
-        var examples = mediaType.getExamples();
-        if (examples == null || examples.isEmpty()) {
-            return null;
-        }
-
-        return examples.values().stream()
+        return Optional.ofNullable(mediaType).map(MediaType::getExamples).map(Map::values).stream()
+                .flatMap(Collection::stream)
                 .map(Example::getValue)
                 .filter(Objects::nonNull)
                 .findFirst()
+                .or(() -> Optional.ofNullable(mediaType).map(MediaType::getExample))
                 .orElse(null);
     }
 
@@ -140,6 +135,7 @@ public class ToolResultMocker implements ToolCallFilter, Ordered {
         try {
             return objectMapper.writeValueAsString(exampleValue);
         } catch (JsonProcessingException e) {
+            LOGGER.warn("Failed to serialize example into JSON. Example value: `{}`", exampleValue, e);
             return null;
         }
     }

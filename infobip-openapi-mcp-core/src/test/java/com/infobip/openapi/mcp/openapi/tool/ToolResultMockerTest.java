@@ -180,6 +180,33 @@ class ToolResultMockerTest {
                                 .responses(
                                         new ApiResponses()
                                                 .addApiResponse(
+                                                        "200",
+                                                        new ApiResponse()
+                                                                .content(
+                                                                        new Content()
+                                                                                .addMediaType(
+                                                                                        "application/json",
+                                                                                        new MediaType()
+                                                                                                .example(
+                                                                                                        Map.of(
+                                                                                                                "wrong",
+                                                                                                                "value"))
+                                                                                                .examples(
+                                                                                                        Map.of(
+                                                                                                                "Example name",
+                                                                                                                new Example()
+                                                                                                                        .value(
+                                                                                                                                Map
+                                                                                                                                        .of(
+                                                                                                                                                "status",
+                                                                                                                                                "ok")))))))),
+                        """
+                                {"status":"ok"}"""),
+                arguments(
+                        new Operation()
+                                .responses(
+                                        new ApiResponses()
+                                                .addApiResponse(
                                                         "default",
                                                         new ApiResponse()
                                                                 .content(

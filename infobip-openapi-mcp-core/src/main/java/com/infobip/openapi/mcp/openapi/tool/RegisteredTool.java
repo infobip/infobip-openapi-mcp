@@ -28,6 +28,8 @@ public record RegisteredTool(
         FullOperation fullOperation)
         implements ToolCallFilter, Ordered {
 
+    public static final Integer ORDER = LOWEST_PRECEDENCE;
+
     @Override
     public McpSchema.CallToolResult doFilter(
             McpRequestContext ctx, McpSchema.CallToolRequest req, ToolCallFilterChain chain) {
@@ -36,6 +38,6 @@ public record RegisteredTool(
 
     @Override
     public int getOrder() {
-        return Ordered.LOWEST_PRECEDENCE;
+        return RegisteredTool.ORDER;
     }
 }
