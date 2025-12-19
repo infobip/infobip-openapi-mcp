@@ -20,6 +20,7 @@ Some of the core features include:
 - OpenAPI specification allows advanced features in request schema definitions, such as discriminators for polymorphic
   models. This is not allowed in pure JSON schema used by MCP, so the framework has a transformation step in which
   discriminators are resolved and embedded in a way compatible with JSON schema.
+- Mock mode in which resulting MCP server s
 
 > [!IMPORTANT]
 > The OpenAPI MCP framework allows you to expose any HTTP API documented with OpenAPI to LLM agents. Since LLMs will
@@ -246,6 +247,23 @@ request body.
 You can disable this behavior by setting externalized configuration property
 `infobip.openapi.mcp.tools.json-double-serialization-mitigation: false`.
 
+### Mock mode
+
+Framework offers a mock mode in which MCP server will return tool call results based on examples from the OpenAPI
+specification. Framework picks first example for the successful (2xx range) response with `application/json` content
+type from the API endpoint that corresponds to the tool being called. In case example is missing for the specific
+API endpoint an error MCP result is returned. This feature is disabled by default, and can be enabled by setting the
+externalized configuration property `infobip.openapi.mcp.tools.mock: true`.
+
+> [!NODE]
+> Even with mock mode enabled, security features still work and will delegate authentication checks to the server 
+> defined by the `infobip.openapi.mcp.security.auth.auth-url` property. This allows MCP client implementors to test
+> authentication configuration on their end, including OAuth config.
+> 
+> If this is not desired you can disable authentication by setting `infobip.openapi.mcp.security.auth.enabled: false`.
+> By disabling auth and enabling mock mode framework won't use API, and all tool calls will receive successful results
+> based on OpenAPI examples.
+
 ### Properties
 
 [External configuration properties][11] that can be used to configure framework behavior:
@@ -264,6 +282,7 @@ You can disable this behavior by setting externalized configuration property
 | `infobip.openapi.mcp.tools.schema.request-body-key`                                | The key name used to wrap request body in combined schemas. Default is "_body".                                                                                                                                                                                                                                                                         | `_body`        | 
 | `infobip.openapi.mcp.tools.json-double-serialization-mitigation`                   | Whether to enable automatic JSON double serialization mitigation.                                                                                                                                                                                                                                                                                       | `true`         | 
 | `infobip.openapi.mcp.tools.prepend-summary-to-description`                         | Whether to prepend the operation summary as a markdown title to the description.                                                                                                                                                                                                                                                                        | `true`         | 
+| `infobip.openapi.mcp.tools.mock`                                                   | Whether to run MCP server in mock mode, where it avoids calling API during tool calls and instead returns results based on examples provided in OpenAPI specification. Default is false.                                                                                                                                                                | `false`        | 
 | `infobip.openapi.mcp.security.auth.enabled`                                        | Enable API authentication. Default is false.                                                                                                                                                                                                                                                                                                            | `false`        | 
 | `infobip.openapi.mcp.security.auth.auth-url`                                       | The API endpoint URL to validate credentials against.                                                                                                                                                                                                                                                                                                   | `-`            |
 | `infobip.openapi.mcp.security.auth.connect-timeout`                                | Connection timeout for the validation API call. Default is 5 seconds.                                                                                                                                                                                                                                                                                   | 5 seconds      |

@@ -140,6 +140,11 @@ class OpenApiMcpConfiguration {
     }
 
     @Bean
+    public ToolResultMocker toolResultMocker(ObjectMapper objectMapper, OpenApiMcpProperties properties) {
+        return new ToolResultMocker(objectMapper, properties);
+    }
+
+    @Bean
     public ToolHandler toolHandler(
             @Qualifier(TOOL_HANDLER_REST_CLIENT_QUALIFIER) RestClient restClient,
             ErrorModelWriter errorModelWriter,

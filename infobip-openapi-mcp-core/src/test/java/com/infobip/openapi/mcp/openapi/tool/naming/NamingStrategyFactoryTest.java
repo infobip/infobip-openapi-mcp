@@ -60,7 +60,7 @@ class NamingStrategyFactoryTest {
     @Test
     void shouldCreateEndpointStrategyByDefault() {
         // Given - using default configuration
-        var tools = new OpenApiMcpProperties.Tools(null, null, null, null);
+        var tools = new OpenApiMcpProperties.Tools(null, null, null, null, null);
         var naming = tools.naming(); // Uses defaults
 
         // When
