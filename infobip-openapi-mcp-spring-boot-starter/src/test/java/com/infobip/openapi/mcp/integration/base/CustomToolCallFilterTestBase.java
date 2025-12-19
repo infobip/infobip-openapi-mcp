@@ -1,10 +1,10 @@
 package com.infobip.openapi.mcp.integration.base;
 
-import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static org.assertj.core.api.BDDAssertions.then;
 
 import com.infobip.openapi.mcp.McpRequestContext;
 import com.infobip.openapi.mcp.openapi.tool.ToolCallFilter;
+import com.infobip.openapi.mcp.openapi.tool.ToolCallFilterChain;
 import io.modelcontextprotocol.spec.McpSchema;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
@@ -33,7 +33,9 @@ public abstract class CustomToolCallFilterTestBase extends IntegrationTestBase {
 
         @Override
         public McpSchema.@Nullable CallToolResult doFilter(
-                @NonNull McpRequestContext ctx, McpSchema.@NonNull CallToolRequest req, @NonNull Chain chain) {
+                @NonNull McpRequestContext ctx,
+                McpSchema.@NonNull CallToolRequest req,
+                @NonNull ToolCallFilterChain chain) {
             observedCtx.set(ctx);
             observedReq.set(req);
             var res = chain.doFilter(ctx, req);

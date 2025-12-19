@@ -54,6 +54,7 @@ There are more technical features that enable customizing various behaviors, lik
   scopes.
 - Several naming strategies are available to customize MCP tool names.
 - API request enrichers that can be used to programmatically customize the API requests that back the tool calls.
+- MCP tool call filters that can be used to customize tool call behavior.
 - A base of [Spring AI][3] external customization options, which framework builds on top of with its own options. See
   below for a full list.
 
@@ -220,6 +221,17 @@ that sets the `User-Agent` header to the value defined in externalized configura
 > to tweaking Spring's `RestClient.RequestHeadersSpec` and does not provide options to break the flow and prevent the
 > API
 > call from being made.
+
+### ToolCallFilter
+
+You can implement and register beans of type `com.infobip.openapi.mcp.openapi.tool.ToolCallFilter` to customize the tool
+call handling behavior. Tool call filters can modify requests before making API calls, as well as API responses before
+returning them to MCP client. They are also a good place to implement custom observability. Unlike API request
+enrichers, tool call filters can break the processing chain, thus preventing the API call from being made.
+
+The `com.infobip.openapi.mcp.openapi.tool.RegisteredTool` provides the default implementation of a tool filter which
+makes the HTTP API call. It is registered with the lowest precedence, so you can preempt it by using any precedence
+higher than that.
 
 ### JSON serialization
 

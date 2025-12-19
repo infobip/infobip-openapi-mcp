@@ -18,7 +18,9 @@ class OrderingToolCallFilterChainFactoryTest {
     static class MockLoggingFilter implements ToolCallFilter {
         @Override
         public McpSchema.@NonNull CallToolResult doFilter(
-                @NonNull McpRequestContext ctx, McpSchema.@NonNull CallToolRequest req, @NonNull Chain chain) {
+                @NonNull McpRequestContext ctx,
+                McpSchema.@NonNull CallToolRequest req,
+                @NonNull ToolCallFilterChain chain) {
             return chain.doFilter(ctx, req);
         }
     }
@@ -27,7 +29,9 @@ class OrderingToolCallFilterChainFactoryTest {
 
         @Override
         public McpSchema.@NonNull CallToolResult doFilter(
-                @NonNull McpRequestContext ctx, McpSchema.@NonNull CallToolRequest req, @NonNull Chain chain) {
+                @NonNull McpRequestContext ctx,
+                McpSchema.@NonNull CallToolRequest req,
+                @NonNull ToolCallFilterChain chain) {
             return new McpSchema.CallToolResult("\"ok\"", false);
         }
 

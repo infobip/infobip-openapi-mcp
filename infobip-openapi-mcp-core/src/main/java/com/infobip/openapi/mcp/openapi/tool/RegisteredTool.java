@@ -29,7 +29,8 @@ public record RegisteredTool(
         implements ToolCallFilter, Ordered {
 
     @Override
-    public McpSchema.CallToolResult doFilter(McpRequestContext ctx, McpSchema.CallToolRequest req, Chain chain) {
+    public McpSchema.CallToolResult doFilter(
+            McpRequestContext ctx, McpSchema.CallToolRequest req, ToolCallFilterChain chain) {
         return toolHandler.apply(req, ctx);
     }
 
