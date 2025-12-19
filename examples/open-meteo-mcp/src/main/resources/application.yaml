@@ -28,5 +28,7 @@ logging:
   # the stdio, so we need to send logs to a file. This specific
   # directory is exposed as docker volume, so that we can access
   # it from the host computer.
+  threshold:
+    console: off
   file:
     path: /var/open-meteo-mcp
