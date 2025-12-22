@@ -68,7 +68,7 @@ class ToolHandlerTest {
                 .build();
 
         // Setup mock properties
-        var toolsConfig = new OpenApiMcpProperties.Tools(null, null, true, null);
+        var toolsConfig = new OpenApiMcpProperties.Tools(null, null, true, null, null);
         lenient().when(properties.tools()).thenReturn(toolsConfig);
 
         // Create actual ErrorModelWriter with DefaultErrorModelProvider
@@ -634,7 +634,7 @@ class ToolHandlerTest {
 
             // Create mock properties for this test
             var propertiesDisabled = org.mockito.Mockito.mock(OpenApiMcpProperties.class);
-            var toolsConfigDisabled = new OpenApiMcpProperties.Tools(null, null, false, null);
+            var toolsConfigDisabled = new OpenApiMcpProperties.Tools(null, null, false, null, null);
             lenient().when(propertiesDisabled.tools()).thenReturn(toolsConfigDisabled);
 
             var emptyEnricherChain = new ApiRequestEnricherChain(List.of());
@@ -800,14 +800,14 @@ class ToolHandlerTest {
      * Helper method to create a simple test context without HTTP request.
      */
     private McpRequestContext createTestContext() {
-        return new McpRequestContext(null, null, null, null);
+        return new McpRequestContext();
     }
 
     /**
      * Helper method to create a test context with HTTP request.
      */
     private McpRequestContext createTestContext(MockHttpServletRequest request) {
-        return new McpRequestContext(request, null, null, null);
+        return new McpRequestContext(request);
     }
 
     /**

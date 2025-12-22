@@ -20,6 +20,7 @@ Some of the core features include:
 - OpenAPI specification allows advanced features in request schema definitions, such as discriminators for polymorphic
   models. This is not allowed in pure JSON schema used by MCP, so the framework has a transformation step in which
   discriminators are resolved and embedded in a way compatible with JSON schema.
+- Mock mode in which resulting MCP server s
 
 > [!IMPORTANT]
 > The OpenAPI MCP framework allows you to expose any HTTP API documented with OpenAPI to LLM agents. Since LLMs will
@@ -54,6 +55,7 @@ There are more technical features that enable customizing various behaviors, lik
   scopes.
 - Several naming strategies are available to customize MCP tool names.
 - API request enrichers that can be used to programmatically customize the API requests that back the tool calls.
+- MCP tool call filters that can be used to customize tool call behavior.
 - A base of [Spring AI][3] external customization options, which framework builds on top of with its own options. See
   below for a full list.
 
@@ -221,6 +223,17 @@ that sets the `User-Agent` header to the value defined in externalized configura
 > API
 > call from being made.
 
+### ToolCallFilter
+
+You can implement and register beans of type `com.infobip.openapi.mcp.openapi.tool.ToolCallFilter` to customize the tool
+call handling behavior. Tool call filters can modify requests before making API calls, as well as API responses before
+returning them to MCP client. They are also a good place to implement custom observability. Unlike API request
+enrichers, tool call filters can break the processing chain, thus preventing the API call from being made.
+
+The `com.infobip.openapi.mcp.openapi.tool.RegisteredTool` provides the default implementation of a tool filter which
+makes the HTTP API call. It is registered with the lowest precedence, so you can preempt it by using any precedence
+higher than that.
+
 ### JSON serialization
 
 Both MCP client libraries and underlying LLMs can sometimes produce invalid JSON documents and send them to MCP server
@@ -233,6 +246,23 @@ request body.
 
 You can disable this behavior by setting externalized configuration property
 `infobip.openapi.mcp.tools.json-double-serialization-mitigation: false`.
+
+### Mock mode
+
+Framework offers a mock mode in which MCP server will return tool call results based on examples from the OpenAPI
+specification. Framework picks first example for the successful (2xx range) response with `application/json` content
+type from the API endpoint that corresponds to the tool being called. In case example is missing for the specific
+API endpoint an error MCP result is returned. This feature is disabled by default, and can be enabled by setting the
+externalized configuration property `infobip.openapi.mcp.tools.mock: true`.
+
+> [!NODE]
+> Even with mock mode enabled, security features still work and will delegate authentication checks to the server 
+> defined by the `infobip.openapi.mcp.security.auth.auth-url` property. This allows MCP client implementors to test
+> authentication configuration on their end, including OAuth config.
+> 
+> If this is not desired you can disable authentication by setting `infobip.openapi.mcp.security.auth.enabled: false`.
+> By disabling auth and enabling mock mode framework won't use API, and all tool calls will receive successful results
+> based on OpenAPI examples.
 
 ### Properties
 
@@ -252,6 +282,7 @@ You can disable this behavior by setting externalized configuration property
 | `infobip.openapi.mcp.tools.schema.request-body-key`                                | The key name used to wrap request body in combined schemas. Default is "_body".                                                                                                                                                                                                                                                                         | `_body`        | 
 | `infobip.openapi.mcp.tools.json-double-serialization-mitigation`                   | Whether to enable automatic JSON double serialization mitigation.                                                                                                                                                                                                                                                                                       | `true`         | 
 | `infobip.openapi.mcp.tools.prepend-summary-to-description`                         | Whether to prepend the operation summary as a markdown title to the description.                                                                                                                                                                                                                                                                        | `true`         | 
+| `infobip.openapi.mcp.tools.mock`                                                   | Whether to run MCP server in mock mode, where it avoids calling API during tool calls and instead returns results based on examples provided in OpenAPI specification. Default is false.                                                                                                                                                                | `false`        | 
 | `infobip.openapi.mcp.security.auth.enabled`                                        | Enable API authentication. Default is false.                                                                                                                                                                                                                                                                                                            | `false`        | 
 | `infobip.openapi.mcp.security.auth.auth-url`                                       | The API endpoint URL to validate credentials against.                                                                                                                                                                                                                                                                                                   | `-`            |
 | `infobip.openapi.mcp.security.auth.connect-timeout`                                | Connection timeout for the validation API call. Default is 5 seconds.                                                                                                                                                                                                                                                                                   | 5 seconds      |

@@ -16,12 +16,12 @@ import org.springframework.validation.annotation.Validated;
 /**
  * Configuration properties for OpenAPI MCP Server.
  *
- * @param openApiUrl      URL to the OpenAPI specification. This should point to a valid OpenAPI document (e.g., JSON or YAML).
- * @param apiBaseUrl      Base URL for the API. This is used to construct the full URLs for the API endpoints.
- * @param connectTimeout  Connection timeout for HTTP requests to the downstream API. The default is set to 5 seconds.
- * @param readTimeout     Read timeout for HTTP requests to the downstream API. The default is set to 5 seconds.
- * @param userAgent       User agent string for HTTP requests to the downstream API. If not specified, no User-Agent header will be set.
- * @param filters         Filters to apply to the OpenAPI specification. This can be used to include or exclude specific operations or tags.
+ * @param openApiUrl     URL to the OpenAPI specification. This should point to a valid OpenAPI document (e.g., JSON or YAML).
+ * @param apiBaseUrl     Base URL for the API. This is used to construct the full URLs for the API endpoints.
+ * @param connectTimeout Connection timeout for HTTP requests to the downstream API. The default is set to 5 seconds.
+ * @param readTimeout    Read timeout for HTTP requests to the downstream API. The default is set to 5 seconds.
+ * @param userAgent      User agent string for HTTP requests to the downstream API. If not specified, no User-Agent header will be set.
+ * @param filters        Filters to apply to the OpenAPI specification. This can be used to include or exclude specific operations or tags.
  *                       The keys are the filter names, and the values are booleans indicating whether to include (true) or exclude (false).
  *                       By default, all filters are enabled.
  * @param tools          Tool configuration.
@@ -59,7 +59,7 @@ public record OpenApiMcpProperties(
             filters = new HashMap<>();
         }
         if (tools == null) {
-            tools = new Tools(null, null, null, null);
+            tools = new Tools(null, null, null, null, null);
         }
     }
 
@@ -74,18 +74,25 @@ public record OpenApiMcpProperties(
     /**
      * Configuration for tools.
      *
-     * @param naming Tool naming configuration.
-     * @param schema Tool schema configuration.
+     * @param naming                            Tool naming configuration.
+     * @param schema                            Tool schema configuration.
      * @param jsonDoubleSerializationMitigation Whether to enable automatic JSON double serialization mitigation.
-     * @param prependSummaryToDescription Whether to prepend the operation summary as a markdown title to the description.
+     *                                          Default is true.
+     * @param prependSummaryToDescription       Whether to prepend the operation summary as a markdown title to the
+     *                                          description. Default is true.
+     * @param mock                              Whether to run MCP server in mock mode, where it avoids calling API
+     *                                          during tool calls and instead returns results based on examples
+     *                                          provided in OpenAPI specification. Default is false.
      */
     public record Tools(
             @NestedConfigurationProperty @Valid Naming naming,
             @NestedConfigurationProperty @Valid Schema schema,
             Boolean jsonDoubleSerializationMitigation,
-            Boolean prependSummaryToDescription) {
+            Boolean prependSummaryToDescription,
+            Boolean mock) {
         public static final boolean DEFAULT_JSON_DOUBLE_SERIALIZATION_MITIGATION = true;
         public static final boolean DEFAULT_PREPEND_SUMMARY_TO_DESCRIPTION = true;
+        public static final boolean DEFAULT_MOCK = false;
 
         /**
          * Constructor with defaults for optional properties.
@@ -103,6 +110,9 @@ public record OpenApiMcpProperties(
             if (prependSummaryToDescription == null) {
                 prependSummaryToDescription = DEFAULT_PREPEND_SUMMARY_TO_DESCRIPTION;
             }
+            if (mock == null) {
+                mock = DEFAULT_MOCK;
+            }
         }
 
         /**
@@ -110,7 +120,7 @@ public record OpenApiMcpProperties(
          *
          * @param strategy  The naming strategy to use for generating tool names. Default is SANITIZED_OPERATION_ID.
          * @param maxLength Maximum length for tool names. If specified, names will be trimmed to this length.
-         *                 Must be positive if provided.
+         *                  Must be positive if provided.
          */
         public record Naming(
                 @NotNull NamingStrategyType strategy,
@@ -130,8 +140,8 @@ public record OpenApiMcpProperties(
         /**
          * Configuration for tool input schema composition.
          *
-         * @param parametersKey   The key name used to wrap parameters in combined schemas. Default is "_params".
-         * @param requestBodyKey  The key name used to wrap request body in combined schemas. Default is "_body".
+         * @param parametersKey  The key name used to wrap parameters in combined schemas. Default is "_params".
+         * @param requestBodyKey The key name used to wrap request body in combined schemas. Default is "_body".
          */
         public record Schema(
                 @NotNull String parametersKey, @NotNull String requestBodyKey) {

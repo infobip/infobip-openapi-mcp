@@ -19,7 +19,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Added scope challenge handling to be in compliance with MCP 2025-11-25 authorization specification, section [10.1](https://modelcontextprotocol.io/specification/2025-11-25/basic/authorization#runtime-insufficient-scope-errors). 
+- Added scope challenge handling to be in compliance with MCP 2025-11-25 authorization specification, section [10.1](https://modelcontextprotocol.io/specification/2025-11-25/basic/authorization#runtime-insufficient-scope-errors).
+- Introduced the `com.infobip.openapi.mcp.openapi.tool.ToolCallFilter` abstraction for customizing tool call behavior.
+- Added mock mode in which MCP server responds to tool calls by returning mocks based on examples from OpenAPI spec
 
 ### Changed
 

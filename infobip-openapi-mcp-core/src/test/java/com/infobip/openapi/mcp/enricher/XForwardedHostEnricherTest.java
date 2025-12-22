@@ -42,11 +42,11 @@ class XForwardedHostEnricherTest {
     private final MockHttpServletRequest givenMockRequest = new MockHttpServletRequest();
 
     private McpRequestContext createTestContext(MockHttpServletRequest request) {
-        return new McpRequestContext(request, null, null, null);
+        return new McpRequestContext(request);
     }
 
     private McpRequestContext createTestContextWithoutRequest() {
-        return new McpRequestContext(null, null, null, null);
+        return new McpRequestContext();
     }
 
     @BeforeEach

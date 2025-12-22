@@ -143,7 +143,25 @@ public abstract class OpenApiTestBase {
                                 ],
                                 "responses": {
                                     "200": {
-                                        "description": "OK"
+                                        "description": "OK",
+                                        "content": {
+                                            "application/json": {
+                                                "examples": {
+                                                    "Ok example": {
+                                                        "value": [
+                                                            {
+                                                                "id": 123,
+                                                                "name": "Jane Doe"
+                                                            },
+                                                            {
+                                                                "id": 456,
+                                                                "name": "John Doe"
+                                                            }
+                                                        ]
+                                                    }
+                                                }
+                                            }
+                                        }
                                     }
                                 }
                             },
@@ -168,7 +186,19 @@ public abstract class OpenApiTestBase {
                                 },
                                 "responses": {
                                     "201": {
-                                        "description": "Created"
+                                        "description": "Created",
+                                        "content": {
+                                            "application/json": {
+                                                "examples": {
+                                                    "Ok example": {
+                                                        "value": {
+                                                            "id": 123,
+                                                            "name": "Jane Doe"
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -189,7 +219,19 @@ public abstract class OpenApiTestBase {
                                 ],
                                 "responses": {
                                     "200": {
-                                        "description": "OK"
+                                        "description": "OK",
+                                        "content": {
+                                            "application/json": {
+                                                "examples": {
+                                                    "Ok example": {
+                                                        "value": {
+                                                            "id": 123,
+                                                            "name": "Jane Doe"
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
                                     }
                                 }
                             }
