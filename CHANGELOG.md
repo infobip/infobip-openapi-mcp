@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - `./examples` directory with a demo app that exposes [Open-Meteo API](https://open-meteo.com/en/docs) as MCP server.
+- Added SonarQube Maven plugin (version 5.5.0.6356) for code quality analysis.
 
 ### Fixed
 
