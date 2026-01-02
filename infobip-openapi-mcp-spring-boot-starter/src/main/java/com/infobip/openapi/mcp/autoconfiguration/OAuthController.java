@@ -29,6 +29,7 @@ import org.springframework.context.annotation.Conditional;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestClient;
@@ -92,16 +93,19 @@ public class OAuthController {
         this.mcpServerProperties = mcpServerProperties;
     }
 
+    @CrossOrigin
     @GetMapping(path = OAUTH_AUTHORIZATION_SERVER_WELL_KNOWN_PATH)
     public ResponseEntity<String> getOauthAuthorizationServer(HttpServletRequest request) {
         return proxy(OAUTH_AUTHORIZATION_SERVER_WELL_KNOWN_PATH, request);
     }
 
+    @CrossOrigin
     @GetMapping(path = OPENID_CONFIGURATION_WELL_KNOWN_PATH)
     public ResponseEntity<String> getOpenidConfiguration(HttpServletRequest request) {
         return proxy(OPENID_CONFIGURATION_WELL_KNOWN_PATH, request);
     }
 
+    @CrossOrigin
     @GetMapping(path = OAUTH_PROTECTED_RESOURCE_WELL_KNOWN_PATH, produces = "application/json;charset=UTF-8")
     public ProtectedResource getProtectedResource(HttpServletRequest request) {
         return new ProtectedResource(
