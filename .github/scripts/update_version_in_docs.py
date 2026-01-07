@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-import glob
 import os
 import re
 import shutil
@@ -90,48 +89,6 @@ def update_readme_versions(readme_path, release_version):
     return True
 
 
-def update_pom_version(pom_path, release_version):
-    """
-    Update version reference for infobip-openapi-mcp-spring-boot-starter in a pom.xml file.
-    Returns True if the file was modified, False otherwise.
-    """
-    try:
-        with open(pom_path, "r", encoding="utf-8") as f:
-            content = f.read()
-    except FileNotFoundError:
-        print(f'Error: pom.xml file not found at "{pom_path}".', file=sys.stderr)
-        return False
-
-    original_content = content
-
-    # Pattern to match the version in pom.xml
-    # Matches the version tag following infobip-openapi-mcp-spring-boot-starter
-    pom_pattern = r"(<artifactId>infobip-openapi-mcp-spring-boot-starter</artifactId>\s*<version>)[^<]+(</version>)"
-    content = re.sub(pom_pattern, rf"\g<1>{release_version}\g<2>", content)
-
-    # Check if any changes were made
-    if content == original_content:
-        print(f'No version updates needed in "{pom_path}".')
-        return False
-
-    # Write the updated content back to the file
-    with open(pom_path, "w", encoding="utf-8") as f:
-        f.write(content)
-
-    print(f'Successfully updated version to "{release_version}" in {pom_path}')
-    return True
-
-
-def find_example_pom_files():
-    """
-    Find all pom.xml files in the examples directory.
-    Returns a list of paths to pom.xml files.
-    """
-    # Look for pom.xml files in examples/*/ directories
-    pom_files = glob.glob("./examples/*/pom.xml")
-    return pom_files
-
-
 def commit_files_if_changed(file_paths, release_version):
     """
     Commit the files if they have changes.
@@ -183,17 +140,6 @@ def main():
     print(f'\nUpdating README.md...')
     if update_readme_versions(readme_path, release_version):
         files_to_commit.append(readme_path)
-
-    # Find and update example pom.xml files
-    example_poms = find_example_pom_files()
-    if example_poms:
-        print(f'\nFound {len(example_poms)} example pom.xml file(s)')
-        for pom_path in example_poms:
-            print(f'Updating {pom_path}...')
-            if update_pom_version(pom_path, release_version):
-                files_to_commit.append(pom_path)
-    else:
-        print('No example pom.xml files found in ./examples/*/')
 
     # Commit all changes together if there are any
     if files_to_commit:
