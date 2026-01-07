@@ -64,7 +64,7 @@ You can try it out by connecting to it with an MCP capable AI agent that support
 
 Congratulations, you can now ask agent inside Cursor to send SMS text messages to the mock server!
 
-![Recording of installing mock MCP server in Cursor and interacting with it through app's AI agent](./img/cursor-infobip-sms-mock.gif)
+https://github.com/user-attachments/assets/77e7972d-5692-492a-b2e5-72eae40e6443
 
 ---
 
