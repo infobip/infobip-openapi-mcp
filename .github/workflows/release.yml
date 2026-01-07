@@ -35,6 +35,10 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_VERSION: ${{ github.event.inputs.release_version }}
+      - name: Update version in docs
+        run: ./.github/scripts/update_version_in_docs.py
+        env:
+          RELEASE_VERSION: ${{ github.event.inputs.release_version }}
       - name: Prepare maven release
         run: ./.github/scripts/prepare_maven_release.sh
         env:
