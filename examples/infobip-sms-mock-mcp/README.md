@@ -1,6 +1,6 @@
 # Infobip SMS Mock MCP Server
 
-En example project that exposes a mock of Infobip's official SMS MCP server using the `infobip-openapi-mcp-spring-boot-starter` framework. Project exposes MCP server over [Streamable HTTP transport protocol][1]. The mock MCP server can be used in testing MCP clients to see how they behave without connecting to production HTTP APIs.
+En example project that exposes a mock of Infobip's official SMS MCP server using the `infobip-openapi-mcp-spring-boot-starter` framework. Project exposes MCP server over [Streamable HTTP transport protocol][1]. The mock MCP server can be used in testing MCP clients to see how they behave without connecting to production HTTP APIs. Whe AI agent makes tools calls to MCP server running in the mock mode it will not make HTTP requests to the underlying API. Instead, MCP server will return [response examples][2] from the provided OpenAPI specification. This allows for more predictable tests that do not depend on 3rd party servers, nor require production account setup. You can read more about the mock mode in [README.md][3].
 
 ## Build
 
@@ -60,7 +60,7 @@ Note the `Tomcat started on port 8080` and `Registered tools: 8` parts. This mea
 
 ## Use
 
-You can try it out by connecting to it with an MCP capable AI agent that supports Streamable HTTP transport, such as [Cursor editor][2]. With Cursor app installed on your machine click this link to install your mock MCP server running on localhost: [https://cursor.com/en-US/install-mcp?name=infobip-sms-mock&config=eyJ1cmwiOiJodHRwOi8vbG9jYWxob3N0OjgwODAvbWNwIn0%3D](https://cursor.com/en-US/install-mcp?name=infobip-sms-mock&config=eyJ1cmwiOiJodHRwOi8vbG9jYWxob3N0OjgwODAvbWNwIn0%3D)
+You can try it out by connecting to it with an MCP capable AI agent that supports Streamable HTTP transport, such as [Cursor editor][4]. With Cursor app installed on your machine click this link to install your mock MCP server running on localhost: [https://cursor.com/en-US/install-mcp?name=infobip-sms-mock&config=eyJ1cmwiOiJodHRwOi8vbG9jYWxob3N0OjgwODAvbWNwIn0%3D](https://cursor.com/en-US/install-mcp?name=infobip-sms-mock&config=eyJ1cmwiOiJodHRwOi8vbG9jYWxob3N0OjgwODAvbWNwIn0%3D)
 
 Congratulations, you can now ask agent inside Cursor to send SMS text messages to the mock server!
 
@@ -70,4 +70,8 @@ https://github.com/user-attachments/assets/25c6775a-73ea-4bef-8387-595c8e079cfb
 
 [1]: https://modelcontextprotocol.io/specification/2025-11-25/basic/transports#streamable-http "Streamable HTTP transport in MCP documentation"
 
-[2]: https://cursor.com/home
+[2]: https://swagger.io/docs/specification/v3_0/adding-examples/ "Adding Examples guide in OpenAPI docs"
+
+[3]: https://github.com/infobip/infobip-openapi-mcp/blob/main/README.md#mock-mode "Mock mode section of project's README.md"
+
+[4]: https://cursor.com/home
