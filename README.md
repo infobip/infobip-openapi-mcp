@@ -255,7 +255,7 @@ type from the API endpoint that corresponds to the tool being called. In case ex
 API endpoint an error MCP result is returned. This feature is disabled by default, and can be enabled by setting the
 externalized configuration property `infobip.openapi.mcp.tools.mock: true`.
 
-> [!NODE]
+> [!NOTE]
 > Even with mock mode enabled, security features still work and will delegate authentication checks to the server 
 > defined by the `infobip.openapi.mcp.security.auth.auth-url` property. This allows MCP client implementors to test
 > authentication configuration on their end, including OAuth config.
