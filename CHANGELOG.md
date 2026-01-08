@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- A new step in the release workflow that automatically updates references to framework version in `README.md`
 - `./examples/infobip-sms-mock-mcp` project that demonstrates the recently introduced mock tool mode.
 
 ### Changed
