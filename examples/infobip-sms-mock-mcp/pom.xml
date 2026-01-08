@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.infobip.mcp.example</groupId>
-    <artifactId>open-meteo-mcp</artifactId>
+    <artifactId>infobip-sms-mock-mcp</artifactId>
     <version>1.0-SNAPSHOT</version>
 
     <properties>

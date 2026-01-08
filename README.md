@@ -20,7 +20,7 @@ Some of the core features include:
 - OpenAPI specification allows advanced features in request schema definitions, such as discriminators for polymorphic
   models. This is not allowed in pure JSON schema used by MCP, so the framework has a transformation step in which
   discriminators are resolved and embedded in a way compatible with JSON schema.
-- Mock mode in which resulting MCP server s
+- Mock mode in which MCP server returns examples from the OpenAPI specification instead of making HTTP API calls
 
 > [!IMPORTANT]
 > The OpenAPI MCP framework allows you to expose any HTTP API documented with OpenAPI to LLM agents. Since LLMs will
@@ -75,14 +75,14 @@ You can install it in your Java project with maven:
 <dependency>
     <groupId>com.infobip.openapi.mcp</groupId>
     <artifactId>infobip-openapi-mcp-spring-boot-starter</artifactId>
-    <version>0.1.2</version>
+    <version>0.1.3</version>
 </dependency>
 ```
 
 or gradle:
 
 ```groovy
-implementation("com.infobip.openapi.mcp:infobip-openapi-mcp-spring-boot-starter:0.1.2")
+implementation("com.infobip.openapi.mcp:infobip-openapi-mcp-spring-boot-starter:0.1.3")
 ```
 
 ## Usage
@@ -255,7 +255,7 @@ type from the API endpoint that corresponds to the tool being called. In case ex
 API endpoint an error MCP result is returned. This feature is disabled by default, and can be enabled by setting the
 externalized configuration property `infobip.openapi.mcp.tools.mock: true`.
 
-> [!NODE]
+> [!NOTE]
 > Even with mock mode enabled, security features still work and will delegate authentication checks to the server 
 > defined by the `infobip.openapi.mcp.security.auth.auth-url` property. This allows MCP client implementors to test
 > authentication configuration on their end, including OAuth config.

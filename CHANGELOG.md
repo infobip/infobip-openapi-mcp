@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `./examples/infobip-sms-mock-mcp` project that demonstrates the recently introduced mock tool mode.
+
+### Changed
+
+- Upgraded framework version in the open-meteo-mcp example to the latest release.
+
 ## 0.1.3
 
 ### Added
