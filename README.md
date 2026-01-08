@@ -20,7 +20,7 @@ Some of the core features include:
 - OpenAPI specification allows advanced features in request schema definitions, such as discriminators for polymorphic
   models. This is not allowed in pure JSON schema used by MCP, so the framework has a transformation step in which
   discriminators are resolved and embedded in a way compatible with JSON schema.
-- Mock mode in which resulting MCP server s
+- Mock mode in which MCP server returns examples from the OpenAPI specification instead of making HTTP API calls
 
 > [!IMPORTANT]
 > The OpenAPI MCP framework allows you to expose any HTTP API documented with OpenAPI to LLM agents. Since LLMs will

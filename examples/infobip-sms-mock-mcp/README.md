@@ -1,6 +1,6 @@
 # Infobip SMS Mock MCP Server
 
-En example project that exposes a mock of Infobip's official SMS MCP server using the `infobip-openapi-mcp-spring-boot-starter` framework. Project exposes MCP server over [Streamable HTTP transport protocol][1]. The mock MCP server can be used in testing MCP clients to see how they behave without connecting to production HTTP APIs. Whe AI agent makes tools calls to MCP server running in the mock mode it will not make HTTP requests to the underlying API. Instead, MCP server will return [response examples][2] from the provided OpenAPI specification. This allows for more predictable tests that do not depend on 3rd party servers, nor require production account setup. You can read more about the mock mode in [README.md][3].
+En example project that exposes a mock of Infobip's official SMS MCP server using the `infobip-openapi-mcp-spring-boot-starter` framework. Project exposes MCP server over [Streamable HTTP transport protocol][1]. The mock MCP server can be used in testing MCP clients to see how they behave without connecting to production HTTP APIs. When AI agent makes tools calls to MCP server running in the mock mode it will not make HTTP requests to the underlying API. Instead, MCP server will return [response examples][2] from the provided OpenAPI specification. This allows for more predictable tests that do not depend on 3rd party servers, nor require production account setup. You can read more about the mock mode in [README.md][3].
 
 ## Build
 
