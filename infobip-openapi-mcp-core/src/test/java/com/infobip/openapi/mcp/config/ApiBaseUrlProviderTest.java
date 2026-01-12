@@ -39,9 +39,9 @@ class ApiBaseUrlProviderTest {
         // given
         var givenConfig = new ApiBaseUrlConfig.Default();
         var givenOpenApi = givenOpenApiWithServer("https://api1.example.com", "https://api2.example.com");
-        var givenResolver = new ApiBaseUrlProvider(givenConfig, givenOpenApiRegistry);
 
         given(givenOpenApiRegistry.openApi()).willReturn(givenOpenApi);
+        var givenResolver = new ApiBaseUrlProvider(givenConfig, givenOpenApiRegistry);
 
         // when
         var result = givenResolver.get();
@@ -55,9 +55,9 @@ class ApiBaseUrlProviderTest {
         // given
         var givenConfig = new ApiBaseUrlConfig.ServerIndex(0);
         var givenOpenApi = givenOpenApiWithServer("https://api1.example.com", "https://api2.example.com");
-        var givenResolver = new ApiBaseUrlProvider(givenConfig, givenOpenApiRegistry);
 
         given(givenOpenApiRegistry.openApi()).willReturn(givenOpenApi);
+        var givenResolver = new ApiBaseUrlProvider(givenConfig, givenOpenApiRegistry);
 
         // when
         var result = givenResolver.get();
@@ -71,9 +71,9 @@ class ApiBaseUrlProviderTest {
         // given
         var givenConfig = new ApiBaseUrlConfig.ServerIndex(1);
         var givenOpenApi = givenOpenApiWithServer("https://api1.example.com", "https://api2.example.com");
-        var givenResolver = new ApiBaseUrlProvider(givenConfig, givenOpenApiRegistry);
 
         given(givenOpenApiRegistry.openApi()).willReturn(givenOpenApi);
+        var givenResolver = new ApiBaseUrlProvider(givenConfig, givenOpenApiRegistry);
 
         // when
         var result = givenResolver.get();
