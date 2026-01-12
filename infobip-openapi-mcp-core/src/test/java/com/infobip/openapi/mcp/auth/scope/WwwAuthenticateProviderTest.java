@@ -6,7 +6,7 @@ import static org.mockito.BDDMockito.given;
 import com.infobip.openapi.mcp.auth.OAuthProperties;
 import com.infobip.openapi.mcp.auth.OAuthProperties.WwwAuthenticateProperties;
 import com.infobip.openapi.mcp.auth.OAuthProperties.WwwAuthenticateProperties.UrlSource;
-import com.infobip.openapi.mcp.config.OpenApiMcpProperties;
+import com.infobip.openapi.mcp.config.ApiBaseUrlProvider;
 import com.infobip.openapi.mcp.util.XForwardedHostCalculator;
 import java.net.URI;
 import java.util.Optional;
@@ -27,7 +27,7 @@ class WwwAuthenticateProviderTest {
     private OAuthProperties oAuthProperties;
 
     @Mock
-    private OpenApiMcpProperties openApiMcpProperties;
+    private ApiBaseUrlProvider apiBaseUrlProvider;
 
     @Mock
     private XForwardedHostCalculator xForwardedHostCalculator;
@@ -42,10 +42,10 @@ class WwwAuthenticateProviderTest {
     @BeforeEach
     void setUp() {
         wwwAuthenticateProviderWithScopeService = new WwwAuthenticateProvider(
-                oAuthProperties, Optional.of(scopeDiscoveryService), openApiMcpProperties, xForwardedHostCalculator);
+                oAuthProperties, Optional.of(scopeDiscoveryService), xForwardedHostCalculator, apiBaseUrlProvider);
 
         wwwAuthenticateProviderWithoutScopeService = new WwwAuthenticateProvider(
-                oAuthProperties, Optional.empty(), openApiMcpProperties, xForwardedHostCalculator);
+                oAuthProperties, Optional.empty(), xForwardedHostCalculator, apiBaseUrlProvider);
     }
 
     @Test
@@ -55,7 +55,7 @@ class WwwAuthenticateProviderTest {
         var givenApiBaseUrl = URI.create("https://api.example.com:1234/v1");
 
         given(oAuthProperties.wwwAuthenticate()).willReturn(givenWwwAuthenticateProperties);
-        given(openApiMcpProperties.apiBaseUrl()).willReturn(givenApiBaseUrl);
+        given(apiBaseUrlProvider.get()).willReturn(givenApiBaseUrl);
 
         // When
         var actualHeader = wwwAuthenticateProviderWithoutScopeService.buildWwwAuthenticateHeader(givenRequest);
@@ -74,7 +74,7 @@ class WwwAuthenticateProviderTest {
         var scopes = Set.of("read:users", "write:users", "admin:config");
 
         given(oAuthProperties.wwwAuthenticate()).willReturn(givenWwwAuthenticateProperties);
-        given(openApiMcpProperties.apiBaseUrl()).willReturn(givenApiBaseUrl);
+        given(apiBaseUrlProvider.get()).willReturn(givenApiBaseUrl);
         given(scopeDiscoveryService.getDiscoveredScopes()).willReturn(scopes);
 
         // When
@@ -94,7 +94,7 @@ class WwwAuthenticateProviderTest {
         var givenApiBaseUrl = URI.create("https://api.example.com");
 
         given(oAuthProperties.wwwAuthenticate()).willReturn(givenWwwAuthenticateProperties);
-        given(openApiMcpProperties.apiBaseUrl()).willReturn(givenApiBaseUrl);
+        given(apiBaseUrlProvider.get()).willReturn(givenApiBaseUrl);
 
         // When
         var actualHeader = wwwAuthenticateProviderWithoutScopeService.buildWwwAuthenticateHeader(givenRequest);
@@ -110,7 +110,7 @@ class WwwAuthenticateProviderTest {
         var givenApiBaseUrl = URI.create("https://api.example.com");
 
         given(oAuthProperties.wwwAuthenticate()).willReturn(givenWwwAuthenticateProperties);
-        given(openApiMcpProperties.apiBaseUrl()).willReturn(givenApiBaseUrl);
+        given(apiBaseUrlProvider.get()).willReturn(givenApiBaseUrl);
         given(scopeDiscoveryService.getDiscoveredScopes()).willReturn(Set.of());
 
         // When
@@ -127,7 +127,7 @@ class WwwAuthenticateProviderTest {
         var givenApiBaseUrl = URI.create("https://api.example.com");
 
         given(oAuthProperties.wwwAuthenticate()).willReturn(givenWwwAuthenticateProperties);
-        given(openApiMcpProperties.apiBaseUrl()).willReturn(givenApiBaseUrl);
+        given(apiBaseUrlProvider.get()).willReturn(givenApiBaseUrl);
 
         // When
         var actualHeader =
@@ -145,7 +145,7 @@ class WwwAuthenticateProviderTest {
         var givenApiBaseUrl = URI.create("https://api.example.com");
 
         given(oAuthProperties.wwwAuthenticate()).willReturn(givenWwwAuthenticateProperties);
-        given(openApiMcpProperties.apiBaseUrl()).willReturn(givenApiBaseUrl);
+        given(apiBaseUrlProvider.get()).willReturn(givenApiBaseUrl);
 
         // When
         var actualHeader = wwwAuthenticateProviderWithoutScopeService.buildWwwAuthenticateHeader(givenRequest);
@@ -197,7 +197,7 @@ class WwwAuthenticateProviderTest {
         var givenScopes = Set.of("read:users", "write:users");
 
         given(oAuthProperties.wwwAuthenticate()).willReturn(givenWwwAuthenticateProperties);
-        given(openApiMcpProperties.apiBaseUrl()).willReturn(givenApiBaseUrl);
+        given(apiBaseUrlProvider.get()).willReturn(givenApiBaseUrl);
         given(scopeDiscoveryService.getDiscoveredScopes()).willReturn(givenScopes);
 
         // When
