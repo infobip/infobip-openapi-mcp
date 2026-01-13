@@ -75,7 +75,9 @@ class ToolHandlerTest {
         lenient().when(properties.tools()).thenReturn(toolsConfig);
 
         // Setup mock wwwAuthenticateProvider
-        lenient().when(wwwAuthenticateProvider.buildWwwAuthenticateHeaderWithScopeError(org.mockito.ArgumentMatchers.any()))
+        lenient()
+                .when(wwwAuthenticateProvider.buildWwwAuthenticateHeaderWithScopeError(
+                        org.mockito.ArgumentMatchers.any()))
                 .thenReturn("Bearer resource_metadata=\"http://localhost/oauth/.well-known\"");
 
         // Create actual ErrorModelWriter with DefaultErrorModelProvider
@@ -88,7 +90,8 @@ class ToolHandlerTest {
         var xffEnricher = new XForwardedForEnricher(xffCalculator);
         var enricherChain = new ApiRequestEnricherChain(List.of(xffEnricher));
 
-        toolHandler = new ToolHandler(restClient, errorModelWriter, properties, enricherChain, metricService, wwwAuthenticateProvider);
+        toolHandler = new ToolHandler(
+                restClient, errorModelWriter, properties, enricherChain, metricService, wwwAuthenticateProvider);
     }
 
     @AfterEach
@@ -646,7 +649,12 @@ class ToolHandlerTest {
 
             var emptyEnricherChain = new ApiRequestEnricherChain(List.of());
             var toolHandlerWithBadPort = new ToolHandler(
-                    restClientWithBadPort, errorModelWriter, propertiesDisabled, emptyEnricherChain, metricService, wwwAuthenticateProvider);
+                    restClientWithBadPort,
+                    errorModelWriter,
+                    propertiesDisabled,
+                    emptyEnricherChain,
+                    metricService,
+                    wwwAuthenticateProvider);
 
             // When
             var result = toolHandlerWithBadPort.handleToolCall(fullOperation, decomposedSchema, createTestContext());

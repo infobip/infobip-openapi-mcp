@@ -76,7 +76,9 @@ class JsonDoubleSerializationIntegrationTest {
         lenient().when(propertiesWithMitigationDisabled.tools()).thenReturn(toolsConfigDisabled);
 
         // Setup mock wwwAuthenticateProvider
-        lenient().when(wwwAuthenticateProvider.buildWwwAuthenticateHeaderWithScopeError(org.mockito.ArgumentMatchers.any()))
+        lenient()
+                .when(wwwAuthenticateProvider.buildWwwAuthenticateHeaderWithScopeError(
+                        org.mockito.ArgumentMatchers.any()))
                 .thenReturn("Bearer resource_metadata=\"http://localhost/oauth/.well-known\"");
 
         // Create ErrorModelWriter
@@ -87,9 +89,19 @@ class JsonDoubleSerializationIntegrationTest {
         // Create handlers with mitigation enabled and disabled
         var emptyEnricherChain = new ApiRequestEnricherChain(List.of());
         toolHandlerWithMitigationEnabled = new ToolHandler(
-                restClient, errorModelWriter, propertiesWithMitigationEnabled, emptyEnricherChain, metricService, wwwAuthenticateProvider);
+                restClient,
+                errorModelWriter,
+                propertiesWithMitigationEnabled,
+                emptyEnricherChain,
+                metricService,
+                wwwAuthenticateProvider);
         toolHandlerWithMitigationDisabled = new ToolHandler(
-                restClient, errorModelWriter, propertiesWithMitigationDisabled, emptyEnricherChain, metricService, wwwAuthenticateProvider);
+                restClient,
+                errorModelWriter,
+                propertiesWithMitigationDisabled,
+                emptyEnricherChain,
+                metricService,
+                wwwAuthenticateProvider);
     }
 
     @AfterEach

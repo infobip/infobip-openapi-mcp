@@ -154,7 +154,12 @@ class OpenApiMcpConfiguration {
             MetricService metricService,
             Optional<WwwAuthenticateProvider> wwwAuthenticateProvider) {
         return new ToolHandler(
-                restClient, errorModelWriter, properties, enricherChain, metricService, wwwAuthenticateProvider.orElse(null));
+                restClient,
+                errorModelWriter,
+                properties,
+                enricherChain,
+                metricService,
+                wwwAuthenticateProvider.orElse(null));
     }
 
     @Bean
