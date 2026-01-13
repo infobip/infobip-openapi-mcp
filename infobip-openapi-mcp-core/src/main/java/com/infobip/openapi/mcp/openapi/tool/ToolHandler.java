@@ -1,12 +1,15 @@
 package com.infobip.openapi.mcp.openapi.tool;
 
 import com.infobip.openapi.mcp.McpRequestContext;
+import com.infobip.openapi.mcp.auth.scope.WwwAuthenticateProvider;
 import com.infobip.openapi.mcp.config.OpenApiMcpProperties;
 import com.infobip.openapi.mcp.enricher.ApiRequestEnricherChain;
 import com.infobip.openapi.mcp.error.ErrorModelWriter;
 import com.infobip.openapi.mcp.infrastructure.metrics.MetricService;
 import com.infobip.openapi.mcp.openapi.schema.DecomposedRequestData;
 import io.modelcontextprotocol.spec.McpSchema;
+import jakarta.servlet.http.HttpServletRequest;
+import java.util.Map;
 import java.util.Optional;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
@@ -64,18 +67,21 @@ public class ToolHandler {
     private final OpenApiMcpProperties properties;
     private final ApiRequestEnricherChain enricherChain;
     private final MetricService metricService;
+    private final WwwAuthenticateProvider wwwAuthenticateProvider;
 
     public ToolHandler(
             RestClient restClient,
             ErrorModelWriter errorModelWriter,
             OpenApiMcpProperties properties,
             ApiRequestEnricherChain enricherChain,
-            MetricService metricService) {
+            MetricService metricService,
+            WwwAuthenticateProvider wwwAuthenticateProvider) {
         this.restClient = restClient;
         this.errorModelWriter = errorModelWriter;
         this.properties = properties;
         this.enricherChain = enricherChain;
         this.metricService = metricService;
+        this.wwwAuthenticateProvider = wwwAuthenticateProvider;
         this.serializationCorrector = new JsonDoubleSerializationCorrector();
     }
 
@@ -101,8 +107,7 @@ public class ToolHandler {
             var responseBody = getResponseBodyOrDefault(response.getBody());
 
             toolCallTimer.timeToolCall(fullOperation, response.getStatusCode().isError());
-            return new McpSchema.CallToolResult(
-                    responseBody, response.getStatusCode().isError());
+            return toolCallResponse(responseBody, response.getStatusCode().isError(), context);
         } catch (HttpStatusCodeException exception) {
             httpCallTimer.timeApiCall(fullOperation, exception.getStatusCode());
 
@@ -119,8 +124,8 @@ public class ToolHandler {
 
                     toolCallTimer.timeToolCall(
                             fullOperation, retryResponse.getStatusCode().isError());
-                    return new McpSchema.CallToolResult(
-                            responseBody, retryResponse.getStatusCode().isError());
+                    return toolCallResponse(
+                            responseBody, retryResponse.getStatusCode().isError(), context);
                 } catch (HttpStatusCodeException retryException) {
                     httpCallRetryTimer.timeApiCall(fullOperation, retryException.getStatusCode());
                     metricService.recordApiCall(fullOperation, retryException.getStatusCode());
@@ -132,7 +137,7 @@ public class ToolHandler {
 
                     toolCallTimer.timeToolCall(
                             fullOperation, retryException.getStatusCode().isError());
-                    return new McpSchema.CallToolResult(retryException.getResponseBodyAsString(), true);
+                    return toolCallResponse(retryException.getResponseBodyAsString(), true, context);
                 } catch (RuntimeException retryException) {
                     httpCallRetryTimer.timeApiCall(fullOperation, HttpStatus.BAD_GATEWAY);
                     metricService.recordApiCall(fullOperation, HttpStatus.BAD_GATEWAY);
@@ -143,22 +148,22 @@ public class ToolHandler {
                             retryException);
 
                     toolCallTimer.timeToolCall(fullOperation, true);
-                    return new McpSchema.CallToolResult(
-                            errorModelWriter.writeErrorModelAsJson(HttpStatus.BAD_GATEWAY), true);
+                    return toolCallResponse(
+                            errorModelWriter.writeErrorModelAsJson(HttpStatus.BAD_GATEWAY), true, context);
                 }
             }
 
             LOGGER.debug("HTTP status code {}: {}", exception.getStatusCode(), exception.getResponseBodyAsString());
             metricService.recordApiCall(fullOperation, exception.getStatusCode());
             toolCallTimer.timeToolCall(fullOperation, true);
-            return new McpSchema.CallToolResult(exception.getResponseBodyAsString(), true);
+            return toolCallResponse(exception.getResponseBodyAsString(), true, context);
         } catch (RuntimeException e) {
             httpCallTimer.timeApiCall(fullOperation, HttpStatus.BAD_GATEWAY);
             metricService.recordApiCall(fullOperation, HttpStatus.BAD_GATEWAY);
             LOGGER.error("Error while calling tool: {}. Downstream request failed.", e.getMessage(), e);
 
             toolCallTimer.timeToolCall(fullOperation, true);
-            return new McpSchema.CallToolResult(errorModelWriter.writeErrorModelAsJson(HttpStatus.BAD_GATEWAY), true);
+            return toolCallResponse(errorModelWriter.writeErrorModelAsJson(HttpStatus.BAD_GATEWAY), true, context);
         }
     }
 
@@ -324,5 +329,20 @@ public class ToolHandler {
         } else {
             spec.cookie(name, value.toString());
         }
+    }
+
+    private McpSchema.CallToolResult toolCallResponse(String content, boolean isError, McpRequestContext context) {
+        var callToolResultBuilder =
+                McpSchema.CallToolResult.builder().addTextContent(content).isError(isError);
+
+        if (context.httpServletRequest() != null) {
+            callToolResultBuilder = callToolResultBuilder.meta(toolCallResponseMeta(context.httpServletRequest()));
+        }
+        return callToolResultBuilder.build();
+    }
+
+    private Map<String, Object> toolCallResponseMeta(HttpServletRequest request) {
+        return Map.of(
+                "mcp/www_authenticate", wwwAuthenticateProvider.buildWwwAuthenticateHeaderWithScopeError(request));
     }
 }

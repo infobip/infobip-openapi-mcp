@@ -4,6 +4,7 @@ import static com.infobip.openapi.mcp.autoconfiguration.Qualifiers.TOOL_HANDLER_
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.infobip.openapi.mcp.McpRequestContextFactory;
+import com.infobip.openapi.mcp.auth.scope.WwwAuthenticateProvider;
 import com.infobip.openapi.mcp.config.OpenApiMcpProperties;
 import com.infobip.openapi.mcp.enricher.*;
 import com.infobip.openapi.mcp.error.DefaultErrorModelProvider;
@@ -150,8 +151,10 @@ class OpenApiMcpConfiguration {
             ErrorModelWriter errorModelWriter,
             OpenApiMcpProperties properties,
             ApiRequestEnricherChain enricherChain,
-            MetricService metricService) {
-        return new ToolHandler(restClient, errorModelWriter, properties, enricherChain, metricService);
+            MetricService metricService,
+            WwwAuthenticateProvider wwwAuthenticateProvider) {
+        return new ToolHandler(
+                restClient, errorModelWriter, properties, enricherChain, metricService, wwwAuthenticateProvider);
     }
 
     @Bean
