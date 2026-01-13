@@ -206,6 +206,7 @@ class WwwAuthenticateProviderTest {
 
         // Then
         then(actualHeader)
-                .matches("Bearer resource_metadata=\"[^\"]+\", scope=\"[^\"]+\", error=\"insufficient_scope\"");
+                .matches(
+                        "Bearer resource_metadata=\"[^\"]+\", scope=\"[^\"]+\", error=\"insufficient_scope\", error_description=\"[^\"]+\"");
     }
 }
