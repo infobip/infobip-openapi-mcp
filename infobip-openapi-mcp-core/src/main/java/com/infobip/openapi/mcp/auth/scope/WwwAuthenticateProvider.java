@@ -96,6 +96,10 @@ public class WwwAuthenticateProvider {
             stringBuilder.append("\"");
             stringBuilder.append("insufficient_scope");
             stringBuilder.append("\"");
+            stringBuilder.append(", error_description=");
+            stringBuilder.append("\"");
+            stringBuilder.append("The request requires higher privileges than provided by the access token.");
+            stringBuilder.append("\"");
         }
 
         return stringBuilder.toString();
