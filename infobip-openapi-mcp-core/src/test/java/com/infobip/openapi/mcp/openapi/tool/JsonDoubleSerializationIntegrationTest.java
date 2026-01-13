@@ -44,6 +44,9 @@ class JsonDoubleSerializationIntegrationTest {
     @Mock
     private OpenApiMcpProperties propertiesWithMitigationDisabled;
 
+    @Mock
+    private com.infobip.openapi.mcp.auth.scope.WwwAuthenticateProvider wwwAuthenticateProvider;
+
     private MetricService metricService = new NoOpMetricService();
 
     private WireMockServer wireMockServer;
@@ -72,6 +75,10 @@ class JsonDoubleSerializationIntegrationTest {
         lenient().when(propertiesWithMitigationEnabled.tools()).thenReturn(toolsConfigEnabled);
         lenient().when(propertiesWithMitigationDisabled.tools()).thenReturn(toolsConfigDisabled);
 
+        // Setup mock wwwAuthenticateProvider
+        lenient().when(wwwAuthenticateProvider.buildWwwAuthenticateHeaderWithScopeError(org.mockito.ArgumentMatchers.any()))
+                .thenReturn("Bearer resource_metadata=\"http://localhost/oauth/.well-known\"");
+
         // Create ErrorModelWriter
         objectMapper = new ObjectMapper();
         var errorModelProvider = new DefaultErrorModelProvider();
@@ -80,9 +87,9 @@ class JsonDoubleSerializationIntegrationTest {
         // Create handlers with mitigation enabled and disabled
         var emptyEnricherChain = new ApiRequestEnricherChain(List.of());
         toolHandlerWithMitigationEnabled = new ToolHandler(
-                restClient, errorModelWriter, propertiesWithMitigationEnabled, emptyEnricherChain, metricService);
+                restClient, errorModelWriter, propertiesWithMitigationEnabled, emptyEnricherChain, metricService, wwwAuthenticateProvider);
         toolHandlerWithMitigationDisabled = new ToolHandler(
-                restClient, errorModelWriter, propertiesWithMitigationDisabled, emptyEnricherChain, metricService);
+                restClient, errorModelWriter, propertiesWithMitigationDisabled, emptyEnricherChain, metricService, wwwAuthenticateProvider);
     }
 
     @AfterEach

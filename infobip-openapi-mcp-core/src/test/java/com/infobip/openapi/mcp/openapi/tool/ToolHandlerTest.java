@@ -47,6 +47,9 @@ class ToolHandlerTest {
     @Mock
     private OpenApiMcpProperties properties;
 
+    @Mock
+    private com.infobip.openapi.mcp.auth.scope.WwwAuthenticateProvider wwwAuthenticateProvider;
+
     private MetricService metricService = new NoOpMetricService();
 
     private WireMockServer wireMockServer;
@@ -71,6 +74,10 @@ class ToolHandlerTest {
         var toolsConfig = new OpenApiMcpProperties.Tools(null, null, true, null, null);
         lenient().when(properties.tools()).thenReturn(toolsConfig);
 
+        // Setup mock wwwAuthenticateProvider
+        lenient().when(wwwAuthenticateProvider.buildWwwAuthenticateHeaderWithScopeError(org.mockito.ArgumentMatchers.any()))
+                .thenReturn("Bearer resource_metadata=\"http://localhost/oauth/.well-known\"");
+
         // Create actual ErrorModelWriter with DefaultErrorModelProvider
         var objectMapper = new ObjectMapper();
         var errorModelProvider = new DefaultErrorModelProvider();
@@ -81,7 +88,7 @@ class ToolHandlerTest {
         var xffEnricher = new XForwardedForEnricher(xffCalculator);
         var enricherChain = new ApiRequestEnricherChain(List.of(xffEnricher));
 
-        toolHandler = new ToolHandler(restClient, errorModelWriter, properties, enricherChain, metricService);
+        toolHandler = new ToolHandler(restClient, errorModelWriter, properties, enricherChain, metricService, wwwAuthenticateProvider);
     }
 
     @AfterEach
@@ -639,7 +646,7 @@ class ToolHandlerTest {
 
             var emptyEnricherChain = new ApiRequestEnricherChain(List.of());
             var toolHandlerWithBadPort = new ToolHandler(
-                    restClientWithBadPort, errorModelWriter, propertiesDisabled, emptyEnricherChain, metricService);
+                    restClientWithBadPort, errorModelWriter, propertiesDisabled, emptyEnricherChain, metricService, wwwAuthenticateProvider);
 
             // When
             var result = toolHandlerWithBadPort.handleToolCall(fullOperation, decomposedSchema, createTestContext());

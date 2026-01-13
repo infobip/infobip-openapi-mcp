@@ -342,6 +342,9 @@ public class ToolHandler {
     }
 
     private Map<String, Object> toolCallResponseMeta(HttpServletRequest request) {
+        if (wwwAuthenticateProvider == null) {
+            return Map.of();
+        }
         return Map.of(
                 "mcp/www_authenticate", wwwAuthenticateProvider.buildWwwAuthenticateHeaderWithScopeError(request));
     }
