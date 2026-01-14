@@ -65,7 +65,11 @@ public class ApiBaseUrlProvider {
 
     private void parseUri(String url) {
         try {
-            this.apiBaseUrl = URI.create(url);
+            var createdUri = URI.create(url);
+            if (!createdUri.isAbsolute()) {
+                throw new ApiBaseUrlResolutionException("URL must be absolute: " + url);
+            }
+            this.apiBaseUrl = createdUri;
         } catch (IllegalArgumentException e) {
             throw new ApiBaseUrlResolutionException("Invalid URL: " + url + ". " + e.getMessage(), e);
         }

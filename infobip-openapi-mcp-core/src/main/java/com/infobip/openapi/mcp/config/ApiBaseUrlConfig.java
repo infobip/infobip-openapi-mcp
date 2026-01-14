@@ -1,5 +1,6 @@
 package com.infobip.openapi.mcp.config;
 
+import java.net.URI;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -48,7 +49,10 @@ public sealed interface ApiBaseUrlConfig {
             return new ServerIndex(index);
         } catch (NumberFormatException e) {
             try {
-                new java.net.URI(value);
+                var uri = URI.create(value);
+                if (!uri.isAbsolute()) {
+                    throw new IllegalArgumentException("URL must be absolute: " + value);
+                }
             } catch (Exception uriException) {
                 throw new IllegalArgumentException("Invalid URL format: " + value, uriException);
             }

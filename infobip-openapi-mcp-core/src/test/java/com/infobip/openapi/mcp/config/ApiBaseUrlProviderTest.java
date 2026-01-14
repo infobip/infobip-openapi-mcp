@@ -5,6 +5,7 @@ import static org.assertj.core.api.AssertionsForClassTypes.catchThrowable;
 import static org.assertj.core.api.BDDAssertions.then;
 import static org.mockito.BDDMockito.given;
 
+import com.infobip.openapi.mcp.config.ApiBaseUrlProvider.ApiBaseUrlResolutionException;
 import com.infobip.openapi.mcp.openapi.OpenApiRegistry;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.servers.Server;
@@ -94,7 +95,7 @@ class ApiBaseUrlProviderTest {
         var thrown = catchThrowable(() -> new ApiBaseUrlProvider(givenConfig, givenOpenApiRegistry));
 
         // then
-        then(thrown).isInstanceOf(ApiBaseUrlProvider.ApiBaseUrlResolutionException.class);
+        then(thrown).isInstanceOf(ApiBaseUrlResolutionException.class);
     }
 
     @Test
@@ -109,7 +110,7 @@ class ApiBaseUrlProviderTest {
         var thrown = catchThrowable(() -> new ApiBaseUrlProvider(givenConfig, givenOpenApiRegistry));
 
         // then
-        then(thrown).isInstanceOf(ApiBaseUrlProvider.ApiBaseUrlResolutionException.class);
+        then(thrown).isInstanceOf(ApiBaseUrlResolutionException.class);
     }
 
     @Test
@@ -121,7 +122,7 @@ class ApiBaseUrlProviderTest {
         var thrown = catchThrowable(() -> new ApiBaseUrlProvider(givenConfig, givenOpenApiRegistry));
 
         // then
-        then(thrown).isInstanceOf(ApiBaseUrlProvider.ApiBaseUrlResolutionException.class);
+        then(thrown).isInstanceOf(ApiBaseUrlResolutionException.class);
     }
 
     @Test
@@ -169,6 +170,21 @@ class ApiBaseUrlProviderTest {
         // then
         assertThat(givenConfig).isInstanceOf(ApiBaseUrlConfig.Explicit.class);
         assertThat(((ApiBaseUrlConfig.Explicit) givenConfig).url()).isEqualTo("https://api.example.com");
+    }
+
+    @Test
+    void shouldThrowExceptionWhenUrlNotAbsolute() {
+        // when
+        var thrown1 = catchThrowable(() -> ApiBaseUrlConfig.parse("/"));
+        var thrown2 = catchThrowable(() -> ApiBaseUrlConfig.parse("api/example"));
+        var thrown3 = catchThrowable(() -> ApiBaseUrlConfig.parse("/relative/path"));
+        var thrown4 = catchThrowable(() -> ApiBaseUrlConfig.parse("www.example.com/api"));
+
+        // then
+        then(thrown1).isInstanceOf(IllegalArgumentException.class);
+        then(thrown2).isInstanceOf(IllegalArgumentException.class);
+        then(thrown3).isInstanceOf(IllegalArgumentException.class);
+        then(thrown4).isInstanceOf(IllegalArgumentException.class);
     }
 
     private OpenAPI givenOpenApiWithServer(String... urls) {
