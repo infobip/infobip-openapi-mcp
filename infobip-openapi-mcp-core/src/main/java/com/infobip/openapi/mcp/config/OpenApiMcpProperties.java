@@ -17,7 +17,10 @@ import org.springframework.validation.annotation.Validated;
  * Configuration properties for OpenAPI MCP Server.
  *
  * @param openApiUrl     URL to the OpenAPI specification. This should point to a valid OpenAPI document (e.g., JSON or YAML).
- * @param apiBaseUrl     Base URL for the API. This is used to construct the full URLs for the API endpoints.
+ * @param apiBaseUrl     Base URL for the API. Supports three formats:
+ *                       - String URL: Use the provided URL directly (e.g., "https://api.example.com")
+ *                       - Integer: Use the i-th server from OpenAPI servers array, 0-indexed (e.g., "0", "1")
+ *                       - Empty/null: Use the first server from OpenAPI servers array (default behavior)
  * @param connectTimeout Connection timeout for HTTP requests to the downstream API. The default is set to 5 seconds.
  * @param readTimeout    Read timeout for HTTP requests to the downstream API. The default is set to 5 seconds.
  * @param userAgent      User agent string for HTTP requests to the downstream API. If not specified, no User-Agent header will be set.
@@ -30,7 +33,7 @@ import org.springframework.validation.annotation.Validated;
 @ConfigurationProperties(prefix = OpenApiMcpProperties.PREFIX)
 public record OpenApiMcpProperties(
         @NotNull URI openApiUrl,
-        @NotNull URI apiBaseUrl,
+        String apiBaseUrl,
         Duration connectTimeout,
         Duration readTimeout,
         String userAgent,

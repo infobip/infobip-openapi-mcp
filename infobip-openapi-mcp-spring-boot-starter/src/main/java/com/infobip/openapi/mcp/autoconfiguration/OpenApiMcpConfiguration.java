@@ -4,6 +4,8 @@ import static com.infobip.openapi.mcp.autoconfiguration.Qualifiers.TOOL_HANDLER_
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.infobip.openapi.mcp.McpRequestContextFactory;
+import com.infobip.openapi.mcp.config.ApiBaseUrlConfig;
+import com.infobip.openapi.mcp.config.ApiBaseUrlProvider;
 import com.infobip.openapi.mcp.config.OpenApiMcpProperties;
 import com.infobip.openapi.mcp.enricher.*;
 import com.infobip.openapi.mcp.error.DefaultErrorModelProvider;
@@ -90,15 +92,25 @@ class OpenApiMcpConfiguration {
     }
 
     @Bean
+    public ApiBaseUrlProvider apiBaseUrlResolver(OpenApiMcpProperties properties, OpenApiRegistry openApiRegistry) {
+        var config = ApiBaseUrlConfig.parse(properties.apiBaseUrl());
+        return new ApiBaseUrlProvider(config, openApiRegistry);
+    }
+
+    @Bean
     @Qualifier(TOOL_HANDLER_REST_CLIENT_QUALIFIER)
-    public RestClient toolHandlerRestClient(OpenApiMcpProperties properties) {
+    public RestClient toolHandlerRestClient(
+            OpenApiMcpProperties properties, OpenApiRegistry openApiRegistry, ApiBaseUrlProvider apiBaseUrlProvider) {
         var factory = new SimpleClientHttpRequestFactory();
         factory.setConnectTimeout((int) properties.connectTimeout().toMillis());
         factory.setReadTimeout((int) properties.readTimeout().toMillis());
 
+        // Resolve the base URL from the loaded OpenAPI spec
+        var resolvedBaseUrl = apiBaseUrlProvider.get();
+
         return RestClient.builder()
                 .requestFactory(factory)
-                .baseUrl(properties.apiBaseUrl().toString())
+                .baseUrl(resolvedBaseUrl.toString())
                 .build();
     }
 
