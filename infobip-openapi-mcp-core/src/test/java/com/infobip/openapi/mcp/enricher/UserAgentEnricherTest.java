@@ -111,7 +111,7 @@ class UserAgentEnricherTest {
     private OpenApiMcpProperties createProperties(String userAgent) {
         return new OpenApiMcpProperties(
                 URI.create("https://example.com/openapi.json"),
-                URI.create("https://example.com/api"),
+                "https://example.com/api",
                 null,
                 null,
                 userAgent,

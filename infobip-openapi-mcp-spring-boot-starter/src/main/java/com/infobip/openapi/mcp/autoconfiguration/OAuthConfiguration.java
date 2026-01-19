@@ -5,7 +5,7 @@ import static com.infobip.openapi.mcp.autoconfiguration.Qualifiers.OAUTH_REST_CL
 import com.infobip.openapi.mcp.auth.OAuthProperties;
 import com.infobip.openapi.mcp.auth.scope.ScopeDiscoveryService;
 import com.infobip.openapi.mcp.auth.scope.WwwAuthenticateProvider;
-import com.infobip.openapi.mcp.config.OpenApiMcpProperties;
+import com.infobip.openapi.mcp.config.ApiBaseUrlProvider;
 import com.infobip.openapi.mcp.util.XForwardedHostCalculator;
 import java.util.Optional;
 import org.springframework.ai.mcp.server.common.autoconfigure.McpServerStdioDisabledCondition;
@@ -38,9 +38,9 @@ class OAuthConfiguration {
     public WwwAuthenticateProvider wwwAuthenticateProvider(
             OAuthProperties oAuthProperties,
             Optional<ScopeDiscoveryService> scopeDiscoveryService,
-            OpenApiMcpProperties openApiMcpProperties,
-            XForwardedHostCalculator xForwardedHostCalculator) {
+            XForwardedHostCalculator xForwardedHostCalculator,
+            ApiBaseUrlProvider apiBaseUrlProvider) {
         return new WwwAuthenticateProvider(
-                oAuthProperties, scopeDiscoveryService, openApiMcpProperties, xForwardedHostCalculator);
+                oAuthProperties, scopeDiscoveryService, xForwardedHostCalculator, apiBaseUrlProvider);
     }
 }

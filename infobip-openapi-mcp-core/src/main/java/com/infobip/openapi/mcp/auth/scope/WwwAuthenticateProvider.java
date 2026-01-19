@@ -1,7 +1,7 @@
 package com.infobip.openapi.mcp.auth.scope;
 
 import com.infobip.openapi.mcp.auth.OAuthProperties;
-import com.infobip.openapi.mcp.config.OpenApiMcpProperties;
+import com.infobip.openapi.mcp.config.ApiBaseUrlProvider;
 import com.infobip.openapi.mcp.util.XForwardedHostCalculator;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.Optional;
@@ -19,18 +19,18 @@ public class WwwAuthenticateProvider {
 
     private final OAuthProperties oAuthProperties;
     private final Optional<ScopeDiscoveryService> scopeDiscoveryService;
-    private final OpenApiMcpProperties openApiMcpProperties;
     private final XForwardedHostCalculator xForwardedHostCalculator;
+    private final ApiBaseUrlProvider apiBaseUrlProvider;
 
     public WwwAuthenticateProvider(
             OAuthProperties oAuthProperties,
             Optional<ScopeDiscoveryService> scopeDiscoveryService,
-            OpenApiMcpProperties openApiMcpProperties,
-            XForwardedHostCalculator xForwardedHostCalculator) {
+            XForwardedHostCalculator xForwardedHostCalculator,
+            ApiBaseUrlProvider apiBaseUrlProvider) {
         this.oAuthProperties = oAuthProperties;
         this.scopeDiscoveryService = scopeDiscoveryService;
-        this.openApiMcpProperties = openApiMcpProperties;
         this.xForwardedHostCalculator = xForwardedHostCalculator;
+        this.apiBaseUrlProvider = apiBaseUrlProvider;
     }
 
     /**
@@ -67,7 +67,7 @@ public class WwwAuthenticateProvider {
 
         var builder =
                 switch (wwwAuthenticateProperties.urlSource()) {
-                    case API_BASE_URL -> UriComponentsBuilder.fromUri(openApiMcpProperties.apiBaseUrl());
+                    case API_BASE_URL -> UriComponentsBuilder.fromUri(apiBaseUrlProvider.get());
                     case X_FORWARDED_HOST ->
                         wwwAuthenticateProperties.includeMcpEndpoint()
                                 ? xForwardedHostCalculator.hostWithRootPathBuilder(request)
