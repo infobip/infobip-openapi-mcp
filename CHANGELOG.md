@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Upgraded framework version in the open-meteo-mcp example to the latest release.
+- Updated `infobip.openapi.mcp.api-base-url` to accept either absolute URLs or 0-indexed integer values to select the appropriate server from OpenAPI specification.
 
 ## 0.1.3
 
