@@ -94,12 +94,6 @@ public class DiscriminatorFlattener implements OpenApiFilter {
                         var allOfSchemas = (List<Schema>) referencedSchema.getAllOf();
                         var resolvedAllOfSchemas = new ArrayList<Schema>();
                         for (Schema<?> allOfSchema : allOfSchemas) {
-                            if (isPropertyFound) {
-                                // If we already found the property, we can skip processing the rest of the allOf
-                                // schemas.
-                                resolvedAllOfSchemas.add(allOfSchema);
-                                continue;
-                            }
                             if (allOfSchema.get$ref() != null) {
                                 var allOfSchemaName = RefUtils.extractSimpleName(allOfSchema.get$ref())
                                         .getKey();
@@ -109,6 +103,20 @@ public class DiscriminatorFlattener implements OpenApiFilter {
                                             && referencedAllOfSchema
                                                     .getProperties()
                                                     .containsKey(propertyName)) {
+                                        if (isPropertyFound) {
+                                            int propertyCount = referencedAllOfSchema
+                                                    .getProperties()
+                                                    .size();
+                                            LOGGER.warn(
+                                                    "Multiple schemas define the same discriminator property '{}'. "
+                                                            + "AllOf component '{}' will be skipped as the property has already been adjusted during schema {} processing. "
+                                                            + "Skipped schema had {} properties.",
+                                                    propertyName,
+                                                    allOfSchemaName,
+                                                    schemaName,
+                                                    propertyCount);
+                                            continue;
+                                        }
                                         isPropertyFound = true;
                                         var adjustedSchema = adjustSchemaWithDiscriminatorProperty(
                                                 referencedAllOfSchema, propertyName, propertyValue);
@@ -117,6 +125,18 @@ public class DiscriminatorFlattener implements OpenApiFilter {
                                 }
                             } else if (allOfSchema.getProperties() != null
                                     && allOfSchema.getProperties().containsKey(propertyName)) {
+                                if (isPropertyFound) {
+                                    int propertyCount =
+                                            allOfSchema.getProperties().size();
+                                    LOGGER.warn(
+                                            "Multiple schemas define the same discriminator property '{}'. "
+                                                    + "Inline allOf schema will be skipped as the property has already been adjusted during schema {} processing. "
+                                                    + "Skipped schema had {} properties.",
+                                            propertyName,
+                                            schemaName,
+                                            propertyCount);
+                                    continue;
+                                }
                                 isPropertyFound = true;
                                 var adjustedSchema =
                                         adjustSchemaWithDiscriminatorProperty(allOfSchema, propertyName, propertyValue);

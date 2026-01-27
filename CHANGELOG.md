@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - A new step in the release workflow that automatically updates references to framework version in `README.md`
 - `./examples/infobip-sms-mock-mcp` project that demonstrates the recently introduced mock tool mode.
+- Enhanced discriminator flattening to detect and skip duplicate discriminator properties in allOf schemas. When multiple schemas define the same discriminator property, only the first occurrence is adjusted
+  and subsequent schemas are skipped. Warning logs now include the number of properties in skipped schemas to help identify potential data loss.
 
 ### Changed
 

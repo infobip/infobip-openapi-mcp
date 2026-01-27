@@ -9,9 +9,13 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.skyscreamer.jsonassert.JSONAssert;
 import org.skyscreamer.jsonassert.JSONCompareMode;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 
+@ExtendWith(OutputCaptureExtension.class)
 class DiscriminatorFlattenerTest {
 
     private DiscriminatorFlattener flattener;
@@ -2270,6 +2274,500 @@ class DiscriminatorFlattenerTest {
                 }
                 """;
             assertFlattened(input, expected);
+        }
+    }
+
+    @Nested
+    class DuplicateDiscriminatorPropertyInAllOf {
+
+        @Test
+        @DisplayName("Referenced schema with duplicate discriminator - only first is adjusted, second is skipped")
+        void referencedSchemaWithDuplicateDiscriminator(CapturedOutput output) throws Exception {
+            var input = """
+                {
+                  "openapi": "3.1.0",
+                  "info": { "title": "API", "version": "1" },
+                  "paths": { },
+                  "servers": [ { "url": "/" } ],
+                  "components": {
+                    "schemas": {
+                      "BaseMessage": {
+                        "type": "object",
+                        "discriminator": {
+                          "propertyName": "messageType",
+                          "mapping": {
+                            "TEXT": "#/components/schemas/TextMessage"
+                          }
+                        },
+                        "properties": {
+                          "messageType": {
+                            "type": "string"
+                          }
+                        },
+                        "required": ["messageType"]
+                      },
+                      "CommonProperties": {
+                        "type": "object",
+                        "properties": {
+                          "messageType": {
+                            "type": "string",
+                            "description": "Type of the message"
+                          },
+                          "timestamp": {
+                            "type": "string",
+                            "format": "date-time"
+                          }
+                        }
+                      },
+                      "AdditionalProperties": {
+                        "type": "object",
+                        "properties": {
+                          "messageType": {
+                            "type": "string",
+                            "description": "Message type identifier"
+                          },
+                          "sender": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "TextMessage": {
+                        "type": "object",
+                        "allOf": [
+                          { "$ref": "#/components/schemas/CommonProperties" },
+                          { "$ref": "#/components/schemas/AdditionalProperties" }
+                        ],
+                        "required": ["messageType"]
+                      }
+                    }
+                  }
+                }
+                """;
+
+            var expectedOutput = """
+                {
+                  "openapi": "3.1.0",
+                  "info": { "title": "API", "version": "1" },
+                  "paths": { },
+                  "servers": [ { "url": "/" } ],
+                  "components": {
+                    "schemas": {
+                      "BaseMessage": {
+                        "type": "object",
+                        "oneOf": [
+                          {
+                            "type": "object",
+                            "allOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "messageType": {
+                                    "type": "string",
+                                    "enum": ["TEXT"],
+                                    "default": "TEXT",
+                                    "description": "Always set to 'TEXT'."
+                                  },
+                                  "timestamp": {
+                                    "type": "string",
+                                    "format": "date-time"
+                                  }
+                                }
+                              }
+                            ],
+                            "required": ["messageType"]
+                          }
+                        ],
+                        "required": ["messageType"]
+                      },
+                      "CommonProperties": {
+                        "type": "object",
+                        "properties": {
+                          "messageType": {
+                            "type": "string",
+                            "description": "Type of the message"
+                          },
+                          "timestamp": {
+                            "type": "string",
+                            "format": "date-time"
+                          }
+                        }
+                      },
+                      "AdditionalProperties": {
+                        "type": "object",
+                        "properties": {
+                          "messageType": {
+                            "type": "string",
+                            "description": "Message type identifier"
+                          },
+                          "sender": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "TextMessage": {
+                        "type": "object",
+                        "allOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "messageType": {
+                                "type": "string",
+                                "enum": ["TEXT"],
+                                "default": "TEXT",
+                                "description": "Always set to 'TEXT'."
+                              },
+                              "timestamp": {
+                                "type": "string",
+                                "format": "date-time"
+                              }
+                            }
+                          }
+                        ],
+                        "required": ["messageType"]
+                      }
+                    }
+                  }
+                }
+                """;
+
+            assertFlattened(input, expectedOutput);
+
+            then(output.getOut())
+                    .contains("Multiple schemas define the same discriminator property 'messageType'. "
+                            + "AllOf component 'AdditionalProperties' will be skipped as the property has already been adjusted during schema TextMessage processing. "
+                            + "Skipped schema had 2 properties.");
+        }
+
+        @Test
+        @DisplayName("Inline schema with duplicate discriminator - only first is adjusted, second is skipped")
+        void inlineSchemaWithDuplicateDiscriminator(CapturedOutput output) throws Exception {
+            var input = """
+                {
+                  "openapi": "3.1.0",
+                  "info": { "title": "API", "version": "1" },
+                  "paths": { },
+                  "servers": [ { "url": "/" } ],
+                  "components": {
+                    "schemas": {
+                      "BaseMessage": {
+                        "type": "object",
+                        "discriminator": {
+                          "propertyName": "messageType",
+                          "mapping": {
+                            "TEXT": "#/components/schemas/TextMessage"
+                          }
+                        },
+                        "properties": {
+                          "messageType": {
+                            "type": "string"
+                          }
+                        },
+                        "required": ["messageType"]
+                      },
+                      "TextMessage": {
+                        "type": "object",
+                        "allOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "messageType": {
+                                "type": "string",
+                                "description": "Type of the message"
+                              },
+                              "timestamp": {
+                                "type": "string",
+                                "format": "date-time"
+                              }
+                            }
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "messageType": {
+                                "type": "string",
+                                "description": "Duplicate message type"
+                              },
+                              "sender": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        ],
+                        "required": ["messageType"]
+                      }
+                    }
+                  }
+                }
+                """;
+
+            var expectedOutput = """
+                {
+                  "openapi": "3.1.0",
+                  "info": { "title": "API", "version": "1" },
+                  "paths": { },
+                  "servers": [ { "url": "/" } ],
+                  "components": {
+                    "schemas": {
+                      "BaseMessage": {
+                        "type": "object",
+                        "oneOf": [
+                          {
+                            "type": "object",
+                            "allOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "messageType": {
+                                    "type": "string",
+                                    "enum": ["TEXT"],
+                                    "default": "TEXT",
+                                    "description": "Always set to 'TEXT'."
+                                  },
+                                  "timestamp": {
+                                    "type": "string",
+                                    "format": "date-time"
+                                  }
+                                }
+                              }
+                            ],
+                            "required": ["messageType"]
+                          }
+                        ],
+                        "required": ["messageType"]
+                      },
+                      "TextMessage": {
+                        "type": "object",
+                        "allOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "messageType": {
+                                "type": "string",
+                                "enum": ["TEXT"],
+                                "default": "TEXT",
+                                "description": "Always set to 'TEXT'."
+                              },
+                              "timestamp": {
+                                "type": "string",
+                                "format": "date-time"
+                              }
+                            }
+                          }
+                        ],
+                        "required": ["messageType"]
+                      }
+                    }
+                  }
+                }
+                """;
+
+            assertFlattened(input, expectedOutput);
+
+            then(output.getOut())
+                    .contains("Multiple schemas define the same discriminator property 'messageType'. "
+                            + "Inline allOf schema will be skipped as the property has already been adjusted during schema TextMessage processing. "
+                            + "Skipped schema had 2 properties.");
+        }
+
+        @Test
+        @DisplayName(
+                "Mixed ref and inline schemas with duplicate discriminator - loop continues and processes all schemas")
+        void mixedRefAndInlineSchemasWithDuplicateDiscriminator(CapturedOutput output) throws Exception {
+            var input = """
+                {
+                  "openapi": "3.1.0",
+                  "info": { "title": "API", "version": "1" },
+                  "paths": { },
+                  "servers": [ { "url": "/" } ],
+                  "components": {
+                    "schemas": {
+                      "BaseMessage": {
+                        "type": "object",
+                        "discriminator": {
+                          "propertyName": "messageType",
+                          "mapping": {
+                            "TEXT": "#/components/schemas/TextMessage"
+                          }
+                        },
+                        "properties": {
+                          "messageType": {
+                            "type": "string"
+                          }
+                        },
+                        "required": ["messageType"]
+                      },
+                      "CommonProperties": {
+                        "type": "object",
+                        "properties": {
+                          "messageType": {
+                            "type": "string",
+                            "description": "Type of the message"
+                          },
+                          "timestamp": {
+                            "type": "string",
+                            "format": "date-time"
+                          }
+                        }
+                      },
+                      "AdditionalProperties": {
+                        "type": "object",
+                        "properties": {
+                          "messageType": {
+                            "type": "string",
+                            "description": "Message type identifier"
+                          },
+                          "sender": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "TextMessage": {
+                        "type": "object",
+                        "allOf": [
+                          { "$ref": "#/components/schemas/CommonProperties" },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "messageType": {
+                                "type": "string",
+                                "description": "Duplicate inline discriminator"
+                              },
+                              "priority": {
+                                "type": "integer"
+                              }
+                            }
+                          },
+                          { "$ref": "#/components/schemas/AdditionalProperties" },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "text": {
+                                "type": "string",
+                                "description": "Message text content"
+                              }
+                            }
+                          }
+                        ],
+                        "required": ["messageType", "text"]
+                      }
+                    }
+                  }
+                }
+                """;
+
+            var expectedOutput = """
+                {
+                  "openapi": "3.1.0",
+                  "info": { "title": "API", "version": "1" },
+                  "paths": { },
+                  "servers": [ { "url": "/" } ],
+                  "components": {
+                    "schemas": {
+                      "BaseMessage": {
+                        "type": "object",
+                        "oneOf": [
+                          {
+                            "type": "object",
+                            "allOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "messageType": {
+                                    "type": "string",
+                                    "enum": ["TEXT"],
+                                    "default": "TEXT",
+                                    "description": "Always set to 'TEXT'."
+                                  },
+                                  "timestamp": {
+                                    "type": "string",
+                                    "format": "date-time"
+                                  }
+                                }
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "text": {
+                                    "type": "string",
+                                    "description": "Message text content"
+                                  }
+                                }
+                              }
+                            ],
+                            "required": ["messageType", "text"]
+                          }
+                        ],
+                        "required": ["messageType"]
+                      },
+                      "CommonProperties": {
+                        "type": "object",
+                        "properties": {
+                          "messageType": {
+                            "type": "string",
+                            "description": "Type of the message"
+                          },
+                          "timestamp": {
+                            "type": "string",
+                            "format": "date-time"
+                          }
+                        }
+                      },
+                      "AdditionalProperties": {
+                        "type": "object",
+                        "properties": {
+                          "messageType": {
+                            "type": "string",
+                            "description": "Message type identifier"
+                          },
+                          "sender": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "TextMessage": {
+                        "type": "object",
+                        "allOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "messageType": {
+                                "type": "string",
+                                "enum": ["TEXT"],
+                                "default": "TEXT",
+                                "description": "Always set to 'TEXT'."
+                              },
+                              "timestamp": {
+                                "type": "string",
+                                "format": "date-time"
+                              }
+                            }
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "text": {
+                                "type": "string",
+                                "description": "Message text content"
+                              }
+                            }
+                          }
+                        ],
+                        "required": ["messageType", "text"]
+                      }
+                    }
+                  }
+                }
+                """;
+
+            assertFlattened(input, expectedOutput);
+
+            then(output.getOut())
+                    .contains("Multiple schemas define the same discriminator property 'messageType'. "
+                            + "Inline allOf schema will be skipped as the property has already been adjusted during schema TextMessage processing. "
+                            + "Skipped schema had 2 properties.")
+                    .contains("Multiple schemas define the same discriminator property 'messageType'. "
+                            + "AllOf component 'AdditionalProperties' will be skipped as the property has already been adjusted during schema TextMessage processing. "
+                            + "Skipped schema had 2 properties.");
         }
     }
 
