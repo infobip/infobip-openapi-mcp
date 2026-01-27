@@ -5,7 +5,10 @@ import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.media.Schema;
 import io.swagger.v3.oas.models.media.StringSchema;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
@@ -39,22 +42,14 @@ public class DiscriminatorFlattener implements OpenApiFilter {
                 .map(Components::getSchemas)
                 .orElse(Map.of());
 
-        var visitedSchemas = new HashSet<String>();
-
         for (var schemaEntry : components.entrySet()) {
-            var schemaName = schemaEntry.getKey();
-            var schema = schemaEntry.getValue();
-            visitedSchemas.add(schemaName);
-            processDiscriminator(schema, components, visitedSchemas);
+            processDiscriminator(schemaEntry.getValue(), components);
         }
 
         return openApi;
     }
 
-    private void processDiscriminator(
-            @Nullable Schema<?> schemaToProcess,
-            Map<String, Schema> components,
-            Set<String> schemasVisitedDuringTraversal) {
+    private void processDiscriminator(@Nullable Schema<?> schemaToProcess, Map<String, Schema> components) {
         if (schemaToProcess == null) {
             return;
         }
@@ -117,11 +112,6 @@ public class DiscriminatorFlattener implements OpenApiFilter {
                                         isPropertyFound = true;
                                         var adjustedSchema = adjustSchemaWithDiscriminatorProperty(
                                                 referencedAllOfSchema, propertyName, propertyValue);
-                                        if (schemasVisitedDuringTraversal.contains(allOfSchemaName)) {
-                                            // Explicitly remove the discriminator from the allOf schema
-                                            // to avoid infinite recursion
-                                            adjustedSchema.setDiscriminator(null);
-                                        }
                                         resolvedAllOfSchemas.add(adjustedSchema);
                                     }
                                 }
@@ -158,60 +148,60 @@ public class DiscriminatorFlattener implements OpenApiFilter {
         // We need to look for the discriminator of all non-ref schemas.
         if (schemaToProcess.getAllOf() != null) {
             for (var allOfSchema : schemaToProcess.getAllOf()) {
-                processDiscriminator(allOfSchema, components, schemasVisitedDuringTraversal);
+                processDiscriminator(allOfSchema, components);
             }
         }
         if (schemaToProcess.getAnyOf() != null) {
             for (var anyOfSchema : schemaToProcess.getAnyOf()) {
-                processDiscriminator(anyOfSchema, components, schemasVisitedDuringTraversal);
+                processDiscriminator(anyOfSchema, components);
             }
         }
         if (schemaToProcess.getOneOf() != null) {
             for (var oneOfSchema : schemaToProcess.getOneOf()) {
-                processDiscriminator(oneOfSchema, components, schemasVisitedDuringTraversal);
+                processDiscriminator(oneOfSchema, components);
             }
         }
 
         // Process array-related schema properties (OpenAPI 3.1)
         if (schemaToProcess.getPrefixItems() != null) {
             for (var prefixItemSchema : schemaToProcess.getPrefixItems()) {
-                processDiscriminator(prefixItemSchema, components, schemasVisitedDuringTraversal);
+                processDiscriminator(prefixItemSchema, components);
             }
         }
         if (schemaToProcess.getItems() != null) {
-            processDiscriminator(schemaToProcess.getItems(), components, schemasVisitedDuringTraversal);
+            processDiscriminator(schemaToProcess.getItems(), components);
         }
         if (schemaToProcess.getUnevaluatedItems() != null) {
-            processDiscriminator(schemaToProcess.getUnevaluatedItems(), components, schemasVisitedDuringTraversal);
+            processDiscriminator(schemaToProcess.getUnevaluatedItems(), components);
         }
         if (schemaToProcess.getContains() != null) {
-            processDiscriminator(schemaToProcess.getContains(), components, schemasVisitedDuringTraversal);
+            processDiscriminator(schemaToProcess.getContains(), components);
         }
 
         // Process object-related schema properties (OpenAPI 3.1)
         if (schemaToProcess.getDependentSchemas() != null) {
             for (var dependentSchema : schemaToProcess.getDependentSchemas().values()) {
-                processDiscriminator(dependentSchema, components, schemasVisitedDuringTraversal);
+                processDiscriminator(dependentSchema, components);
             }
         }
 
         // Process conditional schema properties (OpenAPI 3.1)
         if (schemaToProcess.getElse() != null) {
-            processDiscriminator(schemaToProcess.getElse(), components, schemasVisitedDuringTraversal);
+            processDiscriminator(schemaToProcess.getElse(), components);
         }
         if (schemaToProcess.getNot() != null) {
-            processDiscriminator(schemaToProcess.getNot(), components, schemasVisitedDuringTraversal);
+            processDiscriminator(schemaToProcess.getNot(), components);
         }
 
         // Process content schema (OpenAPI 3.1)
         if (schemaToProcess.getContentSchema() != null) {
-            processDiscriminator(schemaToProcess.getContentSchema(), components, schemasVisitedDuringTraversal);
+            processDiscriminator(schemaToProcess.getContentSchema(), components);
         }
 
         // Finally, look for the discriminator in all non-ref property schemas.
         if (schemaToProcess.getProperties() != null) {
             for (var propertySchema : schemaToProcess.getProperties().values()) {
-                processDiscriminator(propertySchema, components, schemasVisitedDuringTraversal);
+                processDiscriminator(propertySchema, components);
             }
         }
     }
@@ -243,7 +233,6 @@ public class DiscriminatorFlattener implements OpenApiFilter {
         return adjustedSchema
                 .required(originalSchema.getRequired())
                 .description(originalSchema.getDescription())
-                .additionalProperties(originalSchema.getAdditionalProperties())
-                .discriminator(originalSchema.getDiscriminator());
+                .additionalProperties(originalSchema.getAdditionalProperties());
     }
 }

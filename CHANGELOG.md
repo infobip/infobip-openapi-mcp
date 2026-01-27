@@ -17,6 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Upgraded framework version in the open-meteo-mcp example to the latest release.
 - Updated `infobip.openapi.mcp.api-base-url` to accept either absolute URLs or 0-indexed integer values to select the appropriate server from OpenAPI specification.
 
+### Fixed
+
+- Removed discriminators from adjusted schemas during discriminator flattening. Once a schema is adjusted to support only a single enum value, the discriminator becomes obsolete. Removed visited schema tracking that was causing discriminator leakage.
+
 ## 0.1.3
 
 ### Added
