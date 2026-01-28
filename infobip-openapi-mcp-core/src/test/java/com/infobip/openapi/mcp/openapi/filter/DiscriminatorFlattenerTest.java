@@ -159,7 +159,6 @@ class DiscriminatorFlattenerTest {
                               "kind": {
                                 "type": "string",
                                 "enum": [ "a" ],
-                                "default": "a",
                                 "description": "Always set to 'a'."
                               },
                               "aProp": { "type": "integer" }
@@ -171,7 +170,6 @@ class DiscriminatorFlattenerTest {
                               "kind": {
                                 "type": "string",
                                 "enum": [ "b" ],
-                                "default": "b",
                                 "description": "Always set to 'b'."
                               },
                               "bProp": { "type": "boolean" }
@@ -250,7 +248,6 @@ class DiscriminatorFlattenerTest {
                               "type": {
                                 "type": "string",
                                 "enum": [ "ok" ],
-                                "default": "ok",
                                 "description": "Always set to 'ok'."
                               },
                               "value": { "type": "string" }
@@ -377,7 +374,6 @@ class DiscriminatorFlattenerTest {
                                   "kind": {
                                     "type": "string",
                                     "enum": [ "x" ],
-                                    "default": "x",
                                     "description": "Always set to 'x'."
                                   },
                                   "xval": { "type": "integer" }
@@ -399,7 +395,6 @@ class DiscriminatorFlattenerTest {
                               "kind": {
                                 "type": "string",
                                 "enum": [ "x" ],
-                                "default": "x",
                                 "description": "Always set to 'x'."
                               },
                               "xval": { "type": "integer" }
@@ -477,7 +472,6 @@ class DiscriminatorFlattenerTest {
                                   "kind": {
                                     "type": "string",
                                     "enum": [ "car" ],
-                                    "default": "car",
                                     "description": "Always set to 'car'."
                                   }
                                 }
@@ -499,7 +493,6 @@ class DiscriminatorFlattenerTest {
                               "kind": {
                                 "type": "string",
                                 "enum": [ "car" ],
-                                "default": "car",
                                 "description": "Always set to 'car'."
                               }
                             }
@@ -580,7 +573,6 @@ class DiscriminatorFlattenerTest {
                                   "kind": {
                                     "type": "string",
                                     "enum": [ "car" ],
-                                    "default": "car",
                                     "description": "Always set to 'car'."
                                   }
                                 }
@@ -602,7 +594,6 @@ class DiscriminatorFlattenerTest {
                               "kind": {
                                 "type": "string",
                                 "enum": [ "car" ],
-                                "default": "car",
                                 "description": "Always set to 'car'."
                               }
                             }
@@ -674,7 +665,6 @@ class DiscriminatorFlattenerTest {
                                   "t": {
                                     "type": "string",
                                     "enum": [ "book" ],
-                                    "default": "book",
                                     "description": "Always set to 'book'."
                                   },
                                   "title": { "type": "string" }
@@ -760,7 +750,6 @@ class DiscriminatorFlattenerTest {
                                   "actionType": {
                                     "type": "string",
                                     "enum": [ "specific" ],
-                                    "default": "specific",
                                     "description": "Always set to 'specific'."
                                   }
                                 }
@@ -784,7 +773,6 @@ class DiscriminatorFlattenerTest {
                               "actionType": {
                                 "type": "string",
                                 "enum": [ "specific" ],
-                                "default": "specific",
                                 "description": "Always set to 'specific'."
                               }
                             }
@@ -886,7 +874,6 @@ class DiscriminatorFlattenerTest {
                                   "type": {
                                     "type": "string",
                                     "enum": [ "TEXT" ],
-                                    "default": "TEXT",
                                     "description": "Always set to 'TEXT'."
                                   }
                                 }
@@ -908,7 +895,6 @@ class DiscriminatorFlattenerTest {
                                   "type": {
                                     "type": "string",
                                     "enum": [ "INTEGER" ],
-                                    "default": "INTEGER",
                                     "description": "Always set to 'INTEGER'."
                                   }
                                 }
@@ -932,7 +918,6 @@ class DiscriminatorFlattenerTest {
                               "type": {
                                 "type": "string",
                                 "enum": [ "TEXT" ],
-                                "default": "TEXT",
                                 "description": "Always set to 'TEXT'."
                               }
                             }
@@ -954,7 +939,6 @@ class DiscriminatorFlattenerTest {
                               "type": {
                                 "type": "string",
                                 "enum": [ "INTEGER" ],
-                                "default": "INTEGER",
                                 "description": "Always set to 'INTEGER'."
                               }
                             }
@@ -1080,7 +1064,6 @@ class DiscriminatorFlattenerTest {
                                   "category": {
                                     "type": "string",
                                     "enum": [ "OPTION_A" ],
-                                    "default": "OPTION_A",
                                     "description": "Always set to 'OPTION_A'."
                                   }
                                 }
@@ -1110,7 +1093,6 @@ class DiscriminatorFlattenerTest {
                                   "mode": {
                                     "type": "string",
                                     "enum": [ "MODE_X" ],
-                                    "default": "MODE_X",
                                     "description": "Always set to 'MODE_X'."
                                   }
                                 }
@@ -1134,7 +1116,6 @@ class DiscriminatorFlattenerTest {
                               "category": {
                                 "type": "string",
                                 "enum": [ "OPTION_A" ],
-                                "default": "OPTION_A",
                                 "description": "Always set to 'OPTION_A'."
                               }
                             }
@@ -1159,7 +1140,6 @@ class DiscriminatorFlattenerTest {
                               "mode": {
                                 "type": "string",
                                 "enum": [ "MODE_X" ],
-                                "default": "MODE_X",
                                 "description": "Always set to 'MODE_X'."
                               }
                             }
@@ -1240,7 +1220,6 @@ class DiscriminatorFlattenerTest {
                                   "type": {
                                     "type": "string",
                                     "enum": [ "forward" ],
-                                    "default": "forward",
                                     "description": "Always set to 'forward'."
                                   },
                                   "nestedAction": {
@@ -1314,7 +1293,6 @@ class DiscriminatorFlattenerTest {
                                   "dtype": {
                                     "type": "string",
                                     "enum": [ "leaf" ],
-                                    "default": "leaf",
                                     "description": "Always set to 'leaf'."
                                   }
                                 }
@@ -1332,7 +1310,6 @@ class DiscriminatorFlattenerTest {
                               "dtype": {
                                 "type": "string",
                                 "enum": [ "leaf" ],
-                                "default": "leaf",
                                 "description": "Always set to 'leaf'."
                               }
                             }
@@ -1458,7 +1435,6 @@ class DiscriminatorFlattenerTest {
                                   "type": {
                                     "type": "string",
                                     "enum": [ "car" ],
-                                    "default": "car",
                                     "description": "Always set to 'car'."
                                   }
                                 }
@@ -1485,7 +1461,6 @@ class DiscriminatorFlattenerTest {
                                   "type": {
                                     "type": "string",
                                     "enum": [ "bike" ],
-                                    "default": "bike",
                                     "description": "Always set to 'bike'."
                                   }
                                 }
@@ -1507,7 +1482,6 @@ class DiscriminatorFlattenerTest {
                               "type": {
                                 "type": "string",
                                 "enum": [ "car" ],
-                                "default": "car",
                                 "description": "Always set to 'car'."
                               }
                             }
@@ -1534,7 +1508,6 @@ class DiscriminatorFlattenerTest {
                               "type": {
                                 "type": "string",
                                 "enum": [ "bike" ],
-                                "default": "bike",
                                 "description": "Always set to 'bike'."
                               }
                             }
@@ -1621,7 +1594,6 @@ class DiscriminatorFlattenerTest {
                             "dtype": {
                               "type": "string",
                               "enum": [ "first" ],
-                              "default": "first",
                               "description": "Always set to 'first'."
                             },
                             "f": {"type": "integer"}
@@ -1633,7 +1605,6 @@ class DiscriminatorFlattenerTest {
                             "dtype": {
                               "type": "string",
                               "enum": [ "second" ],
-                              "default": "second",
                               "description": "Always set to 'second'."
                             },
                             "b": {"type": "boolean"}
@@ -1645,7 +1616,6 @@ class DiscriminatorFlattenerTest {
                             "dtype": {
                               "type": "string",
                               "enum": [ "third" ],
-                              "default": "third",
                               "description": "Always set to 'third'."
                             },
                             "z": {"type": "string"}
@@ -1758,7 +1728,6 @@ class DiscriminatorFlattenerTest {
                               "atype": {
                                 "type": "string",
                                 "enum": [ "dog" ],
-                                "default": "dog",
                                 "description": "Always set to 'dog'."
                               },
                               "bark": { "type": "boolean" }
@@ -1854,7 +1823,6 @@ class DiscriminatorFlattenerTest {
                               "mtype": {
                                 "type": "string",
                                 "enum": [ "text" ],
-                                "default": "text",
                                 "description": "Always set to 'text'."
                               },
                               "body": { "type": "string" }
@@ -2020,7 +1988,6 @@ class DiscriminatorFlattenerTest {
                                   "type": {
                                     "type": "string",
                                     "enum": ["TYPE_A"],
-                                    "default": "TYPE_A",
                                     "description": "Always set to 'TYPE_A'."
                                   }
                                 },
@@ -2050,7 +2017,6 @@ class DiscriminatorFlattenerTest {
                                   "type": {
                                     "type": "string",
                                     "enum": ["TYPE_B"],
-                                    "default": "TYPE_B",
                                     "description": "Always set to 'TYPE_B'."
                                   }
                                 },
@@ -2097,7 +2063,6 @@ class DiscriminatorFlattenerTest {
                               "type": {
                                 "type": "string",
                                 "enum": ["TYPE_A"],
-                                "default": "TYPE_A",
                                 "description": "Always set to 'TYPE_A'."
                               }
                             },
@@ -2127,7 +2092,6 @@ class DiscriminatorFlattenerTest {
                               "type": {
                                 "type": "string",
                                 "enum": ["TYPE_B"],
-                                "default": "TYPE_B",
                                 "description": "Always set to 'TYPE_B'."
                               }
                             },
@@ -2250,7 +2214,6 @@ class DiscriminatorFlattenerTest {
                               "type": {
                                 "type": "string",
                                 "enum": [ "FORWARD" ],
-                                "default": "FORWARD",
                                 "description": "Always set to 'FORWARD'."
                               },
                               "url": { "type": "string" },
@@ -2364,7 +2327,6 @@ class DiscriminatorFlattenerTest {
                                   "messageType": {
                                     "type": "string",
                                     "enum": ["TEXT"],
-                                    "default": "TEXT",
                                     "description": "Always set to 'TEXT'."
                                   },
                                   "timestamp": {
@@ -2413,7 +2375,6 @@ class DiscriminatorFlattenerTest {
                               "messageType": {
                                 "type": "string",
                                 "enum": ["TEXT"],
-                                "default": "TEXT",
                                 "description": "Always set to 'TEXT'."
                               },
                               "timestamp": {
@@ -2520,7 +2481,6 @@ class DiscriminatorFlattenerTest {
                                   "messageType": {
                                     "type": "string",
                                     "enum": ["TEXT"],
-                                    "default": "TEXT",
                                     "description": "Always set to 'TEXT'."
                                   },
                                   "timestamp": {
@@ -2544,7 +2504,6 @@ class DiscriminatorFlattenerTest {
                               "messageType": {
                                 "type": "string",
                                 "enum": ["TEXT"],
-                                "default": "TEXT",
                                 "description": "Always set to 'TEXT'."
                               },
                               "timestamp": {
@@ -2675,7 +2634,6 @@ class DiscriminatorFlattenerTest {
                                   "messageType": {
                                     "type": "string",
                                     "enum": ["TEXT"],
-                                    "default": "TEXT",
                                     "description": "Always set to 'TEXT'."
                                   },
                                   "timestamp": {
@@ -2733,7 +2691,6 @@ class DiscriminatorFlattenerTest {
                               "messageType": {
                                 "type": "string",
                                 "enum": ["TEXT"],
-                                "default": "TEXT",
                                 "description": "Always set to 'TEXT'."
                               },
                               "timestamp": {
@@ -2826,7 +2783,6 @@ class DiscriminatorFlattenerTest {
                                   "type": {
                                     "type": "string",
                                     "enum": [ "item" ],
-                                    "default": "item",
                                     "description": "Always set to 'item'."
                                   },
                                   "value": { "type": "string" }
@@ -2899,7 +2855,6 @@ class DiscriminatorFlattenerTest {
                                 "kind": {
                                   "type": "string",
                                   "enum": [ "element" ],
-                                  "default": "element",
                                   "description": "Always set to 'element'."
                                 },
                                 "data": { "type": "integer" }
@@ -2971,7 +2926,6 @@ class DiscriminatorFlattenerTest {
                                 "mode": {
                                   "type": "string",
                                   "enum": [ "fallback" ],
-                                  "default": "fallback",
                                   "description": "Always set to 'fallback'."
                                 },
                                 "fallbackValue": { "type": "string" }
@@ -3043,7 +2997,6 @@ class DiscriminatorFlattenerTest {
                                 "searchType": {
                                   "type": "string",
                                   "enum": [ "match" ],
-                                  "default": "match",
                                   "description": "Always set to 'match'."
                                 },
                                 "pattern": { "type": "string" }
@@ -3124,7 +3077,6 @@ class DiscriminatorFlattenerTest {
                                   "configType": {
                                     "type": "string",
                                     "enum": [ "advanced" ],
-                                    "default": "advanced",
                                     "description": "Always set to 'advanced'."
                                   },
                                   "settings": { "type": "object" }
@@ -3201,7 +3153,6 @@ class DiscriminatorFlattenerTest {
                                 "fallbackType": {
                                   "type": "string",
                                   "enum": [ "basic" ],
-                                  "default": "basic",
                                   "description": "Always set to 'basic'."
                                 },
                                 "simple": { "type": "boolean" }
@@ -3273,7 +3224,6 @@ class DiscriminatorFlattenerTest {
                                 "forbidden": {
                                   "type": "string",
                                   "enum": [ "denied" ],
-                                  "default": "denied",
                                   "description": "Always set to 'denied'."
                                 },
                                 "reason": { "type": "string" }
@@ -3349,7 +3299,6 @@ class DiscriminatorFlattenerTest {
                                 "contentType": {
                                   "type": "string",
                                   "enum": [ "data" ],
-                                  "default": "data",
                                   "description": "Always set to 'data'."
                                 },
                                 "payload": { "type": "string" }
@@ -3438,7 +3387,6 @@ class DiscriminatorFlattenerTest {
                                     "itemType": {
                                       "type": "string",
                                       "enum": [ "simple" ],
-                                      "default": "simple",
                                       "description": "Always set to 'simple'."
                                     },
                                     "value": { "type": "string" }
@@ -3456,7 +3404,6 @@ class DiscriminatorFlattenerTest {
                                 "notType": {
                                   "type": "string",
                                   "enum": [ "forbidden" ],
-                                  "default": "forbidden",
                                   "description": "Always set to 'forbidden'."
                                 },
                                 "illegal": { "type": "boolean" }
@@ -3555,7 +3502,6 @@ class DiscriminatorFlattenerTest {
                               "messageType": {
                                 "type": "string",
                                 "enum": [ "text" ],
-                                "default": "text",
                                 "description": "Always set to 'text'."
                               },
                               "text": { "type": "string" }
@@ -3568,7 +3514,6 @@ class DiscriminatorFlattenerTest {
                               "messageType": {
                                 "type": "string",
                                 "enum": [ "image" ],
-                                "default": "image",
                                 "description": "Always set to 'image'."
                               },
                               "imageUrl": { "type": "string" }
@@ -3656,7 +3601,6 @@ class DiscriminatorFlattenerTest {
                               "messageType": {
                                 "type": "string",
                                 "enum": [ "text" ],
-                                "default": "text",
                                 "description": "Always set to 'text'."
                               },
                               "text": { "type": "string" }

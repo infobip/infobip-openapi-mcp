@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Upgraded framework version in the open-meteo-mcp example to the latest release.
 - Updated `infobip.openapi.mcp.api-base-url` to accept either absolute URLs or 0-indexed integer values to select the appropriate server from OpenAPI specification.
 - Discriminator flattening now replaces adjusted schema descriptions with discriminator property values when the original description matches the parent schema description. This is common in OpenAPI specifications generated from code where polymorphic types share the same description.
+- Removed default values from discriminator properties during discriminator flattening. The discriminator property values are required and should be explicitly provided rather than populated by defaults.
 
 ### Fixed
 

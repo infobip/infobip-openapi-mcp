@@ -241,7 +241,6 @@ public class DiscriminatorFlattener implements OpenApiFilter {
                 var stringSchema = new StringSchema();
                 stringSchema
                         ._enum(List.of(discriminatorPropertyValueToSet))
-                        ._default(discriminatorPropertyValueToSet)
                         .description("Always set to '" + discriminatorPropertyValueToSet + "'.");
                 adjustedSchema.addProperty(name, stringSchema);
             } else {
