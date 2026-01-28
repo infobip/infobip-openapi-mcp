@@ -3623,5 +3623,116 @@ class DiscriminatorFlattenerTest {
 
             assertFlattened(input, expected);
         }
+
+        @Test
+        @DisplayName(
+                "When child schema with allOf referencing parent has same description as parent, use discriminator value as description")
+        void replacesDescriptionInAllOfChildWhenMatchesParent() throws Exception {
+            var input = """
+                {
+                  "openapi": "3.1.0",
+                  "info": { "title": "API", "version": "1" },
+                  "paths": { },
+                  "servers": [ { "url": "/" } ],
+                  "components": {
+                    "schemas": {
+                      "BaseAction": {
+                        "type": "object",
+                        "description": "An action that can be performed",
+                        "properties": {
+                          "actionType": { "type": "string" }
+                        },
+                        "discriminator": {
+                          "propertyName": "actionType",
+                          "mapping": {
+                            "forward": "#/components/schemas/ForwardAction"
+                          }
+                        }
+                      },
+                      "ForwardAction": {
+                        "type": "object",
+                        "description": "A forward action that can be performed",
+                        "allOf": [
+                          { "$ref": "#/components/schemas/BaseAction" },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "url": { "type": "string" }
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+                """;
+
+            var expected = """
+                {
+                  "openapi": "3.1.0",
+                  "info": { "title": "API", "version": "1" },
+                  "paths": { },
+                  "servers": [ { "url": "/" } ],
+                  "components": {
+                    "schemas": {
+                      "BaseAction": {
+                        "type": "object",
+                        "description": "An action that can be performed",
+                        "oneOf": [
+                          {
+                            "type": "object",
+                            "description": "A forward action that can be performed",
+                            "allOf": [
+                              {
+                                "type": "object",
+                                "description": "forward",
+                                "properties": {
+                                  "actionType": {
+                                    "type": "string",
+                                    "enum": [ "forward" ],
+                                    "description": "Always set to 'forward'."
+                                  }
+                                }
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "url": { "type": "string" }
+                                }
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      "ForwardAction": {
+                        "type": "object",
+                        "description": "A forward action that can be performed",
+                        "allOf": [
+                          {
+                            "type": "object",
+                            "description": "forward",
+                            "properties": {
+                              "actionType": {
+                                "type": "string",
+                                "enum": [ "forward" ],
+                                "description": "Always set to 'forward'."
+                              }
+                            }
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "url": { "type": "string" }
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+                """;
+
+            assertFlattened(input, expected);
+        }
     }
 }
