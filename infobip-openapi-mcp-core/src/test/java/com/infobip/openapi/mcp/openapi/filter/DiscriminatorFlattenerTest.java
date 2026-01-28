@@ -3486,4 +3486,198 @@ class DiscriminatorFlattenerTest {
             assertFlattened(input, expected);
         }
     }
+
+    @Nested
+    @DisplayName("Same description as parent schema")
+    class SameDescriptionAsParent {
+        @Test
+        @DisplayName("When adjusted schema has same description as parent, use discriminator value as description")
+        void replacesDescriptionWithDiscriminatorValueWhenMatchesParent() throws Exception {
+            var input = """
+                {
+                  "openapi": "3.1.0",
+                  "info": { "title": "API", "version": "1" },
+                  "paths": { },
+                  "servers": [ { "url": "/" } ],
+                  "components": {
+                    "schemas": {
+                      "Message": {
+                        "type": "object",
+                        "description": "A message that can be sent",
+                        "properties": {
+                          "messageType": { "type": "string" }
+                        },
+                        "discriminator": {
+                          "propertyName": "messageType",
+                          "mapping": {
+                            "text": "#/components/schemas/TextMessage",
+                            "image": "#/components/schemas/ImageMessage"
+                          }
+                        }
+                      },
+                      "TextMessage": {
+                        "type": "object",
+                        "description": "A message that can be sent",
+                        "properties": {
+                          "messageType": { "type": "string" },
+                          "text": { "type": "string" }
+                        }
+                      },
+                      "ImageMessage": {
+                        "type": "object",
+                        "description": "A message that can be sent",
+                        "properties": {
+                          "messageType": { "type": "string" },
+                          "imageUrl": { "type": "string" }
+                        }
+                      }
+                    }
+                  }
+                }
+                """;
+
+            var expected = """
+                {
+                  "openapi": "3.1.0",
+                  "info": { "title": "API", "version": "1" },
+                  "paths": { },
+                  "servers": [ { "url": "/" } ],
+                  "components": {
+                    "schemas": {
+                      "Message": {
+                        "type": "object",
+                        "description": "A message that can be sent",
+                        "oneOf": [
+                          {
+                            "type": "object",
+                            "description": "text",
+                            "properties": {
+                              "messageType": {
+                                "type": "string",
+                                "enum": [ "text" ],
+                                "default": "text",
+                                "description": "Always set to 'text'."
+                              },
+                              "text": { "type": "string" }
+                            }
+                          },
+                          {
+                            "type": "object",
+                            "description": "image",
+                            "properties": {
+                              "messageType": {
+                                "type": "string",
+                                "enum": [ "image" ],
+                                "default": "image",
+                                "description": "Always set to 'image'."
+                              },
+                              "imageUrl": { "type": "string" }
+                            }
+                          }
+                        ]
+                      },
+                      "TextMessage": {
+                        "type": "object",
+                        "description": "A message that can be sent",
+                        "properties": {
+                          "messageType": { "type": "string" },
+                          "text": { "type": "string" }
+                        }
+                      },
+                      "ImageMessage": {
+                        "type": "object",
+                        "description": "A message that can be sent",
+                        "properties": {
+                          "messageType": { "type": "string" },
+                          "imageUrl": { "type": "string" }
+                        }
+                      }
+                    }
+                  }
+                }
+                """;
+
+            assertFlattened(input, expected);
+        }
+
+        @Test
+        @DisplayName("When adjusted schema has different description from parent, keeps original description")
+        void keepsOriginalDescriptionWhenDifferentFromParent() throws Exception {
+            var input = """
+                {
+                  "openapi": "3.1.0",
+                  "info": { "title": "API", "version": "1" },
+                  "paths": { },
+                  "servers": [ { "url": "/" } ],
+                  "components": {
+                    "schemas": {
+                      "Message": {
+                        "type": "object",
+                        "description": "A message that can be sent",
+                        "properties": {
+                          "messageType": { "type": "string" }
+                        },
+                        "discriminator": {
+                          "propertyName": "messageType",
+                          "mapping": {
+                            "text": "#/components/schemas/TextMessage"
+                          }
+                        }
+                      },
+                      "TextMessage": {
+                        "type": "object",
+                        "description": "A text message with content",
+                        "properties": {
+                          "messageType": { "type": "string" },
+                          "text": { "type": "string" }
+                        }
+                      }
+                    }
+                  }
+                }
+                """;
+
+            var expected = """
+                {
+                  "openapi": "3.1.0",
+                  "info": { "title": "API", "version": "1" },
+                  "paths": { },
+                  "servers": [ { "url": "/" } ],
+                  "components": {
+                    "schemas": {
+                      "Message": {
+                        "type": "object",
+                        "description": "A message that can be sent",
+                        "oneOf": [
+                          {
+                            "type": "object",
+                            "description": "A text message with content",
+                            "properties": {
+                              "messageType": {
+                                "type": "string",
+                                "enum": [ "text" ],
+                                "default": "text",
+                                "description": "Always set to 'text'."
+                              },
+                              "text": { "type": "string" }
+                            }
+                          }
+                        ]
+                      },
+                      "TextMessage": {
+                        "type": "object",
+                        "description": "A text message with content",
+                        "properties": {
+                          "messageType": { "type": "string" },
+                          "text": { "type": "string" }
+                        }
+                      }
+                    }
+                  }
+                }
+                """;
+
+            assertFlattened(input, expected);
+        }
+    }
 }

@@ -84,8 +84,8 @@ public class DiscriminatorFlattener implements OpenApiFilter {
                     // If the referenced schema is a simple schema, look for the property
                     if (referencedSchema.getProperties() != null
                             && referencedSchema.getProperties().containsKey(propertyName)) {
-                        var adjustedSchema =
-                                adjustSchemaWithDiscriminatorProperty(referencedSchema, propertyName, propertyValue);
+                        var adjustedSchema = adjustSchemaWithDiscriminatorProperty(
+                                referencedSchema, propertyName, propertyValue, schemaToProcess.getDescription());
                         schemaToProcess.addOneOfItem(adjustedSchema);
                     } else if (referencedSchema.getAllOf() != null) {
                         // If the referenced schema is an allOf, we need to add the discriminator property
@@ -119,7 +119,10 @@ public class DiscriminatorFlattener implements OpenApiFilter {
                                         }
                                         isPropertyFound = true;
                                         var adjustedSchema = adjustSchemaWithDiscriminatorProperty(
-                                                referencedAllOfSchema, propertyName, propertyValue);
+                                                referencedAllOfSchema,
+                                                propertyName,
+                                                propertyValue,
+                                                schemaToProcess.getDescription());
                                         resolvedAllOfSchemas.add(adjustedSchema);
                                     }
                                 }
@@ -138,8 +141,8 @@ public class DiscriminatorFlattener implements OpenApiFilter {
                                     continue;
                                 }
                                 isPropertyFound = true;
-                                var adjustedSchema =
-                                        adjustSchemaWithDiscriminatorProperty(allOfSchema, propertyName, propertyValue);
+                                var adjustedSchema = adjustSchemaWithDiscriminatorProperty(
+                                        allOfSchema, propertyName, propertyValue, schemaToProcess.getDescription());
                                 resolvedAllOfSchemas.add(adjustedSchema);
                             } else {
                                 resolvedAllOfSchemas.add(allOfSchema);
@@ -227,7 +230,10 @@ public class DiscriminatorFlattener implements OpenApiFilter {
     }
 
     private Schema<?> adjustSchemaWithDiscriminatorProperty(
-            Schema<?> originalSchema, String discriminatorPropertyName, String discriminatorPropertyValueToSet) {
+            Schema<?> originalSchema,
+            String discriminatorPropertyName,
+            String discriminatorPropertyValueToSet,
+            @Nullable String parentSchemaDescription) {
         var adjustedSchema = new Schema<>();
         originalSchema.getProperties().forEach((name, propertySchema) -> {
             if (name.equals(discriminatorPropertyName)) {
@@ -250,9 +256,16 @@ public class DiscriminatorFlattener implements OpenApiFilter {
             adjustedSchema.setType(originalSchema.getType());
         }
 
+        // If the original schema description is the same as the parent schema description,
+        // use the discriminator property value as the description instead
+        String descriptionToUse = originalSchema.getDescription();
+        if (parentSchemaDescription != null && parentSchemaDescription.equals(originalSchema.getDescription())) {
+            descriptionToUse = discriminatorPropertyValueToSet;
+        }
+
         return adjustedSchema
                 .required(originalSchema.getRequired())
-                .description(originalSchema.getDescription())
+                .description(descriptionToUse)
                 .additionalProperties(originalSchema.getAdditionalProperties());
     }
 }
