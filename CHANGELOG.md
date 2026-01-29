@@ -11,11 +11,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - A new step in the release workflow that automatically updates references to framework version in `README.md`
 - `./examples/infobip-sms-mock-mcp` project that demonstrates the recently introduced mock tool mode.
+- Enhanced discriminator flattening to detect and skip duplicate discriminator properties in allOf schemas. When multiple schemas define the same discriminator property, only the first occurrence is adjusted
+  and subsequent schemas are skipped. Warning logs now include the number of properties in skipped schemas to help identify potential data loss.
 
 ### Changed
 
 - Upgraded framework version in the open-meteo-mcp example to the latest release.
 - Updated `infobip.openapi.mcp.api-base-url` to accept either absolute URLs or 0-indexed integer values to select the appropriate server from OpenAPI specification.
+- Discriminator flattening now replaces adjusted schema descriptions with discriminator property values when the original description matches the parent schema description. This is common in OpenAPI specifications generated from code where polymorphic types share the same base description.
+- Removed default values from discriminator properties during discriminator flattening. The discriminator property values are required and should be explicitly provided rather than populated by defaults.
+
+### Fixed
+
+- Removed discriminators from adjusted schemas during discriminator flattening. Once a schema is adjusted to support only a single enum value, the discriminator becomes obsolete. Removed visited schema tracking that was causing discriminator leakage.
 
 ## 0.1.3
 
