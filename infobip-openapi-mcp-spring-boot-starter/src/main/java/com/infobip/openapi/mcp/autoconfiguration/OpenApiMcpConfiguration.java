@@ -24,12 +24,11 @@ import com.infobip.openapi.mcp.openapi.tool.*;
 import com.infobip.openapi.mcp.openapi.tool.naming.NamingStrategy;
 import com.infobip.openapi.mcp.openapi.tool.naming.NamingStrategyFactory;
 import com.infobip.openapi.mcp.util.OpenApiMapperFactory;
+import com.infobip.openapi.mcp.util.ToolSpecBuilder;
 import com.infobip.openapi.mcp.util.XForwardedForCalculator;
 import com.infobip.openapi.mcp.util.XForwardedHostCalculator;
 import io.micrometer.core.instrument.MeterRegistry;
-import io.modelcontextprotocol.server.McpAsyncServer;
-import io.modelcontextprotocol.server.McpServerFeatures;
-import io.modelcontextprotocol.server.McpStatelessServerFeatures;
+import io.modelcontextprotocol.server.*;
 import io.swagger.v3.parser.OpenAPIV3Parser;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
@@ -186,8 +185,8 @@ class OpenApiMcpConfiguration {
             havingValue = "false",
             matchIfMissing = true)
     public List<McpServerFeatures.SyncToolSpecification> toolSpecificationsSSE(
-            ToolRegistry toolRegistry, McpRequestContextFactory contextFactory, List<ToolCallFilter> filters) {
-        return registerTools(toolRegistry, contextFactory, filters);
+            ToolRegistry toolRegistry, ToolSpecBuilder toolSpecBuilder) {
+        return registerTools(toolRegistry, toolSpecBuilder);
     }
 
     @Bean
@@ -198,8 +197,8 @@ class OpenApiMcpConfiguration {
             havingValue = "false",
             matchIfMissing = true)
     public List<McpServerFeatures.SyncToolSpecification> toolSpecificationsStreamable(
-            ToolRegistry toolRegistry, McpRequestContextFactory contextFactory, List<ToolCallFilter> filters) {
-        return registerTools(toolRegistry, contextFactory, filters);
+            ToolRegistry toolRegistry, ToolSpecBuilder toolSpecBuilder) {
+        return registerTools(toolRegistry, toolSpecBuilder);
     }
 
     @Bean
@@ -210,15 +209,15 @@ class OpenApiMcpConfiguration {
             havingValue = "false",
             matchIfMissing = true)
     public List<McpStatelessServerFeatures.SyncToolSpecification> toolSpecificationsStateless(
-            ToolRegistry toolRegistry, McpRequestContextFactory contextFactory, List<ToolCallFilter> filters) {
-        return registerStatelessTools(toolRegistry, contextFactory, filters);
+            ToolRegistry toolRegistry, ToolSpecBuilder toolSpecBuilder) {
+        return registerStatelessTools(toolRegistry, toolSpecBuilder);
     }
 
     @Bean
     @ConditionalOnProperty(prefix = McpServerProperties.CONFIG_PREFIX, name = "stdio", havingValue = "true")
     public List<McpServerFeatures.SyncToolSpecification> toolSpecificationsStdio(
-            ToolRegistry toolRegistry, McpRequestContextFactory contextFactory, List<ToolCallFilter> filters) {
-        return registerTools(toolRegistry, contextFactory, filters);
+            ToolRegistry toolRegistry, ToolSpecBuilder toolSpecBuilder) {
+        return registerTools(toolRegistry, toolSpecBuilder);
     }
 
     @Bean
@@ -297,6 +296,31 @@ class OpenApiMcpConfiguration {
         return new OpenApiBasedMcpServerPropertiesCustomizer(properties.orElse(null), metaData);
     }
 
+    @Bean
+    public ToolSpecBuilder toolSpecBuilder(List<ToolCallFilter> filters, McpRequestContextFactory contextFactory) {
+        return new ToolSpecBuilder(filters, contextFactory);
+    }
+
+    @Bean
+    @ConditionalOnProperty(prefix = OpenApiMcpProperties.LiveReload.PREFIX, name = "enabled", havingValue = "true")
+    public OpenApiLiveReload openApiLiveReload(
+            Optional<McpSyncServer> mcpSyncServer,
+            Optional<McpStatelessSyncServer> mcpStatelessSyncServer,
+            OpenApiRegistry openApiRegistry,
+            ToolRegistry toolRegistry,
+            ToolSpecBuilder toolSpecBuilder,
+            OpenApiMcpProperties properties,
+            MetricService metricService) {
+        return new OpenApiLiveReload(
+                mcpSyncServer,
+                mcpStatelessSyncServer,
+                openApiRegistry,
+                toolRegistry,
+                toolSpecBuilder,
+                properties,
+                metricService);
+    }
+
     /**
      * Helper method that loads the OpenAPI registry and executes a registration function.
      * This encapsulates the common pattern of loading the registry and transforming tools.
@@ -316,18 +340,8 @@ class OpenApiMcpConfiguration {
      * These tools receive both the server exchange context and the call tool request.
      */
     private List<McpServerFeatures.SyncToolSpecification> registerTools(
-            ToolRegistry toolRegistry, McpRequestContextFactory contextFactory, List<ToolCallFilter> filters) {
-        return registerAfterLoadingOpenApiRegistry(toolRegistry, registeredTool -> {
-            var chainFactory = new OrderingToolCallFilterChainFactory(registeredTool, filters);
-            return McpServerFeatures.SyncToolSpecification.builder()
-                    .tool(registeredTool.tool())
-                    .callHandler((mcpSyncServerExchange, callToolRequest) -> {
-                        var context = contextFactory.forStatefulTransport(
-                                mcpSyncServerExchange, callToolRequest.name(), registeredTool.fullOperation());
-                        return chainFactory.get().doFilter(context, callToolRequest);
-                    })
-                    .build();
-        });
+            ToolRegistry toolRegistry, ToolSpecBuilder toolSpecBuilder) {
+        return registerAfterLoadingOpenApiRegistry(toolRegistry, toolSpecBuilder::buildSyncToolSpecification);
     }
 
     /**
@@ -335,17 +349,7 @@ class OpenApiMcpConfiguration {
      * These tools receive the transport context and the call tool request.
      */
     private List<McpStatelessServerFeatures.SyncToolSpecification> registerStatelessTools(
-            ToolRegistry toolRegistry, McpRequestContextFactory contextFactory, List<ToolCallFilter> filters) {
-        return registerAfterLoadingOpenApiRegistry(toolRegistry, registeredTool -> {
-            var chainFactory = new OrderingToolCallFilterChainFactory(registeredTool, filters);
-            return McpStatelessServerFeatures.SyncToolSpecification.builder()
-                    .tool(registeredTool.tool())
-                    .callHandler((mcpTransportContext, callToolRequest) -> {
-                        var context = contextFactory.forStatelessTransport(
-                                mcpTransportContext, callToolRequest.name(), registeredTool.fullOperation());
-                        return chainFactory.get().doFilter(context, callToolRequest);
-                    })
-                    .build();
-        });
+            ToolRegistry toolRegistry, ToolSpecBuilder toolSpecBuilder) {
+        return registerAfterLoadingOpenApiRegistry(toolRegistry, toolSpecBuilder::buildSyncStatelessToolSpecification);
     }
 }

@@ -264,6 +264,40 @@ externalized configuration property `infobip.openapi.mcp.tools.mock: true`.
 > By disabling auth and enabling mock mode framework won't use API, and all tool calls will receive successful results
 > based on OpenAPI examples.
 
+### Live Reload
+
+The framework supports automatic reloading of the OpenAPI specification at runtime. When enabled, the framework
+periodically fetches the OpenAPI specification and updates the registered MCP tools if changes are detected. This is
+useful for scenarios where the OpenAPI specification is updated frequently and you want the MCP server to reflect these
+changes without requiring a restart.
+
+Live reload works by comparing the OpenAPI specification version. When a version change is detected, the framework
+compares the registered tools with the new specification and:
+- Removes tools that no longer exist in the specification
+- Adds new tools that were introduced in the specification
+- Updates tools that have changed (title, description, or input/output schema)
+
+After detecting changes, connected MCP clients are notified about the tool list changes.
+The framework will retry up to `max-retries` times in case of no tools being registered or an error during the reload
+to ensure that the tools are registered correctly.
+
+**Prerequisites:**
+- Add `@EnableScheduling` to your Spring Boot application configuration
+- Configure a scheduler thread pool if needed (Spring's default is a single thread)
+
+**Configuration example:**
+
+```yaml
+infobip:
+  openapi:
+    mcp:
+      live-reload:
+        cron-expression: "0 */5 * * * *"  # Every 5 minutes
+        max-retries: 3
+```
+
+> [!NOTE] If a refresh is already in progress, when the next scheduled execution triggers, it will be skipped.
+
 ### Properties
 
 [External configuration properties][11] that can be used to configure framework behavior:
@@ -271,7 +305,7 @@ externalized configuration property `infobip.openapi.mcp.tools.mock: true`.
 | Property                                                                           | Description                                                                                                                                                                                                                                                                                                                                             | Default        |
 |------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------|
 | `infobip.openapi.mcp.open-api-url`                                                 | URL to the OpenAPI specification. This should point to a valid OpenAPI document (e.g., JSON or YAML).                                                                                                                                                                                                                                                   | `-`            |
-| `infobip.openapi.mcp.api-base-url`                                                 | Base URL for API endpoints. Supports three formats: **String URL** (e.g., `https://api.example.com`) - use the provided URL directly; **Integer** (e.g., `0`, `1`) - use the i-th server from OpenAPI servers array (0-indexed); **Empty/not provided** - use the first server from OpenAPI servers array.                                             | First server from OpenAPI spec |
+| `infobip.openapi.mcp.api-base-url`                                                 | Base URL for API endpoints. Supports three formats: **String URL** (e.g., `https://api.example.com`) - use the provided URL directly; **Integer** (e.g., `0`, `1`) - use the i-th server from OpenAPI servers array (0-indexed); **Empty/not provided** - use the first server from OpenAPI servers array.                                              | First server from OpenAPI spec |
 | `infobip.openapi.mcp.connect-timeout`                                              | Connection timeout for HTTP requests to the downstream API. The default is set to 5 seconds.                                                                                                                                                                                                                                                            | 5 seconds      |
 | `infobip.openapi.mcp.read-timeout`                                                 | Read timeout for HTTP requests to the downstream API. The default is set to 5 seconds.                                                                                                                                                                                                                                                                  | 5 seconds      |
 | `infobip.openapi.mcp.user-agent`                                                   | User agent string for HTTP requests to the downstream API. If not specified, no User-Agent header will be set.                                                                                                                                                                                                                                          | `openapi-mcp`  |
@@ -282,7 +316,9 @@ externalized configuration property `infobip.openapi.mcp.tools.mock: true`.
 | `infobip.openapi.mcp.tools.schema.request-body-key`                                | The key name used to wrap request body in combined schemas. Default is "_body".                                                                                                                                                                                                                                                                         | `_body`        | 
 | `infobip.openapi.mcp.tools.json-double-serialization-mitigation`                   | Whether to enable automatic JSON double serialization mitigation.                                                                                                                                                                                                                                                                                       | `true`         | 
 | `infobip.openapi.mcp.tools.prepend-summary-to-description`                         | Whether to prepend the operation summary as a markdown title to the description.                                                                                                                                                                                                                                                                        | `true`         | 
-| `infobip.openapi.mcp.tools.mock`                                                   | Whether to run MCP server in mock mode, where it avoids calling API during tool calls and instead returns results based on examples provided in OpenAPI specification. Default is false.                                                                                                                                                                | `false`        | 
+| `infobip.openapi.mcp.tools.mock`                                                   | Whether to run MCP server in mock mode, where it avoids calling API during tool calls and instead returns results based on examples provided in OpenAPI specification. Default is false.                                                                                                                                                                | `false`        |
+| `infobip.openapi.mcp.live-reload.cron-expression`                                  | Cron expression for scheduling OpenAPI specification reload attempts. Uses Spring's cron format (6 fields: second, minute, hour, day-of-month, month, day-of-week). Requires `@EnableScheduling` on your application.                                                                                                                                   | `0 */10 * * * *` |
+| `infobip.openapi.mcp.live-reload.max-retries`                                      | Maximum number of retry attempts when the OpenAPI specification reloads to ensure sync.                                                                                                                                                                                                                                                                 | `3`            |
 | `infobip.openapi.mcp.security.auth.enabled`                                        | Enable API authentication. Default is false.                                                                                                                                                                                                                                                                                                            | `false`        | 
 | `infobip.openapi.mcp.security.auth.auth-url`                                       | The API endpoint URL to validate credentials against.                                                                                                                                                                                                                                                                                                   | `-`            |
 | `infobip.openapi.mcp.security.auth.connect-timeout`                                | Connection timeout for the validation API call. Default is 5 seconds.                                                                                                                                                                                                                                                                                   | 5 seconds      |

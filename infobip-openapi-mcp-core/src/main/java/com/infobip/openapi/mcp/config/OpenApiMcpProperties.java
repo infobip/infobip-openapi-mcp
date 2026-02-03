@@ -1,5 +1,6 @@
 package com.infobip.openapi.mcp.config;
 
+import com.infobip.openapi.mcp.openapi.OpenApiLiveReload;
 import com.infobip.openapi.mcp.openapi.tool.naming.NamingStrategyType;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
@@ -28,6 +29,7 @@ import org.springframework.validation.annotation.Validated;
  *                       The keys are the filter names, and the values are booleans indicating whether to include (true) or exclude (false).
  *                       By default, all filters are enabled.
  * @param tools          Tool configuration.
+ * @param liveReload     Live reload configuration for automatic OpenAPI spec refresh.
  */
 @Validated
 @ConfigurationProperties(prefix = OpenApiMcpProperties.PREFIX)
@@ -38,7 +40,8 @@ public record OpenApiMcpProperties(
         Duration readTimeout,
         String userAgent,
         Map<String, Boolean> filters,
-        @NestedConfigurationProperty @Valid Tools tools) {
+        @NestedConfigurationProperty @Valid Tools tools,
+        @NestedConfigurationProperty @Valid LiveReload liveReload) {
 
     public static final String PREFIX = "infobip.openapi.mcp";
     public static final Duration DEFAULT_CONNECT_TIMEOUT = Duration.ofSeconds(5);
@@ -64,6 +67,18 @@ public record OpenApiMcpProperties(
         if (tools == null) {
             tools = new Tools(null, null, null, null, null);
         }
+        if (liveReload == null) {
+            liveReload = new LiveReload(null, null, null, null);
+        }
+    }
+
+    /**
+     * Creates an instance with all default values.
+     *
+     * @return a new OpenApiMcpProperties instance with defaults
+     */
+    public static OpenApiMcpProperties withDefaults() {
+        return new OpenApiMcpProperties(null, null, null, null, null, null, null, null);
     }
 
     /**
@@ -161,6 +176,46 @@ public record OpenApiMcpProperties(
                 if (requestBodyKey == null) {
                     requestBodyKey = DEFAULT_REQUEST_BODY_KEY;
                 }
+            }
+        }
+    }
+
+    /**
+     * Configuration for live reload of OpenAPI specification.
+     *
+     * @param enabled        Whether live reload is enabled. Default is false.
+     * @param threadType     Type of thread to use for scheduling reloads. Default is VIRTUAL_THREADS.
+     * @param cronExpression Cron expression for scheduling reload attempts. Default is every 10 minutes.
+     * @param maxRetries     Maximum number of retry attempts on no change or failure. Default is 3.
+     */
+    public record LiveReload(
+            Boolean enabled,
+            ThreadType threadType,
+            String cronExpression,
+            @Positive Integer maxRetries
+    ) {
+        public enum ThreadType {
+            VIRTUAL_THREADS,
+            PLATFORM_THREADS
+        }
+
+        public static final String PREFIX = OpenApiMcpProperties.PREFIX + ".live-reload";
+
+        public static final String DEFAULT_CRON_EXPRESSION = "0 */10 * * * *";
+        public static final int DEFAULT_MAX_RETRIES = 3;
+
+        public LiveReload {
+            if (enabled == null) {
+                enabled = false;
+            }
+            if (threadType == null) {
+                threadType = ThreadType.VIRTUAL_THREADS;
+            }
+            if (cronExpression == null) {
+                cronExpression = DEFAULT_CRON_EXPRESSION;
+            }
+            if (maxRetries == null) {
+                maxRetries = DEFAULT_MAX_RETRIES;
             }
         }
     }

@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Live reload feature for automatic OpenAPI specification refresh at runtime. When enabled, the framework periodically
+  fetches the OpenAPI specification and updates registered MCP tools if changes are detected. Connected clients are
+  notified about tool list changes automatically.
+- Prometheus metrics for live reload: `com.infobip.openapi.live_reload.executions` (counter with status tag) and
+  `com.infobip.openapi.live_reload.duration` (timer with status tag).
+- Configuration properties for live reload: `cron-expression` (default: every 10 minutes) and `max-retries` (default: 3).
+- Static factory methods `OpenApiMcpProperties.withDefaults()` for creating instances with default values.
+
 ## 0.1.4
 
 ### Added

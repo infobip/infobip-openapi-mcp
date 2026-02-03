@@ -78,4 +78,29 @@ public class MicrometerMetricService implements MetricService {
             }
         };
     }
+
+    @Override
+    public void recordLiveReloadExecution(String status) {
+        try {
+            var tags = List.of(Tag.of("status", status));
+            meterRegistry
+                    .counter("com.infobip.openapi.live_reload.executions", tags)
+                    .increment();
+        } catch (Exception e) {
+            LOGGER.error("Failed to record live reload execution metric: {}", e.getMessage(), e);
+        }
+    }
+
+    @Override
+    public LiveReloadTimer startLiveReloadTimer() {
+        var sample = io.micrometer.core.instrument.Timer.start(meterRegistry);
+        return status -> {
+            try {
+                var tags = List.of(Tag.of("status", status));
+                sample.stop(meterRegistry.timer("com.infobip.openapi.live_reload.duration", tags));
+            } catch (Exception e) {
+                LOGGER.error("Failed to record live reload duration metric: {}", e.getMessage(), e);
+            }
+        };
+    }
 }

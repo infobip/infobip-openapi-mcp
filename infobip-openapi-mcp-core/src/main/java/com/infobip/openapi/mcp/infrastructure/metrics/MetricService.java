@@ -11,11 +11,18 @@ public interface MetricService {
 
         void timeApiCall(FullOperation fullOperation, HttpStatusCode httpStatusCode);
     }
-    ;
+
+    interface LiveReloadTimer {
+        void record(String status);
+    }
 
     void recordToolCall(FullOperation fullOperation);
 
     void recordApiCall(FullOperation fullOperation, HttpStatusCode httpStatusCode);
 
     Timer startTimer();
+
+    void recordLiveReloadExecution(String status);
+
+    LiveReloadTimer startLiveReloadTimer();
 }
