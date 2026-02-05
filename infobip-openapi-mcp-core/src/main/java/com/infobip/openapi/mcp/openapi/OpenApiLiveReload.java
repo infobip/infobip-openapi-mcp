@@ -16,9 +16,54 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 
+/**
+ * Handles automatic reloading of the OpenAPI specification at runtime.
+ *
+ * <p>This component periodically fetches the OpenAPI specification and synchronizes MCP tools
+ * with any detected changes. It is designed to support zero-downtime updates in distributed
+ * deployments where multiple server instances need to converge on the same tool set.
+ *
+ * <h2>Scheduling</h2>
+ * <p>The reload job is triggered by a cron expression (default: every 10 minutes). The job runs
+ * directly on Spring's task scheduler thread and blocks the thread during execution. If the
+ * application has other scheduled tasks, consider configuring a larger scheduler thread pool.
+ *
+ * <h2>Retry Mechanism</h2>
+ * <p>To handle eventual consistency scenarios (e.g., multiple deployments converging on the same
+ * specification version), each scheduled execution attempts up to {@code maxRetries} reloads with
+ * a 1-second delay between attempts. The retry loop terminates early when a tool change is detected
+ * and applied. This ensures that even if the first attempt sees no change (because the spec hasn't
+ * propagated yet), subsequent retries have a chance to pick up the update.
+ *
+ * <h2>Change Detection</h2>
+ * <p>Changes are detected by comparing the OpenAPI specification version string. When a version
+ * change is found, the framework compares the current tool set with the new specification:
+ * <ul>
+ *   <li>Tools no longer present in the specification are removed</li>
+ *   <li>New tools are added</li>
+ *   <li>Modified tools (changed name, description, or schema) are replaced</li>
+ * </ul>
+ *
+ * <h2>Client Notification</h2>
+ * <p>After tools are updated, connected MCP clients are notified via
+ * {@link McpSyncServer#notifyToolsListChanged()} for stateful servers. Stateless servers do not
+ * maintain client connections, so no notification is needed.
+ *
+ * <h2>SDK Limitations</h2>
+ * <p>Due to constraints in the MCP SDK (as of Spring AI 1.1.0), tools cannot be updated in batch.
+ * Each tool addition or removal triggers a separate operation on the server. This may result in
+ * multiple tool change notifications.
+ *
+ * <h2>Concurrency</h2>
+ * <p>Only one refresh operation can run at a time. If a scheduled execution triggers while a
+ * previous refresh is still in progress, the new execution is skipped.
+ *
+ * @see OpenApiMcpProperties.LiveReload
+ * @see OpenApiRegistry
+ * @see ToolRegistry
+ */
 public class OpenApiLiveReload {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(OpenApiLiveReload.class);
@@ -38,8 +83,6 @@ public class OpenApiLiveReload {
             return value;
         }
     }
-
-    private static final int VIRTUAL_THREAD_PINNING_FIX_VERSION = 24;
 
     private final Optional<McpSyncServer> mcpSyncServer;
     private final Optional<McpStatelessSyncServer> mcpStatelessSyncServer;
@@ -69,66 +112,54 @@ public class OpenApiLiveReload {
     }
 
     @Scheduled(cron = "${infobip.openapi.mcp.live-reload.cron-expression:0 */10 * * * *}")
-    public Thread refreshOpenApiOnSchedule() throws InterruptedException {
+    public void refreshOpenApiOnSchedule() throws InterruptedException {
         if (!refreshInProgress.compareAndSet(false, true)) {
             LOGGER.info("OpenAPI refresh already in progress, skipping this execution.");
-            return null;
+            return;
         }
 
-        if (liveReloadConfig.threadType() == OpenApiMcpProperties.LiveReload.ThreadType.VIRTUAL_THREADS) {
-            return Thread.startVirtualThread(refreshOpenApiOnScheduleTask());
-        }
+        var timer = metricService.startLiveReloadTimer();
+        var status = Status.FAILURE;
 
-        var thread = new Thread(refreshOpenApiOnScheduleTask());
-        thread.start();
-        return thread;
-    }
+        try {
+            LOGGER.info("Refreshing OpenAPI on schedule.");
 
-    private Runnable refreshOpenApiOnScheduleTask() {
-        return () -> {
-            var timer = metricService.startLiveReloadTimer();
-            var status = Status.FAILURE;
+            var currentVersion = openApiRegistry.openApi().getInfo().getVersion();
+            var currentTools = toolRegistry.getRegisteredToolsCache();
 
-            try {
-                LOGGER.info("Refreshing OpenAPI on schedule.");
-
-                var currentVersion = openApiRegistry.openApi().getInfo().getVersion();
-                var currentTools = toolRegistry.getRegisteredToolsCache();
-
-                var maxRetries = liveReloadConfig.maxRetries();
-                for (int attempt = 1; attempt <= maxRetries; attempt++) {
-                    try {
-                        var toolsUpdated = refreshOpenApi(currentVersion, currentTools);
-                        status = toolsUpdated ? Status.SUCCESS_TOOLS_UPDATED : Status.SUCCESS_NO_CHANGE;
-                        if (status == Status.SUCCESS_TOOLS_UPDATED) {
+            var maxRetries = liveReloadConfig.maxRetries();
+            for (int attempt = 1; attempt <= maxRetries; attempt++) {
+                try {
+                    var toolsUpdated = refreshOpenApi(currentVersion, currentTools);
+                    status = toolsUpdated ? Status.SUCCESS_TOOLS_UPDATED : Status.SUCCESS_NO_CHANGE;
+                    if (status == Status.SUCCESS_TOOLS_UPDATED) {
+                        break;
+                    }
+                } catch (Exception e) {
+                    LOGGER.error(
+                            "Error refreshing OpenAPI (attempt {}/{}): {}", attempt, maxRetries, e.getMessage(), e);
+                    if (attempt < maxRetries) {
+                        try {
+                            TimeUnit.SECONDS.sleep(1);
+                        } catch (InterruptedException ex) {
+                            LOGGER.warn("Interrupted while waiting for next OpenAPI refresh attempt.");
+                            Thread.currentThread().interrupt();
                             break;
-                        }
-                    } catch (Exception e) {
-                        LOGGER.error(
-                                "Error refreshing OpenAPI (attempt {}/{}): {}", attempt, maxRetries, e.getMessage(), e);
-                        if (attempt < maxRetries) {
-                            try {
-                                TimeUnit.SECONDS.sleep(1);
-                            } catch (InterruptedException ex) {
-                                LOGGER.warn("Interrupted while waiting for next OpenAPI refresh attempt.");
-                                Thread.currentThread().interrupt();
-                                break;
-                            }
                         }
                     }
                 }
-
-                if (status == Status.FAILURE) {
-                    LOGGER.warn("OpenAPI refresh failed after {} attempts.", maxRetries);
-                } else {
-                    LOGGER.info("OpenAPI refreshed successfully.");
-                }
-            } finally {
-                metricService.recordLiveReloadExecution(status.getValue());
-                timer.record(status.getValue());
-                refreshInProgress.set(false);
             }
-        };
+
+            if (status == Status.FAILURE) {
+                LOGGER.warn("OpenAPI refresh failed after {} attempts.", maxRetries);
+            } else {
+                LOGGER.info("OpenAPI refreshed successfully.");
+            }
+        } finally {
+            metricService.recordLiveReloadExecution(status.getValue());
+            timer.record(status.getValue());
+            refreshInProgress.set(false);
+        }
     }
 
     /**
@@ -159,9 +190,6 @@ public class OpenApiLiveReload {
         // Reload tools
         mcpSyncServer.ifPresent(ignored -> registerStateful(addedOrChangedTools, deletedTools));
         mcpStatelessSyncServer.ifPresent(ignored -> registerStateless(addedOrChangedTools, deletedTools));
-
-        // Notify clients if the server is stateful
-        mcpSyncServer.ifPresent(McpSyncServer::notifyToolsListChanged);
 
         return true;
     }

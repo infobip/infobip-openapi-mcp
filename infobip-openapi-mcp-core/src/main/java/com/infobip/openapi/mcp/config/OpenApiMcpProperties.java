@@ -1,6 +1,5 @@
 package com.infobip.openapi.mcp.config;
 
-import com.infobip.openapi.mcp.openapi.OpenApiLiveReload;
 import com.infobip.openapi.mcp.openapi.tool.naming.NamingStrategyType;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
@@ -68,7 +67,7 @@ public record OpenApiMcpProperties(
             tools = new Tools(null, null, null, null, null);
         }
         if (liveReload == null) {
-            liveReload = new LiveReload(null, null, null, null);
+            liveReload = new LiveReload(null, null, null);
         }
     }
 
@@ -184,21 +183,16 @@ public record OpenApiMcpProperties(
      * Configuration for live reload of OpenAPI specification.
      *
      * @param enabled        Whether live reload is enabled. Default is false.
-     * @param threadType     Type of thread to use for scheduling reloads. Default is VIRTUAL_THREADS.
      * @param cronExpression Cron expression for scheduling reload attempts. Default is every 10 minutes.
-     * @param maxRetries     Maximum number of retry attempts on no change or failure. Default is 3.
+     * @param maxRetries     Maximum number of reload attempts per scheduled execution. The retry loop runs up to this
+     *                       many times with a 1-second delay between attempts, but terminates early as soon as a tool
+     *                       change is detected and applied. This helps distributed deployments converge on the same
+     *                       tool set even when specification updates propagate with slight delays. Default is 3.
      */
     public record LiveReload(
             Boolean enabled,
-            ThreadType threadType,
             String cronExpression,
-            @Positive Integer maxRetries
-    ) {
-        public enum ThreadType {
-            VIRTUAL_THREADS,
-            PLATFORM_THREADS
-        }
-
+            @Positive Integer maxRetries) {
         public static final String PREFIX = OpenApiMcpProperties.PREFIX + ".live-reload";
 
         public static final String DEFAULT_CRON_EXPRESSION = "0 */10 * * * *";
@@ -207,9 +201,6 @@ public record OpenApiMcpProperties(
         public LiveReload {
             if (enabled == null) {
                 enabled = false;
-            }
-            if (threadType == null) {
-                threadType = ThreadType.VIRTUAL_THREADS;
             }
             if (cronExpression == null) {
                 cronExpression = DEFAULT_CRON_EXPRESSION;

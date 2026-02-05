@@ -51,7 +51,7 @@ class OpenApiLiveReloadTest {
             null,
             null,
             new OpenApiMcpProperties.Tools(null, null, null, true, null),
-            new OpenApiMcpProperties.LiveReload(true, OpenApiMcpProperties.LiveReload.ThreadType.VIRTUAL_THREADS, "0 */1 * * * *", 1));
+            new OpenApiMcpProperties.LiveReload(true, "0 */1 * * * *", 1));
 
     @Mock
     private McpSyncServer givenMcpSyncServer;
@@ -111,12 +111,11 @@ class OpenApiLiveReloadTest {
             setupToolSpecBuilderForNewTools();
 
             // When
-            awaitRefresh(givenOpenApiLiveReload);
+            givenOpenApiLiveReload.refreshOpenApiOnSchedule();
 
             // Then
             then(givenOpenApiRegistry).should().reload();
             then(givenMcpSyncServer).should().addTool(syncToolSpecCaptor.capture());
-            then(givenMcpSyncServer).should().notifyToolsListChanged();
             then(givenMcpSyncServer).should(never()).removeTool(any());
 
             var capturedToolSpec = syncToolSpecCaptor.getValue();
@@ -139,12 +138,11 @@ class OpenApiLiveReloadTest {
             setupToolSpecBuilderForNewTools();
 
             // When
-            awaitRefresh(givenOpenApiLiveReload);
+            givenOpenApiLiveReload.refreshOpenApiOnSchedule();
 
             // Then
             then(givenOpenApiRegistry).should().reload();
             then(givenMcpSyncServer).should(times(4)).addTool(syncToolSpecCaptor.capture());
-            then(givenMcpSyncServer).should().notifyToolsListChanged();
             then(givenMcpSyncServer).should(never()).removeTool(any());
 
             var capturedToolSpecs = syncToolSpecCaptor.getAllValues();
@@ -173,12 +171,11 @@ class OpenApiLiveReloadTest {
             var givenOpenApiLiveReload = givenOpenApiLiveReload();
 
             // When
-            awaitRefresh(givenOpenApiLiveReload);
+            givenOpenApiLiveReload.refreshOpenApiOnSchedule();
 
             // Then
             then(givenOpenApiRegistry).should().reload();
             then(givenMcpSyncServer).should().removeTool(toolNameCaptor.capture());
-            then(givenMcpSyncServer).should().notifyToolsListChanged();
             then(givenMcpSyncServer).should(never()).addTool(any());
 
             BDDAssertions.then(toolNameCaptor.getValue()).isEqualTo("getUsers");
@@ -199,12 +196,11 @@ class OpenApiLiveReloadTest {
             var givenOpenApiLiveReload = givenOpenApiLiveReload();
 
             // When
-            awaitRefresh(givenOpenApiLiveReload);
+            givenOpenApiLiveReload.refreshOpenApiOnSchedule();
 
             // Then
             then(givenOpenApiRegistry).should().reload();
             then(givenMcpSyncServer).should(times(4)).removeTool(toolNameCaptor.capture());
-            then(givenMcpSyncServer).should().notifyToolsListChanged();
             then(givenMcpSyncServer).should(never()).addTool(any());
 
             var capturedToolNames = toolNameCaptor.getAllValues();
@@ -232,12 +228,11 @@ class OpenApiLiveReloadTest {
             setupToolSpecBuilderForNewTools();
 
             // When
-            awaitRefresh(givenOpenApiLiveReload);
+            givenOpenApiLiveReload.refreshOpenApiOnSchedule();
 
             // Then
             then(givenOpenApiRegistry).should().reload();
             then(givenMcpSyncServer).should().addTool(syncToolSpecCaptor.capture());
-            then(givenMcpSyncServer).should().notifyToolsListChanged();
             then(givenMcpSyncServer).should(never()).removeTool(any());
 
             BDDAssertions.then(syncToolSpecCaptor.getValue().tool().title()).isEqualTo("List All Users");
@@ -259,12 +254,11 @@ class OpenApiLiveReloadTest {
             setupToolSpecBuilderForNewTools();
 
             // When
-            awaitRefresh(givenOpenApiLiveReload);
+            givenOpenApiLiveReload.refreshOpenApiOnSchedule();
 
             // Then
             then(givenOpenApiRegistry).should().reload();
             then(givenMcpSyncServer).should().addTool(syncToolSpecCaptor.capture());
-            then(givenMcpSyncServer).should().notifyToolsListChanged();
             then(givenMcpSyncServer).should(never()).removeTool(any());
 
             BDDAssertions.then(syncToolSpecCaptor.getValue().tool().description())
@@ -287,12 +281,11 @@ class OpenApiLiveReloadTest {
             setupToolSpecBuilderForNewTools();
 
             // When
-            awaitRefresh(givenOpenApiLiveReload);
+            givenOpenApiLiveReload.refreshOpenApiOnSchedule();
 
             // Then
             then(givenOpenApiRegistry).should().reload();
             then(givenMcpSyncServer).should().addTool(syncToolSpecCaptor.capture());
-            then(givenMcpSyncServer).should().notifyToolsListChanged();
             then(givenMcpSyncServer).should(never()).removeTool(any());
 
             var inputSchema = syncToolSpecCaptor.getValue().tool().inputSchema();
@@ -315,12 +308,11 @@ class OpenApiLiveReloadTest {
             setupToolSpecBuilderForNewTools();
 
             // When
-            awaitRefresh(givenOpenApiLiveReload);
+            givenOpenApiLiveReload.refreshOpenApiOnSchedule();
 
             // Then
             then(givenOpenApiRegistry).should().reload();
             then(givenMcpSyncServer).should(times(4)).addTool(syncToolSpecCaptor.capture());
-            then(givenMcpSyncServer).should().notifyToolsListChanged();
             then(givenMcpSyncServer).should(never()).removeTool(any());
 
             var capturedToolSpecs = syncToolSpecCaptor.getAllValues();
@@ -373,7 +365,7 @@ class OpenApiLiveReloadTest {
             var givenOpenApiLiveReload = givenOpenApiLiveReload();
 
             // When
-            awaitRefresh(givenOpenApiLiveReload);
+            givenOpenApiLiveReload.refreshOpenApiOnSchedule();
 
             // Then
             then(givenOpenApiRegistry).should().reload();
@@ -398,7 +390,7 @@ class OpenApiLiveReloadTest {
             var givenOpenApiLiveReload = givenOpenApiLiveReload();
 
             // When
-            awaitRefresh(givenOpenApiLiveReload);
+            givenOpenApiLiveReload.refreshOpenApiOnSchedule();
 
             // Then
             then(givenOpenApiRegistry).should().reload();
@@ -435,13 +427,12 @@ class OpenApiLiveReloadTest {
             setupToolSpecBuilderForNewTools();
 
             // When
-            awaitRefresh(givenOpenApiLiveReload);
+            givenOpenApiLiveReload.refreshOpenApiOnSchedule();
 
             // Then
             then(givenOpenApiRegistry).should().reload();
             then(givenMcpSyncServer).should().removeTool("getUsers");
             then(givenMcpSyncServer).should(times(2)).addTool(syncToolSpecCaptor.capture());
-            then(givenMcpSyncServer).should().notifyToolsListChanged();
 
             var capturedToolSpecs = syncToolSpecCaptor.getAllValues();
             BDDAssertions.then(capturedToolSpecs)
@@ -477,12 +468,5 @@ class OpenApiLiveReloadTest {
 
     private OpenAPI loadOpenApi(String resourcePath) {
         return parser.read(getResourceUri(resourcePath));
-    }
-
-    private void awaitRefresh(OpenApiLiveReload liveReload) throws InterruptedException {
-        var thread = liveReload.refreshOpenApiOnSchedule();
-        if (thread != null) {
-            thread.join();
-        }
     }
 }
