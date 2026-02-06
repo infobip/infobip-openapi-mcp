@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Live reload feature for automatic OpenAPI specification refresh at runtime with client notifications on tool changes.
+- Prometheus metrics for live reload: `com.infobip.openapi.live_reload.executions` and `com.infobip.openapi.live_reload.duration`.
+- Configuration properties for live reload: `enabled`, `cron-expression`, and `max-retries`.e
+
 ## 0.1.4
 
 ### Added

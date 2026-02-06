@@ -28,6 +28,7 @@ import org.springframework.validation.annotation.Validated;
  *                       The keys are the filter names, and the values are booleans indicating whether to include (true) or exclude (false).
  *                       By default, all filters are enabled.
  * @param tools          Tool configuration.
+ * @param liveReload     Live reload configuration for automatic OpenAPI spec refresh.
  */
 @Validated
 @ConfigurationProperties(prefix = OpenApiMcpProperties.PREFIX)
@@ -38,7 +39,8 @@ public record OpenApiMcpProperties(
         Duration readTimeout,
         String userAgent,
         Map<String, Boolean> filters,
-        @NestedConfigurationProperty @Valid Tools tools) {
+        @NestedConfigurationProperty @Valid Tools tools,
+        @NestedConfigurationProperty @Valid LiveReload liveReload) {
 
     public static final String PREFIX = "infobip.openapi.mcp";
     public static final Duration DEFAULT_CONNECT_TIMEOUT = Duration.ofSeconds(5);
@@ -64,6 +66,18 @@ public record OpenApiMcpProperties(
         if (tools == null) {
             tools = new Tools(null, null, null, null, null);
         }
+        if (liveReload == null) {
+            liveReload = new LiveReload(null, null, null);
+        }
+    }
+
+    /**
+     * Creates an instance with all default values.
+     *
+     * @return a new OpenApiMcpProperties instance with defaults
+     */
+    public static OpenApiMcpProperties withDefaults() {
+        return new OpenApiMcpProperties(null, null, null, null, null, null, null, null);
     }
 
     /**
@@ -161,6 +175,38 @@ public record OpenApiMcpProperties(
                 if (requestBodyKey == null) {
                     requestBodyKey = DEFAULT_REQUEST_BODY_KEY;
                 }
+            }
+        }
+    }
+
+    /**
+     * Configuration for live reload of OpenAPI specification.
+     *
+     * @param enabled        Whether live reload is enabled. Default is false.
+     * @param cronExpression Cron expression for scheduling reload attempts. Default is every 10 minutes.
+     * @param maxRetries     Maximum number of reload attempts per scheduled execution. The retry loop runs up to this
+     *                       many times with a 1-second delay between attempts, but terminates early as soon as a tool
+     *                       change is detected and applied. This helps distributed deployments converge on the same
+     *                       tool set even when specification updates propagate with slight delays. Default is 3.
+     */
+    public record LiveReload(
+            Boolean enabled,
+            String cronExpression,
+            @Positive Integer maxRetries) {
+        public static final String PREFIX = OpenApiMcpProperties.PREFIX + ".live-reload";
+
+        public static final String DEFAULT_CRON_EXPRESSION = "0 */10 * * * *";
+        public static final int DEFAULT_MAX_RETRIES = 3;
+
+        public LiveReload {
+            if (enabled == null) {
+                enabled = false;
+            }
+            if (cronExpression == null) {
+                cronExpression = DEFAULT_CRON_EXPRESSION;
+            }
+            if (maxRetries == null) {
+                maxRetries = DEFAULT_MAX_RETRIES;
             }
         }
     }

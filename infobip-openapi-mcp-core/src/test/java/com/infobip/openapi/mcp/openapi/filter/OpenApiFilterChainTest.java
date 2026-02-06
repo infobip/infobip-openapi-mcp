@@ -243,7 +243,7 @@ class OpenApiFilterChainTest {
     }
 
     private OpenApiMcpProperties createPropertiesWithFilters(Map<String, Boolean> filterConfig) {
-        return new OpenApiMcpProperties(null, null, null, null, null, filterConfig, null);
+        return new OpenApiMcpProperties(null, null, null, null, null, filterConfig, null, null);
     }
 
     // Test filter implementations

@@ -20,4 +20,12 @@ public class NoOpMetricService implements MetricService {
             public void timeApiCall(FullOperation fullOperation, HttpStatusCode httpStatusCode) {}
         };
     }
+
+    @Override
+    public void recordLiveReloadExecution(String status) {}
+
+    @Override
+    public LiveReloadTimer startLiveReloadTimer() {
+        return status -> {};
+    }
 }
