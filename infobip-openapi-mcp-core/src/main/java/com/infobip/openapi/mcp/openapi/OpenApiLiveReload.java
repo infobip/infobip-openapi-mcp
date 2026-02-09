@@ -32,10 +32,11 @@ import org.springframework.scheduling.annotation.Scheduled;
  *
  * <h2>Retry Mechanism</h2>
  * <p>To handle eventual consistency scenarios (e.g., multiple deployments converging on the same
- * specification version), each scheduled execution attempts up to {@code maxRetries} reloads with
- * a 1-second delay between attempts. The retry loop terminates early when a tool change is detected
- * and applied. This ensures that even if the first attempt sees no change (because the spec hasn't
- * propagated yet), subsequent retries have a chance to pick up the update.
+ * specification version), each scheduled execution attempts up to {@code maxRetries} reloads.
+ * The retry loop terminates early on the first successful reload, whether or not tools changed.
+ * Retries only occur when the reload fails (e.g., due to network errors), using exponential
+ * backoff between attempts. This ensures that transient failures are recovered from while
+ * avoiding unnecessary retries after a successful fetch.
  *
  * <h2>Change Detection</h2>
  * <p>Changes are detected by comparing the OpenAPI specification version string. When a version
@@ -132,15 +133,13 @@ public class OpenApiLiveReload {
                 try {
                     var toolsUpdated = refreshOpenApi(currentVersion, currentTools);
                     status = toolsUpdated ? Status.SUCCESS_TOOLS_UPDATED : Status.SUCCESS_NO_CHANGE;
-                    if (status == Status.SUCCESS_TOOLS_UPDATED) {
-                        break;
-                    }
+                    break;
                 } catch (Exception e) {
-                    LOGGER.error(
-                            "Error refreshing OpenAPI (attempt {}/{}): {}", attempt, maxRetries, e.getMessage(), e);
+                    LOGGER.error("Error refreshing OpenAPI (attempt {}/{}): {}", attempt, maxRetries, e.getMessage());
                     if (attempt < maxRetries) {
                         try {
-                            TimeUnit.SECONDS.sleep(1);
+                            long backoff = (long) Math.pow(2, attempt - 1);
+                            TimeUnit.SECONDS.sleep(backoff);
                         } catch (InterruptedException ex) {
                             LOGGER.warn("Interrupted while waiting for next OpenAPI refresh attempt.");
                             Thread.currentThread().interrupt();
@@ -170,7 +169,7 @@ public class OpenApiLiveReload {
      * @return true if tools were updated, false if no changes detected
      */
     private boolean refreshOpenApi(String currentVersion, List<RegisteredTool> currentTools) {
-        openApiRegistry.reload();
+        openApiRegistry.reloadWithUpdateCheck();
         var newVersion = openApiRegistry.openApi().getInfo().getVersion();
         if (currentVersion.equals(newVersion)) {
             return false;
