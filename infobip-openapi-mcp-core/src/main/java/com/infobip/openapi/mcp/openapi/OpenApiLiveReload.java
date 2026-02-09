@@ -135,11 +135,19 @@ public class OpenApiLiveReload {
                     if (status == Status.SUCCESS_TOOLS_UPDATED) {
                         break;
                     }
+                    if (attempt < maxRetries) {
+                        TimeUnit.SECONDS.sleep(1);
+                    }
+                } catch (InterruptedException e) {
+                    LOGGER.warn("Interrupted while waiting for next OpenAPI refresh attempt.");
+                    Thread.currentThread().interrupt();
+                    break;
                 } catch (Exception e) {
                     LOGGER.error("Error refreshing OpenAPI (attempt {}/{}): {}", attempt, maxRetries, e.getMessage());
                     if (attempt < maxRetries) {
                         try {
-                            TimeUnit.SECONDS.sleep(1);
+                            long backoff = (long) Math.pow(2, attempt - 1);
+                            TimeUnit.SECONDS.sleep(backoff);
                         } catch (InterruptedException ex) {
                             LOGGER.warn("Interrupted while waiting for next OpenAPI refresh attempt.");
                             Thread.currentThread().interrupt();
