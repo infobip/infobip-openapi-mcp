@@ -136,8 +136,7 @@ public class OpenApiLiveReload {
                         break;
                     }
                 } catch (Exception e) {
-                    LOGGER.error(
-                            "Error refreshing OpenAPI (attempt {}/{}): {}", attempt, maxRetries, e.getMessage());
+                    LOGGER.error("Error refreshing OpenAPI (attempt {}/{}): {}", attempt, maxRetries, e.getMessage());
                     if (attempt < maxRetries) {
                         try {
                             TimeUnit.SECONDS.sleep(1);
