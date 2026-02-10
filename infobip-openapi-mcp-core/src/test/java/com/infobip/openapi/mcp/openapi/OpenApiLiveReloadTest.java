@@ -114,7 +114,7 @@ class OpenApiLiveReloadTest {
             givenOpenApiLiveReload.refreshOpenApiOnSchedule();
 
             // Then
-            then(givenOpenApiRegistry).should().reload();
+            then(givenOpenApiRegistry).should().reloadWithUpdateCheck();
             then(givenMcpSyncServer).should().addTool(syncToolSpecCaptor.capture());
             then(givenMcpSyncServer).should(never()).removeTool(any());
 
@@ -141,7 +141,7 @@ class OpenApiLiveReloadTest {
             givenOpenApiLiveReload.refreshOpenApiOnSchedule();
 
             // Then
-            then(givenOpenApiRegistry).should().reload();
+            then(givenOpenApiRegistry).should().reloadWithUpdateCheck();
             then(givenMcpSyncServer).should(times(4)).addTool(syncToolSpecCaptor.capture());
             then(givenMcpSyncServer).should(never()).removeTool(any());
 
@@ -174,7 +174,7 @@ class OpenApiLiveReloadTest {
             givenOpenApiLiveReload.refreshOpenApiOnSchedule();
 
             // Then
-            then(givenOpenApiRegistry).should().reload();
+            then(givenOpenApiRegistry).should().reloadWithUpdateCheck();
             then(givenMcpSyncServer).should().removeTool(toolNameCaptor.capture());
             then(givenMcpSyncServer).should(never()).addTool(any());
 
@@ -199,7 +199,7 @@ class OpenApiLiveReloadTest {
             givenOpenApiLiveReload.refreshOpenApiOnSchedule();
 
             // Then
-            then(givenOpenApiRegistry).should().reload();
+            then(givenOpenApiRegistry).should().reloadWithUpdateCheck();
             then(givenMcpSyncServer).should(times(4)).removeTool(toolNameCaptor.capture());
             then(givenMcpSyncServer).should(never()).addTool(any());
 
@@ -231,7 +231,7 @@ class OpenApiLiveReloadTest {
             givenOpenApiLiveReload.refreshOpenApiOnSchedule();
 
             // Then
-            then(givenOpenApiRegistry).should().reload();
+            then(givenOpenApiRegistry).should().reloadWithUpdateCheck();
             then(givenMcpSyncServer).should().addTool(syncToolSpecCaptor.capture());
             then(givenMcpSyncServer).should(never()).removeTool(any());
 
@@ -257,7 +257,7 @@ class OpenApiLiveReloadTest {
             givenOpenApiLiveReload.refreshOpenApiOnSchedule();
 
             // Then
-            then(givenOpenApiRegistry).should().reload();
+            then(givenOpenApiRegistry).should().reloadWithUpdateCheck();
             then(givenMcpSyncServer).should().addTool(syncToolSpecCaptor.capture());
             then(givenMcpSyncServer).should(never()).removeTool(any());
 
@@ -284,7 +284,7 @@ class OpenApiLiveReloadTest {
             givenOpenApiLiveReload.refreshOpenApiOnSchedule();
 
             // Then
-            then(givenOpenApiRegistry).should().reload();
+            then(givenOpenApiRegistry).should().reloadWithUpdateCheck();
             then(givenMcpSyncServer).should().addTool(syncToolSpecCaptor.capture());
             then(givenMcpSyncServer).should(never()).removeTool(any());
 
@@ -311,7 +311,7 @@ class OpenApiLiveReloadTest {
             givenOpenApiLiveReload.refreshOpenApiOnSchedule();
 
             // Then
-            then(givenOpenApiRegistry).should().reload();
+            then(givenOpenApiRegistry).should().reloadWithUpdateCheck();
             then(givenMcpSyncServer).should(times(4)).addTool(syncToolSpecCaptor.capture());
             then(givenMcpSyncServer).should(never()).removeTool(any());
 
@@ -368,7 +368,7 @@ class OpenApiLiveReloadTest {
             givenOpenApiLiveReload.refreshOpenApiOnSchedule();
 
             // Then
-            then(givenOpenApiRegistry).should().reload();
+            then(givenOpenApiRegistry).should().reloadWithUpdateCheck();
             then(givenMcpSyncServer).should(never()).addTool(any());
             then(givenMcpSyncServer).should(never()).removeTool(any());
             then(givenMcpSyncServer).should(never()).notifyToolsListChanged();
@@ -393,7 +393,7 @@ class OpenApiLiveReloadTest {
             givenOpenApiLiveReload.refreshOpenApiOnSchedule();
 
             // Then
-            then(givenOpenApiRegistry).should().reload();
+            then(givenOpenApiRegistry).should().reloadWithUpdateCheck();
             then(givenMcpSyncServer).should(never()).addTool(any());
             then(givenMcpSyncServer).should(never()).removeTool(any());
             then(givenMcpSyncServer).should(never()).notifyToolsListChanged();
@@ -430,7 +430,7 @@ class OpenApiLiveReloadTest {
             givenOpenApiLiveReload.refreshOpenApiOnSchedule();
 
             // Then
-            then(givenOpenApiRegistry).should().reload();
+            then(givenOpenApiRegistry).should().reloadWithUpdateCheck();
             then(givenMcpSyncServer).should().removeTool("getUsers");
             then(givenMcpSyncServer).should(times(2)).addTool(syncToolSpecCaptor.capture());
 
