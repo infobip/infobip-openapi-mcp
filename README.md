@@ -281,10 +281,10 @@ After detecting changes, connected MCP clients are notified about the tool list 
 > [!NOTE]
 >Due to MCP SDK constraints, notifications are sent after each individual tool modification rather than in batch.
 
-The framework retries up to `max-retries` times per scheduled execution, with a 1-second delay between attempts. The
-retry loop terminates early once a tool change is detected and applied. This helps distributed deployments converge on
-the same tool set even when specification updates propagate with slight delays. If a refresh is already in progress
-when the next scheduled execution triggers, that execution is skipped.
+The framework retries up to `max-retries` times per scheduled execution, but terminates early on the first successful
+reload (whether or not tools changed). Retries only occur when the reload fails (e.g., due to network errors), using
+exponential backoff between attempts. If a refresh is already in progress when the next scheduled execution triggers,
+that execution is skipped.
 
 **Prerequisites:**
 - Add `@EnableScheduling` to your Spring Boot application configuration
@@ -334,7 +334,7 @@ infobip:
 | `infobip.openapi.mcp.tools.mock`                                                   | Whether to run MCP server in mock mode, where it avoids calling API during tool calls and instead returns results based on examples provided in OpenAPI specification. Default is false.                                                                                                                                                                | `false`        |
 | `infobip.openapi.mcp.live-reload.enabled`                                          | Whether live reload is enabled. When enabled, the framework periodically fetches the OpenAPI specification and updates registered MCP tools if changes are detected. Requires `@EnableScheduling` on your application.                                                                                                                                  | `false`        |
 | `infobip.openapi.mcp.live-reload.cron-expression`                                  | Cron expression for scheduling OpenAPI specification reload attempts. Uses Spring's cron format (6 fields: second, minute, hour, day-of-month, month, day-of-week). Requires `@EnableScheduling` on your application.                                                                                                                                   | `0 */10 * * * *` |
-| `infobip.openapi.mcp.live-reload.max-retries`                                      | Maximum number of reload attempts per scheduled execution. Attempts run with a 1-second delay between them and terminate early when a tool change is detected. This helps distributed deployments converge on the same tool set.                                                                                                                        | `3`            |
+| `infobip.openapi.mcp.live-reload.max-retries`                                      | Maximum number of reload attempts per scheduled execution. The loop terminates early on the first successful reload. Retries only occur on failure, using exponential backoff.                                                                                                                                                                          | `3`            |
 | `infobip.openapi.mcp.security.auth.enabled`                                        | Enable API authentication. Default is false.                                                                                                                                                                                                                                                                                                            | `false`        | 
 | `infobip.openapi.mcp.security.auth.auth-url`                                       | The API endpoint URL to validate credentials against.                                                                                                                                                                                                                                                                                                   | `-`            |
 | `infobip.openapi.mcp.security.auth.connect-timeout`                                | Connection timeout for the validation API call. Default is 5 seconds.                                                                                                                                                                                                                                                                                   | 5 seconds      |
