@@ -35,8 +35,7 @@ import org.springframework.scheduling.annotation.Scheduled;
  * specification version), each scheduled execution attempts up to {@code maxRetries} reloads.
  * The retry loop terminates early on the first successful reload, whether or not tools changed.
  * Retries only occur when the reload fails (e.g., due to network errors), using exponential
- * backoff between attempts. This ensures that transient failures are recovered from while
- * avoiding unnecessary retries after a successful fetch.
+ * backoff between attempts.
  *
  * <h2>Change Detection</h2>
  * <p>Changes are detected by comparing the OpenAPI specification version string. When a version
