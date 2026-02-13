@@ -32,19 +32,11 @@ public class OpenApiRegistry {
     }
 
     public void reload() {
-        reload(false);
-    }
-
-    public void reloadWithUpdateCheck() {
-        reload(true);
-    }
-
-    private void reload(boolean checkIfUpdated) {
         LOGGER.info("Loading OpenAPI from {}.", openApiMcpProperties.openApiUrl());
         try {
             var currentOpenApiVersion = openApi != null ? openApi.getInfo().getVersion() : DEFAULT_OPENAPI_VERSION;
             var originalOpenApi = openApiReader.read(openApiMcpProperties.openApiUrl());
-            if (checkIfUpdated && !isOpenApiUpdated(currentOpenApiVersion, originalOpenApi)) {
+            if (!isOpenApiUpdated(currentOpenApiVersion, originalOpenApi)) {
                 return;
             }
 
@@ -62,9 +54,6 @@ public class OpenApiRegistry {
     }
 
     private boolean isOpenApiUpdated(String currentOpenApiVersion, OpenAPI loadedOpenAPI) {
-        if (this.openApi == null || currentOpenApiVersion.equals(DEFAULT_OPENAPI_VERSION)) {
-            return true;
-        }
         return !loadedOpenAPI.getInfo().getVersion().equals(currentOpenApiVersion);
     }
 }
