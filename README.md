@@ -2,7 +2,7 @@
 
 <img src="https://cdn-web.infobip.com/uploads/2025/05/infobip-logo-horizontal-orange.png" alt="Infobip Logo" height="38" style="display:inline;vertical-align:middle;">
 
-OpenAPI MCP is an open-source framework for exposing [OpenAPI][1]-documented HTTP APIs as [MCP][2] servers. Built on [Spring AI][3] and designed to run as a [Spring Boot][4] application, it's already running in production, powering [Infobip MCP servers][5].
+OpenAPI MCP is an open-source framework for exposing any [OpenAPI][1]-documented HTTP APIs as [MCP][2] servers. Built on [Spring AI][3] and designed to run as a [Spring Boot][4] application, it's already running in production, powering [Infobip MCP servers][5].
 
 It's production-tested and ready for you to use in your own projects!
 
