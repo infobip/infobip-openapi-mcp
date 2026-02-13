@@ -113,12 +113,12 @@ public class ScopeDiscoveryServiceTest extends OpenApiTestBase {
     }
 
     protected void reloadOpenApi(String customOpenApiSpec) {
-        setupCustomOpenAPIMock(staticWireMockServer, customOpenApiSpec);
+        setupCustomOpenAPIMock(staticWireMockServer, bumpVersion(customOpenApiSpec));
         openApiRegistry.reload();
     }
 
     protected void reloadOpenApi(String customOpenApiSpec, OpenApiRegistry openApiRegistry) {
-        setupCustomOpenAPIMock(staticWireMockServer, customOpenApiSpec);
+        setupCustomOpenAPIMock(staticWireMockServer, bumpVersion(customOpenApiSpec));
         openApiRegistry.reload();
     }
 

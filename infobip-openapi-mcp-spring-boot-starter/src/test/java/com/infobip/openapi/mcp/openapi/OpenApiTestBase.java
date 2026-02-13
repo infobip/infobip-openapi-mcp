@@ -22,6 +22,15 @@ public abstract class OpenApiTestBase {
 
     protected static WireMockServer staticWireMockServer;
     private static volatile boolean serverInitialized = false;
+    private static int versionCounter = 1;
+
+    /**
+     * Bumps the version in an OpenAPI spec JSON to ensure {@code OpenApiRegistry.reload()} detects a change.
+     */
+    protected static String bumpVersion(String openApiSpec) {
+        return openApiSpec.replaceFirst(
+                "\"version\"\\s*:\\s*\"[^\"]+\"", "\"version\": \"" + versionCounter++ + ".0.0\"");
+    }
 
     @LocalServerPort
     protected int port;

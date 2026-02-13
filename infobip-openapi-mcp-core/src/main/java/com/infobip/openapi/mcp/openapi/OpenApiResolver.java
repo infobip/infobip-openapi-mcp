@@ -51,6 +51,7 @@ public class OpenApiResolver {
         try {
             openApiAsStringAgain = mapperFactory.mapper(openApi).writeValueAsString(openApi);
         } catch (Exception exception) {
+            LOGGER.error("Failed to serialize OpenAPI spec to JSON.", exception);
             throw InvalidOpenApiException.becauseOfErrorsWhileResolvingReferences(exception);
         }
 
