@@ -169,7 +169,7 @@ public class OpenApiLiveReload {
      * @return true if tools were updated, false if no changes detected
      */
     private boolean refreshOpenApi(String currentVersion, List<RegisteredTool> currentTools) {
-        openApiRegistry.reloadWithUpdateCheck();
+        openApiRegistry.reload();
         var newVersion = openApiRegistry.openApi().getInfo().getVersion();
         if (currentVersion.equals(newVersion)) {
             return false;
