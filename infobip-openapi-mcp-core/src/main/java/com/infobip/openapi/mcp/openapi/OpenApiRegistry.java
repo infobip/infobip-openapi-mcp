@@ -10,14 +10,12 @@ public class OpenApiRegistry {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(OpenApiRegistry.class);
 
-    private static final String DEFAULT_OPENAPI_VERSION = "-1.0.0";
-
     private final OpenApiMcpProperties openApiMcpProperties;
     private final OpenApiReader openApiReader;
     private final OpenApiFilterChain openApiFilterChain;
     private final OpenApiResolver openApiResolver;
 
-    private OpenAPI openApi = null;
+    private OpenAPI openApi;
 
     public OpenApiRegistry(
             OpenApiMcpProperties openApiMcpProperties,
@@ -34,12 +32,13 @@ public class OpenApiRegistry {
     public void reload() {
         LOGGER.info("Loading OpenAPI from {}.", openApiMcpProperties.openApiUrl());
         try {
-            var originalOpenApi = openApiReader.read(openApiMcpProperties.openApiUrl());
-            if (this.openApi != null && isSameOpenApiVersion(openApi, originalOpenApi)) {
+            var newUneditedOpenApi = openApiReader.read(openApiMcpProperties.openApiUrl());
+            if (this.openApi != null && isSameOpenApiVersion(openApi, newUneditedOpenApi)) {
+                LOGGER.info("No new OpenAPI found, skipping reload.");
                 return;
             }
-            var filteredOpenApi = openApiFilterChain.filter(originalOpenApi);
-            openApi = openApiResolver.resolve(filteredOpenApi);
+            var newFilteredOpenApi = openApiFilterChain.filter(newUneditedOpenApi);
+            openApi = openApiResolver.resolve(newFilteredOpenApi);
             LOGGER.info("Successfully loaded OpenAPI from {}.", openApiMcpProperties.openApiUrl());
         } catch (RuntimeException e) {
             LOGGER.error("Failed to load OpenAPI from {}: {}", openApiMcpProperties.openApiUrl(), e.getMessage(), e);
@@ -51,9 +50,9 @@ public class OpenApiRegistry {
         return openApi;
     }
 
-    private boolean isSameOpenApiVersion(OpenAPI oldOpenApi, OpenAPI currentOpenApi) {
-        var oldOpenApiVersion = oldOpenApi.getInfo().getVersion();
-        var currentOpenApiVersion = currentOpenApi.getInfo().getVersion();
-        return currentOpenApiVersion.equals(oldOpenApiVersion);
+    private boolean isSameOpenApiVersion(OpenAPI openApi1, OpenAPI openApi2) {
+        var openApiVersion1 = openApi1.getInfo().getVersion();
+        var openApiVersion2 = openApi2.getInfo().getVersion();
+        return openApiVersion1.equals(openApiVersion2);
     }
 }
