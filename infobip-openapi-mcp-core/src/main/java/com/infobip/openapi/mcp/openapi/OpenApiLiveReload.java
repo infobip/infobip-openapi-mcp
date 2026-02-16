@@ -137,7 +137,7 @@ public class OpenApiLiveReload {
                     LOGGER.error("Error refreshing OpenAPI (attempt {}/{}): {}", attempt, maxRetries, e.getMessage());
                     if (attempt < maxRetries) {
                         try {
-                            long backoff = (long) Math.pow(2, attempt - 1);
+                            var backoff = (long) Math.pow(2, attempt - 1);
                             TimeUnit.SECONDS.sleep(backoff);
                         } catch (InterruptedException ex) {
                             LOGGER.warn("Interrupted while waiting for next OpenAPI refresh attempt.");

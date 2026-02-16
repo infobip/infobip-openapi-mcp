@@ -17,7 +17,7 @@ public class OpenApiRegistry {
     private final OpenApiFilterChain openApiFilterChain;
     private final OpenApiResolver openApiResolver;
 
-    private OpenAPI openApi;
+    private OpenAPI openApi = null;
 
     public OpenApiRegistry(
             OpenApiMcpProperties openApiMcpProperties,
@@ -34,12 +34,10 @@ public class OpenApiRegistry {
     public void reload() {
         LOGGER.info("Loading OpenAPI from {}.", openApiMcpProperties.openApiUrl());
         try {
-            var currentOpenApiVersion = openApi != null ? openApi.getInfo().getVersion() : DEFAULT_OPENAPI_VERSION;
             var originalOpenApi = openApiReader.read(openApiMcpProperties.openApiUrl());
-            if (!isOpenApiUpdated(currentOpenApiVersion, originalOpenApi)) {
+            if (this.openApi != null && isSameOpenApiVersion(openApi, originalOpenApi)) {
                 return;
             }
-
             var filteredOpenApi = openApiFilterChain.filter(originalOpenApi);
             openApi = openApiResolver.resolve(filteredOpenApi);
             LOGGER.info("Successfully loaded OpenAPI from {}.", openApiMcpProperties.openApiUrl());
@@ -53,7 +51,9 @@ public class OpenApiRegistry {
         return openApi;
     }
 
-    private boolean isOpenApiUpdated(String currentOpenApiVersion, OpenAPI loadedOpenAPI) {
-        return !loadedOpenAPI.getInfo().getVersion().equals(currentOpenApiVersion);
+    private boolean isSameOpenApiVersion(OpenAPI oldOpenApi, OpenAPI currentOpenApi) {
+        var oldOpenApiVersion = oldOpenApi.getInfo().getVersion();
+        var currentOpenApiVersion = currentOpenApi.getInfo().getVersion();
+        return currentOpenApiVersion.equals(oldOpenApiVersion);
     }
 }
