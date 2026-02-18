@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## 0.1.6
+
 ### Changed
 
 - Live reload now terminates the retry loop early on the first successful reload, regardless of whether tools changed. Retries only occur on failure.
