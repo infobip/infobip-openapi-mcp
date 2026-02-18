@@ -184,10 +184,9 @@ public record OpenApiMcpProperties(
      *
      * @param enabled        Whether live reload is enabled. Default is false.
      * @param cronExpression Cron expression for scheduling reload attempts. Default is every 10 minutes.
-     * @param maxRetries     Maximum number of reload attempts per scheduled execution. The retry loop runs up to this
-     *                       many times with a 1-second delay between attempts, but terminates early as soon as a tool
-     *                       change is detected and applied. This helps distributed deployments converge on the same
-     *                       tool set even when specification updates propagate with slight delays. Default is 3.
+     * @param maxRetries     Maximum number of reload attempts per scheduled execution. The retry loop terminates early
+     *                       on the first successful reload. Retries only occur on failure, using exponential backoff.
+     *                       Default is 3.
      */
     public record LiveReload(
             Boolean enabled,
