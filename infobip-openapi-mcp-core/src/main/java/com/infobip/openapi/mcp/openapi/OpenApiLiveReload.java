@@ -137,6 +137,7 @@ public class OpenApiLiveReload {
                     LOGGER.error("Error refreshing OpenAPI (attempt {}/{}): {}", attempt, maxRetries, e.getMessage());
                     if (attempt < maxRetries) {
                         try {
+                            // This sleep causes thread blocking, consider configuring a larger scheduler thread pool.
                             var backoff = (long) Math.pow(2, attempt - 1);
                             TimeUnit.SECONDS.sleep(backoff);
                         } catch (InterruptedException ex) {
@@ -211,7 +212,7 @@ public class OpenApiLiveReload {
                         return true;
                     }
 
-                    // Tools changed if they are NOT the same
+                    // Tools changed if they are different
                     var currentTool = currentToolMap.get(registeredToolName).tool();
                     return !currentTool.equals(registeredTool);
                 })
