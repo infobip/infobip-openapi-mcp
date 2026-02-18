@@ -114,7 +114,7 @@ abstract class IntegrationTestBase extends AuthenticationTestBase {
                 .willReturn(aResponse()
                         .withStatus(200)
                         .withHeader("Content-Type", "application/json")
-                        .withBody(loadOpenApiSpec(openApiSpecPath))));
+                        .withBody(bumpVersion(loadOpenApiSpec(openApiSpecPath)))));
 
         // Reload OpenAPI and tools
         openApiRegistry.reload();

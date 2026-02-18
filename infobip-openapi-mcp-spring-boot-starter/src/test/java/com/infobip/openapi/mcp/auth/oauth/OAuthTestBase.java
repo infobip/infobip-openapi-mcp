@@ -26,7 +26,7 @@ public abstract class OAuthTestBase extends OpenApiTestBase {
     }
 
     protected void reloadOpenApi(String customOpenApiSpec) {
-        setupCustomOpenAPIMock(getStaticWireMockServer(), customOpenApiSpec);
+        setupCustomOpenAPIMock(getStaticWireMockServer(), bumpVersion(customOpenApiSpec));
         openApiRegistry.reload();
     }
 }

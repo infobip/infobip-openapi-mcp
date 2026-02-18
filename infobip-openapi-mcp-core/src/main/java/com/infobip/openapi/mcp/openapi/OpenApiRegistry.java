@@ -32,9 +32,13 @@ public class OpenApiRegistry {
     public void reload() {
         LOGGER.info("Loading OpenAPI from {}.", openApiMcpProperties.openApiUrl());
         try {
-            var originalOpenApi = openApiReader.read(openApiMcpProperties.openApiUrl());
-            var filteredOpenApi = openApiFilterChain.filter(originalOpenApi);
-            openApi = openApiResolver.resolve(filteredOpenApi);
+            var newUneditedOpenApi = openApiReader.read(openApiMcpProperties.openApiUrl());
+            if (this.openApi != null && isSameOpenApiVersion(openApi, newUneditedOpenApi)) {
+                LOGGER.info("No new OpenAPI found, skipping reload.");
+                return;
+            }
+            var newFilteredOpenApi = openApiFilterChain.filter(newUneditedOpenApi);
+            openApi = openApiResolver.resolve(newFilteredOpenApi);
             LOGGER.info("Successfully loaded OpenAPI from {}.", openApiMcpProperties.openApiUrl());
         } catch (RuntimeException e) {
             LOGGER.error("Failed to load OpenAPI from {}: {}", openApiMcpProperties.openApiUrl(), e.getMessage(), e);
@@ -44,5 +48,11 @@ public class OpenApiRegistry {
 
     public OpenAPI openApi() {
         return openApi;
+    }
+
+    private boolean isSameOpenApiVersion(OpenAPI openApi1, OpenAPI openApi2) {
+        var openApiVersion1 = openApi1.getInfo().getVersion();
+        var openApiVersion2 = openApi2.getInfo().getVersion();
+        return openApiVersion1.equals(openApiVersion2);
     }
 }

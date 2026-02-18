@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Live reload now terminates the retry loop early on the first successful reload, regardless of whether tools changed. Retries only occur on failure.
+- Live reload retry delay changed from fixed 1-second to exponential backoff between attempts.
+- Live reload skips OpenAPI filtering and resolution when the specification version has not changed, avoiding unnecessary processing.
+
 ## 0.1.5
 
 ### Added
