@@ -50,7 +50,7 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
         <!-- Dependencies: -->
-        <spring-ai.version>1.1.0</spring-ai.version>
+        <spring-ai.version>1.1.2</spring-ai.version>
         <spring-boot.version>3.5.7</spring-boot.version>
         <jspecify.version>1.0.0</jspecify.version>
         <junit.version>5.14.1</junit.version>
