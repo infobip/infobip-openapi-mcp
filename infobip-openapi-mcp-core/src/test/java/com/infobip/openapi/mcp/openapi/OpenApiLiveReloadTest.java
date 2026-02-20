@@ -50,7 +50,7 @@ class OpenApiLiveReloadTest {
             null,
             null,
             null,
-            new OpenApiMcpProperties.Tools(null, null, null, true, null),
+            new OpenApiMcpProperties.Tools(null, null, null, true, null, null),
             new OpenApiMcpProperties.LiveReload(true, "0 */1 * * * *", 1));
 
     @Mock
@@ -80,8 +80,7 @@ class OpenApiLiveReloadTest {
     private final OpenAPIV3Parser parser = new OpenAPIV3Parser();
     private final OpenApiMapperFactory mapperFactory = new OpenApiMapperFactory();
     private final OperationIdStrategy namingStrategy = new OperationIdStrategy();
-    private final InputSchemaComposer inputSchemaComposer =
-            new InputSchemaComposer(new OpenApiMcpProperties.Tools.Schema(null, null));
+    private final InputSchemaComposer inputSchemaComposer = new InputSchemaComposer(new OpenApiMcpProperties());
 
     private ToolRegistry givenToolRegistry;
 

@@ -31,8 +31,7 @@ import org.springframework.boot.test.system.OutputCaptureExtension;
 @ExtendWith(OutputCaptureExtension.class)
 class InputSchemaComposerTest {
 
-    private final InputSchemaComposer composer =
-            new InputSchemaComposer(new OpenApiMcpProperties.Tools.Schema(null, null));
+    private final InputSchemaComposer composer = new InputSchemaComposer(new OpenApiMcpProperties());
 
     @Nested
     @DisplayName("compose method")
@@ -56,7 +55,7 @@ class InputSchemaComposerTest {
             var operation = createOperationWithParameters();
 
             // when
-            var schema = composer.compose(createFullOperation(operation));
+            var schema = composer.compose(createFullOperation(operation)).getLeft();
 
             // then
             then(schema).isNotNull();
@@ -96,7 +95,7 @@ class InputSchemaComposerTest {
             var operation = createOperationWithRequestBody();
 
             // when
-            var schema = composer.compose(createFullOperation(operation));
+            var schema = composer.compose(createFullOperation(operation)).getLeft();
 
             // then
             then(schema).isNotNull();
@@ -128,7 +127,7 @@ class InputSchemaComposerTest {
             var operation = createOperationWithParametersAndRequestBody();
 
             // when
-            var schema = composer.compose(createFullOperation(operation));
+            var schema = composer.compose(createFullOperation(operation)).getLeft();
 
             // then
             then(schema).isNotNull();
@@ -184,7 +183,7 @@ class InputSchemaComposerTest {
             operation.setParameters(List.of(formParameter, queryParameter));
 
             // when
-            var schema = composer.compose(createFullOperation(operation));
+            var schema = composer.compose(createFullOperation(operation)).getLeft();
 
             // then
             then(schema).isNotNull();
@@ -203,7 +202,7 @@ class InputSchemaComposerTest {
             var operation = createOperationWithStringRequestBodyWrapper();
 
             // when
-            var schema = composer.compose(createFullOperation(operation));
+            var schema = composer.compose(createFullOperation(operation)).getLeft();
 
             // then
             then(schema).isNotNull();
@@ -268,12 +267,12 @@ class InputSchemaComposerTest {
             operation.setParameters(List.of(parameter));
 
             // when
-            var schema = composer.compose(createFullOperation(operation));
+            var schema = composer.compose(createFullOperation(operation)).getLeft();
 
             // then
             then(schema).isNotNull();
             then(schema.getType()).isEqualTo("object");
-            var paramSchema = schema.getProperties().get("testParam");
+            var paramSchema = (Schema) schema.getProperties().get("testParam");
             then(paramSchema).isNotSameAs(originalParameterSchema);
             then(paramSchema.getDescription()).isEqualTo("Parameter description");
 
@@ -307,12 +306,12 @@ class InputSchemaComposerTest {
             operation.setParameters(List.of(parameter));
 
             // when
-            var schema = composer.compose(createFullOperation(operation));
+            var schema = composer.compose(createFullOperation(operation)).getLeft();
 
             // then
             then(schema).isNotNull();
             then(schema.getType()).isEqualTo("object");
-            var paramSchema = schema.getProperties().get("testParam");
+            var paramSchema = (Schema) schema.getProperties().get("testParam");
             then(paramSchema).isSameAs(stringSchema);
             then(paramSchema.getDescription()).isEqualTo("Schema description");
 
@@ -385,7 +384,7 @@ class InputSchemaComposerTest {
             operation.setRequestBody(requestBody);
 
             // when
-            var result = composer.compose(createFullOperation(operation));
+            var result = composer.compose(createFullOperation(operation)).getLeft();
 
             // then
             then(result).isNotNull();
@@ -427,7 +426,7 @@ class InputSchemaComposerTest {
             operation.setRequestBody(requestBody);
 
             // when
-            var result = composer.compose(createFullOperation(operation));
+            var result = composer.compose(createFullOperation(operation)).getLeft();
 
             // then
             then(result).isNotNull();
@@ -473,7 +472,8 @@ class InputSchemaComposerTest {
             var openApi30 = new OpenAPI().specVersion(SpecVersion.V30).openapi("3.0.1");
 
             // when
-            var result = composer.compose(new FullOperation("/test", PathItem.HttpMethod.POST, operation, openApi30));
+            var result = composer.compose(new FullOperation("/test", PathItem.HttpMethod.POST, operation, openApi30))
+                    .getLeft();
 
             // then - Should return cloned schema, not modify original
             then(result).isNotNull();
@@ -524,7 +524,7 @@ class InputSchemaComposerTest {
             operation.setRequestBody(requestBody);
 
             // when
-            var result = composer.compose(createFullOperation(operation));
+            var result = composer.compose(createFullOperation(operation)).getLeft();
 
             // then
             then(result).isNotNull();
@@ -1468,7 +1468,7 @@ class InputSchemaComposerTest {
             var operation = createOperationWithOneOfRequestBody();
 
             // when
-            var schema = composer.compose(createFullOperation(operation));
+            var schema = composer.compose(createFullOperation(operation)).getLeft();
 
             // then
             then(schema).isNotNull();
@@ -1514,7 +1514,7 @@ class InputSchemaComposerTest {
             var operation = createOperationWithAllOfRequestBody();
 
             // when
-            var schema = composer.compose(createFullOperation(operation));
+            var schema = composer.compose(createFullOperation(operation)).getLeft();
 
             // then
             then(schema).isNotNull();
@@ -1558,7 +1558,7 @@ class InputSchemaComposerTest {
             var operation = createOperationWithObjectAndOneOfRequestBody();
 
             // when
-            var schema = composer.compose(createFullOperation(operation));
+            var schema = composer.compose(createFullOperation(operation)).getLeft();
 
             // then
             then(schema).isNotNull();
@@ -1601,7 +1601,7 @@ class InputSchemaComposerTest {
             var operation = createOperationWithOneOfAndExplicitTypeRequestBody();
 
             // when
-            var schema = composer.compose(createFullOperation(operation));
+            var schema = composer.compose(createFullOperation(operation)).getLeft();
 
             // then
             then(schema).isNotNull();
@@ -1647,7 +1647,7 @@ class InputSchemaComposerTest {
             var operation = createOperationWithAllOfAndExplicitTypeRequestBody();
 
             // when
-            var schema = composer.compose(createFullOperation(operation));
+            var schema = composer.compose(createFullOperation(operation)).getLeft();
 
             // then
             then(schema).isNotNull();
@@ -1691,7 +1691,7 @@ class InputSchemaComposerTest {
             var operation = createOperationWithParametersAndOneOfRequestBody();
 
             // when
-            var schema = composer.compose(createFullOperation(operation));
+            var schema = composer.compose(createFullOperation(operation)).getLeft();
 
             // then
             then(schema).isNotNull();
@@ -1746,7 +1746,7 @@ class InputSchemaComposerTest {
             var operation = createOperationWithParametersAndArrayRequestBody();
 
             // when
-            var schema = composer.compose(createFullOperation(operation));
+            var schema = composer.compose(createFullOperation(operation)).getLeft();
 
             // then
             then(schema).isNotNull();
@@ -1789,7 +1789,7 @@ class InputSchemaComposerTest {
             var operation = createOperationWithParametersAndStringRequestBody();
 
             // when
-            var schema = composer.compose(createFullOperation(operation));
+            var schema = composer.compose(createFullOperation(operation)).getLeft();
 
             // then
             then(schema).isNotNull();
@@ -2015,8 +2015,20 @@ class InputSchemaComposerTest {
 
         private final String customParametersKey = "customParams";
         private final String customRequestBodyKey = "customBody";
-        private final InputSchemaComposer customComposer = new InputSchemaComposer(
-                new OpenApiMcpProperties.Tools.Schema(customParametersKey, customRequestBodyKey));
+        private final InputSchemaComposer customComposer = new InputSchemaComposer(getProps());
+
+        private OpenApiMcpProperties getProps() {
+            var toolsSchemaProps = new OpenApiMcpProperties.Tools.Schema(customParametersKey, customRequestBodyKey);
+            return new OpenApiMcpProperties(
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    new OpenApiMcpProperties.Tools(null, toolsSchemaProps, null, null, null, null),
+                    null);
+        }
 
         @Test
         void shouldUseCustomWrapperKeysInComposition() throws Exception {
@@ -2024,7 +2036,7 @@ class InputSchemaComposerTest {
             var operation = createOperationWithParametersAndRequestBody();
 
             // when
-            var result = customComposer.compose(createFullOperation(operation));
+            var result = customComposer.compose(createFullOperation(operation)).getLeft();
 
             // then
             then(result).isNotNull();
@@ -2155,7 +2167,7 @@ class InputSchemaComposerTest {
             var operation = createOperationWithStringRequestBody();
 
             // when
-            var result = customComposer.compose(createFullOperation(operation));
+            var result = customComposer.compose(createFullOperation(operation)).getLeft();
 
             // then
             then(result).isNotNull();

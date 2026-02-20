@@ -42,8 +42,7 @@ class ToolRegistryTest {
     private ToolHandler toolHandler;
 
     private final OperationIdStrategy namingStrategy = new OperationIdStrategy();
-    private final InputSchemaComposer inputSchemaComposer =
-            new InputSchemaComposer(new OpenApiMcpProperties.Tools.Schema(null, null));
+    private final InputSchemaComposer inputSchemaComposer = new InputSchemaComposer(new OpenApiMcpProperties());
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final OpenAPIV3Parser parser = new OpenAPIV3Parser();
     private final OpenApiMapperFactory mapperFactory = new OpenApiMapperFactory();
@@ -54,8 +53,8 @@ class ToolRegistryTest {
     @BeforeEach
     void setUp() {
         // Default properties with prepend enabled
-        properties = new OpenApiMcpProperties(
-                null, null, null, null, null, null, new OpenApiMcpProperties.Tools(null, null, null, true, null), null);
+        var tools = new OpenApiMcpProperties.Tools(null, null, null, true, null, null);
+        properties = new OpenApiMcpProperties(null, null, null, null, null, null, tools, null);
         toolRegistry = new ToolRegistry(
                 openApiRegistry, namingStrategy, inputSchemaComposer, toolHandler, mapperFactory, properties);
     }
@@ -882,15 +881,8 @@ class ToolRegistryTest {
     @Test
     void shouldNotPrependSummaryToDescriptionWhenFeatureDisabled() {
         // Given
-        properties = new OpenApiMcpProperties(
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                new OpenApiMcpProperties.Tools(null, null, null, false, null),
-                null);
+        var tools = new OpenApiMcpProperties.Tools(null, null, null, false, null, null);
+        properties = new OpenApiMcpProperties(null, null, null, null, null, null, tools, null);
         toolRegistry = new ToolRegistry(
                 openApiRegistry, namingStrategy, inputSchemaComposer, toolHandler, mapperFactory, properties);
 
@@ -927,15 +919,8 @@ class ToolRegistryTest {
     @Test
     void shouldUseSummaryAsDescriptionWhenFeatureDisabledAndOnlySummaryPresent() {
         // Given
-        properties = new OpenApiMcpProperties(
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                new OpenApiMcpProperties.Tools(null, null, null, false, null),
-                null);
+        var tools = new OpenApiMcpProperties.Tools(null, null, null, false, null, null);
+        properties = new OpenApiMcpProperties(null, null, null, null, null, null, tools, null);
         toolRegistry = new ToolRegistry(
                 openApiRegistry, namingStrategy, inputSchemaComposer, toolHandler, mapperFactory, properties);
 

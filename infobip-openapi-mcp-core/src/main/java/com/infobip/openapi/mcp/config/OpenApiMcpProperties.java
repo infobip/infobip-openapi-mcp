@@ -64,7 +64,7 @@ public record OpenApiMcpProperties(
             filters = new HashMap<>();
         }
         if (tools == null) {
-            tools = new Tools(null, null, null, null, null);
+            tools = new Tools();
         }
         if (liveReload == null) {
             liveReload = new LiveReload(null, null, null);
@@ -78,6 +78,10 @@ public record OpenApiMcpProperties(
      */
     public static OpenApiMcpProperties withDefaults() {
         return new OpenApiMcpProperties(null, null, null, null, null, null, null, null);
+    }
+
+    public OpenApiMcpProperties() {
+        this(null, null, null, null, null, null, null, null);
     }
 
     /**
@@ -97,6 +101,10 @@ public record OpenApiMcpProperties(
      *                                          Default is true.
      * @param prependSummaryToDescription       Whether to prepend the operation summary as a markdown title to the
      *                                          description. Default is true.
+     * @param appendExamplesToDescription       Whether to append examples from OpenAPI specification as a markdown
+     *                                          section at the end of tool description. It will increase the token
+     *                                          usage for agents connected to the MCP server, but will also increate
+     *                                          accuracy of LLM generated tool call arguments. Default is false.
      * @param mock                              Whether to run MCP server in mock mode, where it avoids calling API
      *                                          during tool calls and instead returns results based on examples
      *                                          provided in OpenAPI specification. Default is false.
@@ -106,9 +114,11 @@ public record OpenApiMcpProperties(
             @NestedConfigurationProperty @Valid Schema schema,
             Boolean jsonDoubleSerializationMitigation,
             Boolean prependSummaryToDescription,
+            Boolean appendExamplesToDescription,
             Boolean mock) {
         public static final boolean DEFAULT_JSON_DOUBLE_SERIALIZATION_MITIGATION = true;
         public static final boolean DEFAULT_PREPEND_SUMMARY_TO_DESCRIPTION = true;
+        public static final boolean DEFAULT_APPEND_EXAMPLES_TO_DESCRIPTION = false;
         public static final boolean DEFAULT_MOCK = false;
 
         /**
@@ -127,9 +137,16 @@ public record OpenApiMcpProperties(
             if (prependSummaryToDescription == null) {
                 prependSummaryToDescription = DEFAULT_PREPEND_SUMMARY_TO_DESCRIPTION;
             }
+            if (appendExamplesToDescription == null) {
+                appendExamplesToDescription = DEFAULT_APPEND_EXAMPLES_TO_DESCRIPTION;
+            }
             if (mock == null) {
                 mock = DEFAULT_MOCK;
             }
+        }
+
+        public Tools() {
+            this(null, null, null, null, null, null);
         }
 
         /**

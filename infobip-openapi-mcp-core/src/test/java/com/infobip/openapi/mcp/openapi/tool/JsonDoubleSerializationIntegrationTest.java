@@ -66,8 +66,8 @@ class JsonDoubleSerializationIntegrationTest {
                 .build();
 
         // Setup mock properties with lenient stubbing to avoid unnecessary stubbing errors
-        var toolsConfigEnabled = new OpenApiMcpProperties.Tools(null, null, true, null, null);
-        var toolsConfigDisabled = new OpenApiMcpProperties.Tools(null, null, false, null, null);
+        var toolsConfigEnabled = new OpenApiMcpProperties.Tools(null, null, true, null, null, null);
+        var toolsConfigDisabled = new OpenApiMcpProperties.Tools(null, null, false, null, null, null);
 
         lenient().when(propertiesWithMitigationEnabled.tools()).thenReturn(toolsConfigEnabled);
         lenient().when(propertiesWithMitigationDisabled.tools()).thenReturn(toolsConfigDisabled);

@@ -9,8 +9,15 @@ import com.infobip.openapi.mcp.openapi.tool.exception.ToolRegistrationException;
 import com.infobip.openapi.mcp.openapi.tool.naming.NamingStrategy;
 import com.infobip.openapi.mcp.util.OpenApiMapperFactory;
 import io.modelcontextprotocol.spec.McpSchema;
+import io.swagger.v3.core.util.Json;
+import io.swagger.v3.oas.models.examples.Example;
+import io.swagger.v3.oas.models.media.Schema;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Collectors;
+import org.apache.commons.lang3.tuple.Pair;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -90,12 +97,13 @@ public class ToolRegistry {
                         .map(operationEntry -> new FullOperation(
                                 pathEntry.getKey(), operationEntry.getKey(), operationEntry.getValue(), openApi)))
                 .map(fullOperation -> {
+                    var composedSchemaWithExamples = inputSchemaComposer.compose(fullOperation);
                     var toolName = determineToolName(fullOperation);
                     var tool = McpSchema.Tool.builder()
                             .name(toolName)
                             .title(resolveTitle(fullOperation, toolName))
-                            .description(buildDescription(fullOperation))
-                            .inputSchema(resolveJsonSchema(fullOperation))
+                            .description(buildDescription(fullOperation, composedSchemaWithExamples))
+                            .inputSchema(resolveJsonSchema(fullOperation, composedSchemaWithExamples))
                             .build();
 
                     return new RegisteredTool(
@@ -127,7 +135,7 @@ public class ToolRegistry {
      * Otherwise, the tool name will be used as a fallback.
      *
      * @param fullOperation the OpenAPI operation
-     * @param toolName the name of the tool (used as fallback)
+     * @param toolName      the name of the tool (used as fallback)
      * @return the resolved title
      */
     private String resolveTitle(FullOperation fullOperation, String toolName) {
@@ -145,15 +153,17 @@ public class ToolRegistry {
      * that can be used by MCP clients to understand the expected input format.
      * The schema is generated based on the OpenAPI specification version.
      *
-     * @param fullOperation the OpenAPI operation to create a schema for
+     * @param fullOperation              the OpenAPI operation to create a schema for
+     * @param composedSchemaWithExamples
      * @return a JSON string representing the input schema, or "{}" if resolution fails
      */
-    private McpSchema.JsonSchema resolveJsonSchema(FullOperation fullOperation) {
-        var composedSchema = inputSchemaComposer.compose(fullOperation);
-        if (composedSchema == null) {
+    private McpSchema.JsonSchema resolveJsonSchema(
+            FullOperation fullOperation, Pair<? extends Schema, Map<String, Example>> composedSchemaWithExamples) {
+        if (composedSchemaWithExamples == null) {
             // Due to the way how the underlying framework works, we need to explicitly provide an empty object schema
             return new McpSchema.JsonSchema("object", Map.of(), null, null, null, null);
         }
+        var composedSchema = composedSchemaWithExamples.getLeft();
 
         try {
             var stringSchemaRepresentation =
@@ -183,10 +193,23 @@ public class ToolRegistry {
      * If the feature is disabled or only one of summary/description exists, returns the description if present,
      * otherwise returns the summary.
      *
-     * @param fullOperation the OpenAPI operation
+     * @param fullOperation              the OpenAPI operation
+     * @param composedSchemaWithExamples
      * @return the constructed description, or null if neither description nor summary exists
      */
-    private String buildDescription(FullOperation fullOperation) {
+    private String buildDescription(
+            FullOperation fullOperation, Pair<? extends Schema, Map<String, Example>> composedSchemaWithExamples) {
+        var basicDescription = buildBasicDescription(fullOperation);
+        if (composedSchemaWithExamples != null
+                && !composedSchemaWithExamples.getRight().isEmpty()
+                && properties.tools().appendExamplesToDescription()) {
+            var examples = buildExamples(composedSchemaWithExamples.getRight());
+            return "%s\n\n## Examples\n\n%s".formatted(basicDescription, examples);
+        }
+        return basicDescription;
+    }
+
+    private @Nullable String buildBasicDescription(FullOperation fullOperation) {
         var summary = fullOperation.operation().getSummary();
         var description = fullOperation.operation().getDescription();
 
@@ -205,6 +228,22 @@ public class ToolRegistry {
 
         // Otherwise, prefer description over summary
         return hasDescription ? description : summary;
+    }
+
+    private String buildExamples(Map<String, Example> examples) {
+        return examples.values().stream()
+                .map(this::buildExample)
+                .filter(Objects::nonNull)
+                .collect(Collectors.joining("\n\n"));
+    }
+
+    private @Nullable String buildExample(Example example) {
+        var exampleJson = Json.pretty(example.getValue());
+        if (exampleJson == null) {
+            return null;
+        }
+        return "### %s\n\n%s\n\n```json\n%s\n```"
+                .formatted(example.getSummary(), example.getDescription(), exampleJson);
     }
 
     public List<RegisteredTool> getRegisteredToolsCache() {

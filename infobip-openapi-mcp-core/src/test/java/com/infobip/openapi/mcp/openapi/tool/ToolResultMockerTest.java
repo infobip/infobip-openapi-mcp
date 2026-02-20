@@ -360,11 +360,11 @@ class ToolResultMockerTest {
     }
 
     private OpenApiMcpProperties givenDisabledMockProps() {
-        return OpenApiMcpProperties.withDefaults();
+        return new OpenApiMcpProperties();
     }
 
     private OpenApiMcpProperties givenEnabledMockProps() {
-        var tools = new OpenApiMcpProperties.Tools(null, null, null, null, true);
+        var tools = new OpenApiMcpProperties.Tools(null, null, null, null, null, true);
         return new OpenApiMcpProperties(null, null, null, null, null, null, tools, null);
     }
 }

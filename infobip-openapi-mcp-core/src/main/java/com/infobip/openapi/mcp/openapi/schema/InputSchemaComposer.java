@@ -10,11 +10,13 @@ import io.swagger.v3.core.util.AnnotationsUtils;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.Operation;
 import io.swagger.v3.oas.models.SpecVersion;
+import io.swagger.v3.oas.models.examples.Example;
 import io.swagger.v3.oas.models.media.MediaType;
 import io.swagger.v3.oas.models.media.ObjectSchema;
 import io.swagger.v3.oas.models.media.Schema;
 import io.swagger.v3.oas.models.parameters.RequestBody;
 import java.util.*;
+import org.apache.commons.lang3.tuple.Pair;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
@@ -54,10 +56,12 @@ public class InputSchemaComposer {
 
     private final String parametersKey;
     private final String requestBodyKey;
+    private final Boolean useExamples;
 
-    public InputSchemaComposer(OpenApiMcpProperties.Tools.Schema properties) {
-        this.parametersKey = properties.parametersKey();
-        this.requestBodyKey = properties.requestBodyKey();
+    public InputSchemaComposer(OpenApiMcpProperties properties) {
+        this.parametersKey = properties.tools().schema().parametersKey();
+        this.requestBodyKey = properties.tools().schema().requestBodyKey();
+        this.useExamples = properties.tools().appendExamplesToDescription();
     }
 
     /**
@@ -75,26 +79,64 @@ public class InputSchemaComposer {
      * @return A Schema representing the composed input schema, or null if neither parameters
      * nor request body are present.
      */
-    public @Nullable Schema<?> compose(FullOperation fullOperation) {
-        var parameterSchema = resolveParameterSchema(fullOperation);
-        var requestBodySchema = resolveRequestBodySchema(fullOperation);
+    public @Nullable Pair<? extends Schema, Map<String, Example>> compose(FullOperation fullOperation) {
+        var parameterSchemaWithExamples = resolveParameterSchema(fullOperation);
+        var requestBodySchemaWithExamples = resolveRequestBodySchema(fullOperation);
 
-        if (parameterSchema != null) {
-            if (requestBodySchema != null) {
+        if (parameterSchemaWithExamples != null) {
+            if (requestBodySchemaWithExamples != null) {
                 // Both parameters and request body exist - wrap both in their respective keys
                 var combinedSchema = new ObjectSchema();
-                combinedSchema.addProperty(parametersKey, parameterSchema);
+                combinedSchema.addProperty(parametersKey, parameterSchemaWithExamples.getLeft());
 
                 // Unwrap the request body if it was wrapped, then wrap it under requestBodyKey
-                var unwrappedBodySchema = unwrapIfNeeded(requestBodySchema);
-                combinedSchema.addProperty(requestBodyKey, unwrappedBodySchema);
+                var unwrappedBodySchemaWithExamples = unwrapIfNeeded(requestBodySchemaWithExamples);
+                combinedSchema.addProperty(requestBodyKey, unwrappedBodySchemaWithExamples.getLeft());
                 combinedSchema.required(List.of(parametersKey, requestBodyKey));
-                return combinedSchema;
+
+                var combinedExamples = combineExamples(
+                        parameterSchemaWithExamples.getRight(), unwrappedBodySchemaWithExamples.getRight());
+
+                return Pair.of(combinedSchema, combinedExamples);
             }
-            return parameterSchema;
+            return parameterSchemaWithExamples;
         }
 
-        return requestBodySchema;
+        return requestBodySchemaWithExamples;
+    }
+
+    private HashMap<String, Example> combineExamples(
+            Map<String, Example> parameterExamples, Map<String, Example> unwrappedBodyExamples) {
+        var combinedExamples = new HashMap<>(parameterExamples);
+
+        unwrappedBodyExamples.forEach((name, example) -> {
+            var mutableMap = new HashMap<String, Object>();
+            mutableMap.put(requestBodyKey, example.getValue());
+            var wrappedBodyExample = new Example()
+                    .summary(example.getSummary())
+                    .description(example.getDescription())
+                    .extensions(example.getExtensions())
+                    .value(mutableMap);
+            combinedExamples.merge(name, wrappedBodyExample, (paramsExample, bodyExample) -> {
+                var mergedExtensions = new HashMap<String, Object>();
+                if (paramsExample.getExtensions() != null) {
+                    mergedExtensions.putAll(paramsExample.getExtensions());
+                }
+                if (bodyExample.getExtensions() != null) {
+                    mergedExtensions.putAll(bodyExample.getExtensions());
+                }
+                var mergedValues = new HashMap<String, Object>();
+                mergedValues.put(parametersKey, ((Map<String, Object>) paramsExample.getValue()).get(parametersKey));
+                mergedValues.put(requestBodyKey, ((Map<String, Object>) bodyExample.getValue()).get(requestBodyKey));
+                return new Example()
+                        .summary("%s with %s".formatted(bodyExample.getSummary(), paramsExample.getSummary()))
+                        .description("%s\n\n%s".formatted(bodyExample.getDescription(), paramsExample.getDescription()))
+                        .extensions(mergedExtensions)
+                        .value(mergedValues);
+            });
+        });
+
+        return combinedExamples;
     }
 
     /**
@@ -234,13 +276,14 @@ public class InputSchemaComposer {
      * @param fullOperation The operation to resolve the parameters for.
      * @return An ObjectSchema containing the resolved parameters, or null if no parameters are resolved.
      */
-    private @Nullable ObjectSchema resolveParameterSchema(FullOperation fullOperation) {
+    private @Nullable Pair<ObjectSchema, Map<String, Example>> resolveParameterSchema(FullOperation fullOperation) {
         var operation = fullOperation.operation();
         if (operation.getParameters() == null || operation.getParameters().isEmpty()) {
             return null;
         }
 
         var inputSchema = new ObjectSchema();
+        var examples = new HashMap<String, Example>();
         for (var parameter : operation.getParameters()) {
             var parameterName = parameter.getName();
             var parameterIn = parameter.getIn();
@@ -260,6 +303,25 @@ public class InputSchemaComposer {
                 if (TRUE.equals(parameter.getRequired())) {
                     inputSchema.addRequiredItem(parameterName);
                 }
+
+                if (useExamples) {
+                    if (parameter.getExamples() != null) {
+                        parameter.getExamples().forEach((exampleName, exampleValue) -> {
+                            var example = examples.computeIfAbsent(exampleName, ignored -> new Example()
+                                    .summary(exampleValue.getSummary())
+                                    .description(exampleValue.getDescription())
+                                    .value(new HashMap<String, Object>()));
+                            ((Map<String, Object>) example.getValue()).put(parameterName, exampleValue.getValue());
+                            examples.put(exampleName, example);
+                        });
+                    } else if (parameter.getExample() != null) {
+                        var value = new HashMap<String, Object>();
+                        value.put(parameterName, parameter.getExample());
+                        examples.put(
+                                parameterName,
+                                new Example().summary(parameterName).value(value));
+                    }
+                }
             } else {
                 LOGGER.warn(
                         "Unsupported parameter type '{}' for parameter '{}'. Skipping.", parameterIn, parameterName);
@@ -269,7 +331,7 @@ public class InputSchemaComposer {
         if (inputSchema.getProperties() == null || inputSchema.getProperties().isEmpty()) {
             return null;
         }
-        return inputSchema;
+        return Pair.of(inputSchema, examples);
     }
 
     /**
@@ -279,20 +341,23 @@ public class InputSchemaComposer {
      * @param fullOperation The operation to resolve the request body for.
      * @return A Schema containing the resolved request body, or null if no request body is resolved.
      */
-    private @Nullable Schema<?> resolveRequestBodySchema(FullOperation fullOperation) {
+    private @Nullable Pair<Schema, Map<String, Example>> resolveRequestBodySchema(FullOperation fullOperation) {
         var operation = fullOperation.operation();
         var requestBody = operation.getRequestBody();
         if (requestBody == null) {
             return null;
         }
 
-        var originalSchema = getSupportedRequestBodySchema(requestBody);
-        if (originalSchema == null) {
+        var originalSchemaWithExample = getSupportedRequestBodySchema(requestBody);
+        if (originalSchemaWithExample == null) {
             LOGGER.warn(
                     "Unsupported content types in request body for operation '{}'. Skipping.",
                     operation.getOperationId());
             return null;
         }
+
+        var originalSchema = originalSchemaWithExample.getLeft();
+        var originalExamples = originalSchemaWithExample.getRight();
 
         // Check if schema is an object type with properties
         var isObjectType = "object".equals(originalSchema.getType())
@@ -307,9 +372,9 @@ public class InputSchemaComposer {
             if (originalSchema.getDescription() == null && requestBody.getDescription() != null) {
                 var clonedSchema = cloneSchema(originalSchema, fullOperation.openApi());
                 clonedSchema.setDescription(requestBody.getDescription());
-                return clonedSchema;
+                return Pair.of(clonedSchema, originalExamples);
             } else {
-                return originalSchema;
+                return originalSchemaWithExample;
             }
         } else {
             // Non-object schema OR object schema without properties (e.g., composed schemas)
@@ -321,7 +386,17 @@ public class InputSchemaComposer {
             objectSchema.setDescription(requestBody.getDescription());
             objectSchema.addProperty(requestBodyKey, originalSchema);
             objectSchema.addRequiredItem(requestBodyKey);
-            return objectSchema;
+            var objectExamples = new HashMap<String, Example>();
+            originalExamples.forEach((name, example) -> {
+                objectExamples.put(
+                        name,
+                        new Example()
+                                .summary(example.getSummary())
+                                .description(example.getDescription())
+                                .extensions(example.getExtensions())
+                                .value(Map.of(requestBodyKey, example.getValue())));
+            });
+            return Pair.of(objectSchema, objectExamples);
         }
     }
 
@@ -330,18 +405,35 @@ public class InputSchemaComposer {
      * This handles the case where resolveRequestBodySchema wrapped a non-object schema,
      * but we need to unwrap it when combining with parameters.
      *
-     * @param schema The schema to potentially unwrap.
+     * @param schemaWithExample The schema and examples to potentially unwrap.
      * @return The unwrapped schema, or the original if it wasn't wrapped.
      */
-    private Schema<?> unwrapIfNeeded(Schema<?> schema) {
-        if (schema instanceof ObjectSchema objectSchema
+    private Pair<Schema, Map<String, Example>> unwrapIfNeeded(Pair<Schema, Map<String, Example>> schemaWithExample) {
+        if (schemaWithExample.getLeft() instanceof ObjectSchema objectSchema
                 && objectSchema.getProperties() != null
                 && objectSchema.getProperties().size() == 1
                 && objectSchema.getProperties().containsKey(requestBodyKey)) {
             // This was wrapped by resolveRequestBodySchema - unwrap it
-            return objectSchema.getProperties().get(requestBodyKey);
+            var unwrappedSchema = objectSchema.getProperties().get(requestBodyKey);
+            var unwrappedExample = new HashMap<String, Example>();
+            schemaWithExample.getRight().forEach((name, example) -> {
+                var exampleValue = example.getValue();
+                if (exampleValue instanceof Map mapValue
+                        && mapValue.size() == 1
+                        && mapValue.containsKey(requestBodyKey)) {
+
+                    unwrappedExample.put(
+                            name,
+                            new Example()
+                                    .summary(example.getSummary())
+                                    .description(example.getDescription())
+                                    .extensions(example.getExtensions())
+                                    .value(mapValue.get(requestBodyKey)));
+                }
+            });
+            return Pair.of(unwrappedSchema, unwrappedExample);
         }
-        return schema;
+        return schemaWithExample;
     }
 
     /**
@@ -362,11 +454,24 @@ public class InputSchemaComposer {
      * @param requestBody The request body to check for supported request body schema.
      * @return The raw Schema from the MediaType, or null if the request body doesn't have a supported media type.
      */
-    private @Nullable Schema<?> getSupportedRequestBodySchema(@Nullable RequestBody requestBody) {
+    private @Nullable Pair<Schema, Map<String, Example>> getSupportedRequestBodySchema(
+            @Nullable RequestBody requestBody) {
         return Optional.ofNullable(requestBody)
                 .map(RequestBody::getContent)
                 .map(content -> content.get(DecomposedRequestData.SUPPORTED_MEDIA_TYPE.toString()))
-                .map(MediaType::getSchema)
+                .filter(mt -> mt.getSchema() != null)
+                .map(mt -> Pair.of(
+                        mt.getSchema(),
+                        Optional.of(mt).map(MediaType::getExamples).orElseGet(() -> Optional.of(mt)
+                                .map(MediaType::getExample)
+                                .map(value -> {
+                                    var mutableMap = new HashMap<String, Example>();
+                                    mutableMap.put(
+                                            "example",
+                                            new Example().summary("example").value(value));
+                                    return mutableMap;
+                                })
+                                .orElseGet(HashMap::new))))
                 .orElse(null);
     }
 }
