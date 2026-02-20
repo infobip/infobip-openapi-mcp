@@ -4,6 +4,7 @@ import static com.infobip.openapi.mcp.autoconfiguration.Qualifiers.TOOL_HANDLER_
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.infobip.openapi.mcp.McpRequestContextFactory;
+import com.infobip.openapi.mcp.auth.scope.ScopeDiscoveryService;
 import com.infobip.openapi.mcp.config.ApiBaseUrlConfig;
 import com.infobip.openapi.mcp.config.ApiBaseUrlProvider;
 import com.infobip.openapi.mcp.config.OpenApiMcpProperties;
@@ -306,6 +307,7 @@ class OpenApiMcpConfiguration {
     public OpenApiLiveReload openApiLiveReload(
             Optional<McpSyncServer> mcpSyncServer,
             Optional<McpStatelessSyncServer> mcpStatelessSyncServer,
+            Optional<ScopeDiscoveryService> scopeDiscoveryService,
             OpenApiRegistry openApiRegistry,
             ToolRegistry toolRegistry,
             ToolSpecBuilder toolSpecBuilder,
@@ -314,6 +316,7 @@ class OpenApiMcpConfiguration {
         return new OpenApiLiveReload(
                 mcpSyncServer,
                 mcpStatelessSyncServer,
+                scopeDiscoveryService,
                 openApiRegistry,
                 toolRegistry,
                 toolSpecBuilder,

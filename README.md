@@ -277,7 +277,7 @@ compares the registered tools with the new specification and:
 - Adds new tools that were introduced in the specification
 - Updates tools that have changed (title, description, or schema)
 
-After detecting changes, connected MCP clients are notified about the tool list changes.
+After detecting changes, connected MCP clients are notified about the tool list changes, and OAuth scopes are rediscovered automatically if scope discovery is enabled.
 > [!NOTE]
 >Due to MCP SDK constraints, notifications are sent after each individual tool modification rather than in batch.
 

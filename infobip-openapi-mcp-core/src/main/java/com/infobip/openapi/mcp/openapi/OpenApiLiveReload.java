@@ -1,5 +1,6 @@
 package com.infobip.openapi.mcp.openapi;
 
+import com.infobip.openapi.mcp.auth.scope.ScopeDiscoveryService;
 import com.infobip.openapi.mcp.config.OpenApiMcpProperties;
 import com.infobip.openapi.mcp.infrastructure.metrics.MetricService;
 import com.infobip.openapi.mcp.openapi.tool.RegisteredTool;
@@ -46,6 +47,10 @@ import org.springframework.scheduling.annotation.Scheduled;
  *   <li>Modified tools (changed name, description, or schema) are replaced</li>
  * </ul>
  *
+ * <h2>Scope Reloading</h2>
+ * <p>When tools are updated and a {@link ScopeDiscoveryService} is available, OAuth scopes are
+ * rediscovered from the updated specification.
+ *
  * <h2>Client Notification</h2>
  * <p>After tools are updated, connected MCP clients are notified via
  * {@link McpSyncServer#notifyToolsListChanged()} for stateful servers. Stateless servers do not
@@ -86,6 +91,7 @@ public class OpenApiLiveReload {
 
     private final Optional<McpSyncServer> mcpSyncServer;
     private final Optional<McpStatelessSyncServer> mcpStatelessSyncServer;
+    private final Optional<ScopeDiscoveryService> scopeDiscoveryService;
     private final OpenApiRegistry openApiRegistry;
     private final ToolRegistry toolRegistry;
     private final ToolSpecBuilder toolSpecBuilder;
@@ -97,6 +103,7 @@ public class OpenApiLiveReload {
     public OpenApiLiveReload(
             Optional<McpSyncServer> mcpSyncServer,
             Optional<McpStatelessSyncServer> mcpStatelessSyncServer,
+            Optional<ScopeDiscoveryService> scopeDiscoveryService,
             OpenApiRegistry openApiRegistry,
             ToolRegistry toolRegistry,
             ToolSpecBuilder toolSpecBuilder,
@@ -104,6 +111,7 @@ public class OpenApiLiveReload {
             MetricService metricService) {
         this.mcpSyncServer = mcpSyncServer;
         this.mcpStatelessSyncServer = mcpStatelessSyncServer;
+        this.scopeDiscoveryService = scopeDiscoveryService;
         this.openApiRegistry = openApiRegistry;
         this.toolRegistry = toolRegistry;
         this.toolSpecBuilder = toolSpecBuilder;
@@ -189,6 +197,9 @@ public class OpenApiLiveReload {
         // Reload tools
         mcpSyncServer.ifPresent(ignored -> registerStateful(addedOrChangedTools, deletedTools));
         mcpStatelessSyncServer.ifPresent(ignored -> registerStateless(addedOrChangedTools, deletedTools));
+
+        // Reload scopes
+        scopeDiscoveryService.ifPresent(ScopeDiscoveryService::discover);
 
         return true;
     }
