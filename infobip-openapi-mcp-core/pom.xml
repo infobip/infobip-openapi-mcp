@@ -57,14 +57,6 @@
 			<artifactId>jspecify</artifactId>
 		</dependency>
         <dependency>
-            <!-- TODO: remove after https://github.com/swagger-api/swagger-parser/issues/2085 is
-            resolved. Javax version of XmlElement is used by SwaggerAnnotationIntrospector class in
-            swagger-parser. -->
-            <groupId>javax.xml.bind</groupId>
-            <artifactId>jaxb-api</artifactId>
-            <version>2.3.1</version>
-        </dependency>
-        <dependency>
             <groupId>com.nimbusds</groupId>
             <artifactId>nimbus-jose-jwt</artifactId>
             <version>${nimbus-jwt.version}</version>
