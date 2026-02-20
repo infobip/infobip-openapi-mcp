@@ -6,6 +6,7 @@ import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 
+import com.infobip.openapi.mcp.auth.scope.ScopeDiscoveryService;
 import com.infobip.openapi.mcp.config.OpenApiMcpProperties;
 import com.infobip.openapi.mcp.infrastructure.metrics.MetricService;
 import com.infobip.openapi.mcp.openapi.schema.InputSchemaComposer;
@@ -64,6 +65,9 @@ class OpenApiLiveReloadTest {
 
     @Mock
     private OpenApiRegistry givenOpenApiRegistry;
+
+    @Mock
+    private ScopeDiscoveryService scopeDiscoveryService;
 
     @Mock
     private MetricService metricService;
@@ -441,6 +445,74 @@ class OpenApiLiveReloadTest {
         }
     }
 
+    @Nested
+    class ScopeReload {
+
+        @Test
+        void shouldReloadScopesWhenToolsAreUpdated() throws InterruptedException {
+            // Given
+            var givenBaseOpenApi = loadOpenApi(BASE_SPEC);
+            var givenEditedOpenApi = loadOpenApi(WITH_ADDED_TOOL_SPEC);
+
+            given(givenOpenApiRegistry.openApi())
+                    .willReturn(givenBaseOpenApi)
+                    .willReturn(givenBaseOpenApi)
+                    .willReturn(givenEditedOpenApi);
+
+            givenToolRegistry.getTools();
+            var givenOpenApiLiveReload = givenOpenApiLiveReload();
+            setupToolSpecBuilderForNewTools();
+
+            // When
+            givenOpenApiLiveReload.refreshOpenApiOnSchedule();
+
+            // Then
+            then(scopeDiscoveryService).should().discover();
+        }
+
+        @Test
+        void shouldNotReloadScopesWhenVersionDoesNotChange() throws InterruptedException {
+            // Given
+            var givenBaseOpenApi = loadOpenApi(BASE_SPEC);
+
+            given(givenOpenApiRegistry.openApi())
+                    .willReturn(givenBaseOpenApi)
+                    .willReturn(givenBaseOpenApi)
+                    .willReturn(givenBaseOpenApi);
+
+            givenToolRegistry.getTools();
+            var givenOpenApiLiveReload = givenOpenApiLiveReload();
+
+            // When
+            givenOpenApiLiveReload.refreshOpenApiOnSchedule();
+
+            // Then
+            then(scopeDiscoveryService).should(never()).discover();
+        }
+
+        @Test
+        void shouldReloadScopesWhenToolsAreIdentical() throws InterruptedException {
+            // Given
+            var givenBaseOpenApi = loadOpenApi(BASE_SPEC);
+            var givenSameToolsDifferentVersion = loadOpenApi(BASE_SPEC);
+            givenSameToolsDifferentVersion.getInfo().setVersion("1.0.1");
+
+            given(givenOpenApiRegistry.openApi())
+                    .willReturn(givenBaseOpenApi)
+                    .willReturn(givenBaseOpenApi)
+                    .willReturn(givenSameToolsDifferentVersion);
+
+            givenToolRegistry.getTools();
+            var givenOpenApiLiveReload = givenOpenApiLiveReload();
+
+            // When
+            givenOpenApiLiveReload.refreshOpenApiOnSchedule();
+
+            // Then
+            then(scopeDiscoveryService).should().discover();
+        }
+    }
+
     private void setupToolSpecBuilderForNewTools() {
         given(toolSpecBuilder.buildSyncToolSpecification(any())).willAnswer(invocation -> {
             var registeredTool = invocation.getArgument(0, RegisteredTool.class);
@@ -459,6 +531,7 @@ class OpenApiLiveReloadTest {
         return new OpenApiLiveReload(
                 Optional.of(givenMcpSyncServer),
                 Optional.empty(),
+                Optional.of(scopeDiscoveryService),
                 givenOpenApiRegistry,
                 givenToolRegistry,
                 toolSpecBuilder,
