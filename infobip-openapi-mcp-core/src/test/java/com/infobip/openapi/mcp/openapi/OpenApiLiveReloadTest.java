@@ -491,7 +491,7 @@ class OpenApiLiveReloadTest {
         }
 
         @Test
-        void shouldNotReloadScopesWhenToolsAreIdentical() throws InterruptedException {
+        void shouldReloadScopesWhenToolsAreIdentical() throws InterruptedException {
             // Given
             var givenBaseOpenApi = loadOpenApi(BASE_SPEC);
             var givenSameToolsDifferentVersion = loadOpenApi(BASE_SPEC);
@@ -509,7 +509,7 @@ class OpenApiLiveReloadTest {
             givenOpenApiLiveReload.refreshOpenApiOnSchedule();
 
             // Then
-            then(scopeDiscoveryService).should(never()).discover();
+            then(scopeDiscoveryService).should().discover();
         }
     }
 

@@ -183,6 +183,9 @@ public class OpenApiLiveReload {
             return false;
         }
 
+        // Reload scopes
+        scopeDiscoveryService.ifPresent(ScopeDiscoveryService::discover);
+
         var registeredTools = toolRegistry.getTools();
         var registeredToolMap = getToolMap(registeredTools);
         var currentToolMap = getToolMap(currentTools);
@@ -197,9 +200,6 @@ public class OpenApiLiveReload {
         // Reload tools
         mcpSyncServer.ifPresent(ignored -> registerStateful(addedOrChangedTools, deletedTools));
         mcpStatelessSyncServer.ifPresent(ignored -> registerStateless(addedOrChangedTools, deletedTools));
-
-        // Reload scopes
-        scopeDiscoveryService.ifPresent(ScopeDiscoveryService::discover);
 
         return true;
     }
