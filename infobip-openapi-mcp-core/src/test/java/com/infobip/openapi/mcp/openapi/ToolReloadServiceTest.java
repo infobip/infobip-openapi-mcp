@@ -33,7 +33,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
-class OpenApiLiveReloadTest {
+class ToolReloadServiceTest {
 
     private static final String BASE_SPEC = "/openapi/live-reload/base.json";
     private static final String WITH_ADDED_TOOL_SPEC = "/openapi/live-reload/with-added-tool.json";
@@ -52,7 +52,7 @@ class OpenApiLiveReloadTest {
             null,
             null,
             new OpenApiMcpProperties.Tools(null, null, null, true, null),
-            new OpenApiMcpProperties.LiveReload(true, "0 */1 * * * *", 1));
+            new OpenApiMcpProperties.ToolReload(true, "0 */1 * * * *", 1));
 
     @Mock
     private McpSyncServer givenMcpSyncServer;
@@ -115,7 +115,7 @@ class OpenApiLiveReloadTest {
             setupToolSpecBuilderForNewTools();
 
             // When
-            givenOpenApiLiveReload.refreshOpenApiOnSchedule();
+            givenOpenApiLiveReload.reloadOnSchedule();
 
             // Then
             then(givenOpenApiRegistry).should().reload();
@@ -142,7 +142,7 @@ class OpenApiLiveReloadTest {
             setupToolSpecBuilderForNewTools();
 
             // When
-            givenOpenApiLiveReload.refreshOpenApiOnSchedule();
+            givenOpenApiLiveReload.reloadOnSchedule();
 
             // Then
             then(givenOpenApiRegistry).should().reload();
@@ -175,7 +175,7 @@ class OpenApiLiveReloadTest {
             var givenOpenApiLiveReload = givenOpenApiLiveReload();
 
             // When
-            givenOpenApiLiveReload.refreshOpenApiOnSchedule();
+            givenOpenApiLiveReload.reloadOnSchedule();
 
             // Then
             then(givenOpenApiRegistry).should().reload();
@@ -200,7 +200,7 @@ class OpenApiLiveReloadTest {
             var givenOpenApiLiveReload = givenOpenApiLiveReload();
 
             // When
-            givenOpenApiLiveReload.refreshOpenApiOnSchedule();
+            givenOpenApiLiveReload.reloadOnSchedule();
 
             // Then
             then(givenOpenApiRegistry).should().reload();
@@ -232,7 +232,7 @@ class OpenApiLiveReloadTest {
             setupToolSpecBuilderForNewTools();
 
             // When
-            givenOpenApiLiveReload.refreshOpenApiOnSchedule();
+            givenOpenApiLiveReload.reloadOnSchedule();
 
             // Then
             then(givenOpenApiRegistry).should().reload();
@@ -258,7 +258,7 @@ class OpenApiLiveReloadTest {
             setupToolSpecBuilderForNewTools();
 
             // When
-            givenOpenApiLiveReload.refreshOpenApiOnSchedule();
+            givenOpenApiLiveReload.reloadOnSchedule();
 
             // Then
             then(givenOpenApiRegistry).should().reload();
@@ -285,7 +285,7 @@ class OpenApiLiveReloadTest {
             setupToolSpecBuilderForNewTools();
 
             // When
-            givenOpenApiLiveReload.refreshOpenApiOnSchedule();
+            givenOpenApiLiveReload.reloadOnSchedule();
 
             // Then
             then(givenOpenApiRegistry).should().reload();
@@ -312,7 +312,7 @@ class OpenApiLiveReloadTest {
             setupToolSpecBuilderForNewTools();
 
             // When
-            givenOpenApiLiveReload.refreshOpenApiOnSchedule();
+            givenOpenApiLiveReload.reloadOnSchedule();
 
             // Then
             then(givenOpenApiRegistry).should().reload();
@@ -369,7 +369,7 @@ class OpenApiLiveReloadTest {
             var givenOpenApiLiveReload = givenOpenApiLiveReload();
 
             // When
-            givenOpenApiLiveReload.refreshOpenApiOnSchedule();
+            givenOpenApiLiveReload.reloadOnSchedule();
 
             // Then
             then(givenOpenApiRegistry).should().reload();
@@ -394,7 +394,7 @@ class OpenApiLiveReloadTest {
             var givenOpenApiLiveReload = givenOpenApiLiveReload();
 
             // When
-            givenOpenApiLiveReload.refreshOpenApiOnSchedule();
+            givenOpenApiLiveReload.reloadOnSchedule();
 
             // Then
             then(givenOpenApiRegistry).should().reload();
@@ -431,7 +431,7 @@ class OpenApiLiveReloadTest {
             setupToolSpecBuilderForNewTools();
 
             // When
-            givenOpenApiLiveReload.refreshOpenApiOnSchedule();
+            givenOpenApiLiveReload.reloadOnSchedule();
 
             // Then
             then(givenOpenApiRegistry).should().reload();
@@ -464,7 +464,7 @@ class OpenApiLiveReloadTest {
             setupToolSpecBuilderForNewTools();
 
             // When
-            givenOpenApiLiveReload.refreshOpenApiOnSchedule();
+            givenOpenApiLiveReload.reloadOnSchedule();
 
             // Then
             then(scopeDiscoveryService).should().discover();
@@ -484,7 +484,7 @@ class OpenApiLiveReloadTest {
             var givenOpenApiLiveReload = givenOpenApiLiveReload();
 
             // When
-            givenOpenApiLiveReload.refreshOpenApiOnSchedule();
+            givenOpenApiLiveReload.reloadOnSchedule();
 
             // Then
             then(scopeDiscoveryService).should(never()).discover();
@@ -506,7 +506,7 @@ class OpenApiLiveReloadTest {
             var givenOpenApiLiveReload = givenOpenApiLiveReload();
 
             // When
-            givenOpenApiLiveReload.refreshOpenApiOnSchedule();
+            givenOpenApiLiveReload.reloadOnSchedule();
 
             // Then
             then(scopeDiscoveryService).should().discover();
@@ -527,8 +527,8 @@ class OpenApiLiveReloadTest {
         return getClass().getResource(resourcePath).toString();
     }
 
-    private OpenApiLiveReload givenOpenApiLiveReload() {
-        return new OpenApiLiveReload(
+    private ToolReloadService givenOpenApiLiveReload() {
+        return new ToolReloadService(
                 Optional.of(givenMcpSyncServer),
                 Optional.empty(),
                 Optional.of(scopeDiscoveryService),

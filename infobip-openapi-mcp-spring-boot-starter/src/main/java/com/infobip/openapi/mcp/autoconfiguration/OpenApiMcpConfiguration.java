@@ -303,8 +303,8 @@ class OpenApiMcpConfiguration {
     }
 
     @Bean
-    @ConditionalOnProperty(prefix = OpenApiMcpProperties.LiveReload.PREFIX, name = "enabled", havingValue = "true")
-    public OpenApiLiveReload openApiLiveReload(
+    @ConditionalOnProperty(prefix = OpenApiMcpProperties.ToolReload.PREFIX, name = "enabled", havingValue = "true")
+    public ToolReloadService openApiLiveReload(
             Optional<McpSyncServer> mcpSyncServer,
             Optional<McpStatelessSyncServer> mcpStatelessSyncServer,
             Optional<ScopeDiscoveryService> scopeDiscoveryService,
@@ -313,7 +313,7 @@ class OpenApiMcpConfiguration {
             ToolSpecBuilder toolSpecBuilder,
             OpenApiMcpProperties properties,
             MetricService metricService) {
-        return new OpenApiLiveReload(
+        return new ToolReloadService(
                 mcpSyncServer,
                 mcpStatelessSyncServer,
                 scopeDiscoveryService,

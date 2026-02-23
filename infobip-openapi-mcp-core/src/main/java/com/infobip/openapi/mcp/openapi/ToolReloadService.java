@@ -65,13 +65,13 @@ import org.springframework.scheduling.annotation.Scheduled;
  * <p>Only one refresh operation can run at a time. If a scheduled execution triggers while a
  * previous refresh is still in progress, the new execution is skipped.
  *
- * @see OpenApiMcpProperties.LiveReload
+ * @see OpenApiMcpProperties.ToolReload
  * @see OpenApiRegistry
  * @see ToolRegistry
  */
-public class OpenApiLiveReload {
+public class ToolReloadService {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(OpenApiLiveReload.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(ToolReloadService.class);
 
     private enum Status {
         SUCCESS_TOOLS_UPDATED("success_tools_updated"),
@@ -95,12 +95,12 @@ public class OpenApiLiveReload {
     private final OpenApiRegistry openApiRegistry;
     private final ToolRegistry toolRegistry;
     private final ToolSpecBuilder toolSpecBuilder;
-    private final OpenApiMcpProperties.LiveReload liveReloadConfig;
+    private final OpenApiMcpProperties.ToolReload toolReloadConfig;
     private final MetricService metricService;
 
     private final AtomicBoolean refreshInProgress = new AtomicBoolean(false);
 
-    public OpenApiLiveReload(
+    public ToolReloadService(
             Optional<McpSyncServer> mcpSyncServer,
             Optional<McpStatelessSyncServer> mcpStatelessSyncServer,
             Optional<ScopeDiscoveryService> scopeDiscoveryService,
@@ -115,12 +115,12 @@ public class OpenApiLiveReload {
         this.openApiRegistry = openApiRegistry;
         this.toolRegistry = toolRegistry;
         this.toolSpecBuilder = toolSpecBuilder;
-        this.liveReloadConfig = properties.liveReload();
+        this.toolReloadConfig = properties.toolReload();
         this.metricService = metricService;
     }
 
     @Scheduled(cron = "${infobip.openapi.mcp.live-reload.cron-expression:0 */10 * * * *}")
-    public void refreshOpenApiOnSchedule() throws InterruptedException {
+    public void reloadOnSchedule() throws InterruptedException {
         if (!refreshInProgress.compareAndSet(false, true)) {
             LOGGER.info("OpenAPI refresh already in progress, skipping this execution.");
             return;
@@ -132,13 +132,13 @@ public class OpenApiLiveReload {
         try {
             LOGGER.info("Refreshing OpenAPI on schedule.");
 
-            var currentVersion = openApiRegistry.openApi().getInfo().getVersion();
+            var currentOpenApiVersion = openApiRegistry.openApi().getInfo().getVersion();
             var currentTools = toolRegistry.getRegisteredToolsCache();
 
-            var maxRetries = liveReloadConfig.maxRetries();
+            var maxRetries = toolReloadConfig.maxRetries();
             for (int attempt = 1; attempt <= maxRetries; attempt++) {
                 try {
-                    var toolsUpdated = refreshOpenApi(currentVersion, currentTools);
+                    var toolsUpdated = reload(currentOpenApiVersion, currentTools);
                     status = toolsUpdated ? Status.SUCCESS_TOOLS_UPDATED : Status.SUCCESS_NO_CHANGE;
                     break;
                 } catch (Exception e) {
@@ -172,18 +172,18 @@ public class OpenApiLiveReload {
     /**
      * Refreshes the OpenAPI specification and updates tools if needed.
      *
-     * @param currentVersion the current OpenAPI version
+     * @param currentOpenApiVersion the current OpenAPI version
      * @param currentTools   the current list of registered tools
      * @return true if tools were updated, false if no changes detected
      */
-    private boolean refreshOpenApi(String currentVersion, List<RegisteredTool> currentTools) {
+    public boolean reload(String currentOpenApiVersion, List<RegisteredTool> currentTools) {
         openApiRegistry.reload();
-        var newVersion = openApiRegistry.openApi().getInfo().getVersion();
-        if (currentVersion.equals(newVersion)) {
+        var newOpenApiVersion = openApiRegistry.openApi().getInfo().getVersion();
+        if (currentOpenApiVersion.equals(newOpenApiVersion)) {
             return false;
         }
 
-        // Reload scopes
+        // Reload scopes - always discover as tools can stay the same but the scopes can change
         scopeDiscoveryService.ifPresent(ScopeDiscoveryService::discover);
 
         var registeredTools = toolRegistry.getTools();
