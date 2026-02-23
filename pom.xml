@@ -50,18 +50,26 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
         <!-- Dependencies: -->
+        <jackson.version>2.21.1</jackson.version>
         <spring-ai.version>1.1.2</spring-ai.version>
-        <spring-boot.version>3.5.7</spring-boot.version>
+        <spring-boot.version>3.5.11</spring-boot.version>
         <jspecify.version>1.0.0</jspecify.version>
-        <junit.version>5.14.1</junit.version>
-        <mockito.version>5.20.0</mockito.version>
-        <assertj.version>3.27.6</assertj.version>
-        <wiremock.version>3.13.1</wiremock.version>
+        <junit.version>5.14.3</junit.version>
+        <mockito.version>5.21.0</mockito.version>
+        <assertj.version>3.27.7</assertj.version>
+        <wiremock.version>3.13.2</wiremock.version>
     </properties>
 
     <dependencyManagement>
         <dependencies>
             <!-- Frameworks -->
+            <dependency>
+                <groupId>com.fasterxml.jackson</groupId>
+                <artifactId>jackson-bom</artifactId>
+                <version>${jackson.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
             <dependency>
                 <groupId>org.springframework.ai</groupId>
                 <artifactId>spring-ai-bom</artifactId>
