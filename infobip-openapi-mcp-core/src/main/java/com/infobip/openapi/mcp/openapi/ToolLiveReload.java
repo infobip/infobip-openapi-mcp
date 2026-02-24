@@ -65,13 +65,13 @@ import org.springframework.scheduling.annotation.Scheduled;
  * <p>Only one refresh operation can run at a time. If a scheduled execution triggers while a
  * previous refresh is still in progress, the new execution is skipped.
  *
- * @see OpenApiMcpProperties.ToolReload
+ * @see OpenApiMcpProperties.LiveReload
  * @see OpenApiRegistry
  * @see ToolRegistry
  */
-public class ToolReloadService {
+public class ToolLiveReload {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(ToolReloadService.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(ToolLiveReload.class);
 
     private enum Status {
         SUCCESS_TOOLS_UPDATED("success_tools_updated"),
@@ -95,12 +95,12 @@ public class ToolReloadService {
     private final OpenApiRegistry openApiRegistry;
     private final ToolRegistry toolRegistry;
     private final ToolSpecBuilder toolSpecBuilder;
-    private final OpenApiMcpProperties.ToolReload toolReloadConfig;
+    private final OpenApiMcpProperties.LiveReload liveReloadConfig;
     private final MetricService metricService;
 
     private final AtomicBoolean refreshInProgress = new AtomicBoolean(false);
 
-    public ToolReloadService(
+    public ToolLiveReload(
             Optional<McpSyncServer> mcpSyncServer,
             Optional<McpStatelessSyncServer> mcpStatelessSyncServer,
             Optional<ScopeDiscoveryService> scopeDiscoveryService,
@@ -115,7 +115,7 @@ public class ToolReloadService {
         this.openApiRegistry = openApiRegistry;
         this.toolRegistry = toolRegistry;
         this.toolSpecBuilder = toolSpecBuilder;
-        this.toolReloadConfig = properties.toolReload();
+        this.liveReloadConfig = properties.liveReload();
         this.metricService = metricService;
     }
 
@@ -135,7 +135,7 @@ public class ToolReloadService {
             var currentOpenApiVersion = openApiRegistry.openApi().getInfo().getVersion();
             var currentTools = toolRegistry.getRegisteredToolsCache();
 
-            var maxRetries = toolReloadConfig.maxRetries();
+            var maxRetries = liveReloadConfig.maxRetries();
             for (int attempt = 1; attempt <= maxRetries; attempt++) {
                 try {
                     var toolsUpdated = reload(currentOpenApiVersion, currentTools);

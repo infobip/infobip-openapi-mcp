@@ -33,7 +33,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
-class ToolReloadServiceTest {
+class ToolLiveReloadTest {
 
     private static final String BASE_SPEC = "/openapi/live-reload/base.json";
     private static final String WITH_ADDED_TOOL_SPEC = "/openapi/live-reload/with-added-tool.json";
@@ -52,7 +52,7 @@ class ToolReloadServiceTest {
             null,
             null,
             new OpenApiMcpProperties.Tools(null, null, null, true, null),
-            new OpenApiMcpProperties.ToolReload(true, "0 */1 * * * *", 1));
+            new OpenApiMcpProperties.LiveReload(true, "0 */1 * * * *", 1));
 
     @Mock
     private McpSyncServer givenMcpSyncServer;
@@ -527,8 +527,8 @@ class ToolReloadServiceTest {
         return getClass().getResource(resourcePath).toString();
     }
 
-    private ToolReloadService givenOpenApiLiveReload() {
-        return new ToolReloadService(
+    private ToolLiveReload givenOpenApiLiveReload() {
+        return new ToolLiveReload(
                 Optional.of(givenMcpSyncServer),
                 Optional.empty(),
                 Optional.of(scopeDiscoveryService),
