@@ -347,9 +347,9 @@ class DefaultErrorModelProviderAuthTest extends AuthenticationTestBase {
                         + "http://localhost:"
                         + getStaticWireMockServer().port()
                         + "/.well-known/oauth-protected-resource\""
-                        + ", scope=\"");
-        then(response.getHeaders().get(HttpHeaders.WWW_AUTHENTICATE).getFirst()).contains("read:resource1");
-        then(response.getHeaders().get(HttpHeaders.WWW_AUTHENTICATE).getFirst()).contains("write:resource1");
+                        + ", scope=\"")
+                .contains("read:resource1")
+                .contains("write:resource1");
 
         // Should return JSON format from DefaultErrorModelProvider, not XML
         String expectedJson = """

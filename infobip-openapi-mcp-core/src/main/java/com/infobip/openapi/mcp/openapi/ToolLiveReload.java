@@ -198,8 +198,9 @@ public class ToolLiveReload {
         }
 
         // Reload tools
-        mcpSyncServer.ifPresent(ignored -> registerStateful(addedOrChangedTools, deletedTools));
-        mcpStatelessSyncServer.ifPresent(ignored -> registerStateless(addedOrChangedTools, deletedTools));
+        mcpSyncServer.ifPresent(ignored -> registerStateful(addedOrChangedTools, deletedTools, currentToolMap));
+        mcpStatelessSyncServer.ifPresent(
+                ignored -> registerStateless(addedOrChangedTools, deletedTools, currentToolMap));
 
         return true;
     }
@@ -230,18 +231,46 @@ public class ToolLiveReload {
                 .toList();
     }
 
-    private void registerStateful(List<RegisteredTool> addedOrChangedTools, List<RegisteredTool> deletedTools) {
+    private void registerStateful(
+            List<RegisteredTool> addedOrChangedTools,
+            List<RegisteredTool> deletedTools,
+            Map<String, RegisteredTool> currentToolMap) {
         var server = mcpSyncServer.get();
-        deletedTools.forEach(deletedTool -> server.removeTool(deletedTool.tool().name()));
-        addedOrChangedTools.forEach(
-                changedTool -> server.addTool(toolSpecBuilder.buildSyncToolSpecification(changedTool)));
+        deletedTools.forEach(deletedTool -> {
+            logToolDeletion(deletedTool);
+            server.removeTool(deletedTool.tool().name());
+        });
+        addedOrChangedTools.forEach(changedTool -> {
+            logToolAdditionOrChange(changedTool, currentToolMap);
+            server.addTool(toolSpecBuilder.buildSyncToolSpecification(changedTool));
+        });
     }
 
-    private void registerStateless(List<RegisteredTool> addedOrChangedTools, List<RegisteredTool> deletedTools) {
+    private void registerStateless(
+            List<RegisteredTool> addedOrChangedTools,
+            List<RegisteredTool> deletedTools,
+            Map<String, RegisteredTool> currentToolMap) {
         var server = mcpStatelessSyncServer.get();
-        deletedTools.forEach(deletedTool -> server.removeTool(deletedTool.tool().name()));
-        addedOrChangedTools.forEach(
-                changedTool -> server.addTool(toolSpecBuilder.buildSyncStatelessToolSpecification(changedTool)));
+        deletedTools.forEach(deletedTool -> {
+            logToolDeletion(deletedTool);
+            server.removeTool(deletedTool.tool().name());
+        });
+        addedOrChangedTools.forEach(changedTool -> {
+            logToolAdditionOrChange(changedTool, currentToolMap);
+            server.addTool(toolSpecBuilder.buildSyncStatelessToolSpecification(changedTool));
+        });
+    }
+
+    private void logToolDeletion(RegisteredTool deletedTool) {
+        LOGGER.info("Removing tool {} from MCP server.", deletedTool.tool().name());
+    }
+
+    private void logToolAdditionOrChange(RegisteredTool addedTool, Map<String, RegisteredTool> currentToolMap) {
+        if (currentToolMap.containsKey(addedTool.tool().name())) {
+            LOGGER.info("Updating tool {} in MCP server.", addedTool.tool().name());
+        } else {
+            LOGGER.info("Adding tool {} to MCP server.", addedTool.tool().name());
+        }
     }
 
     private Map<String, RegisteredTool> getToolMap(List<RegisteredTool> tools) {
