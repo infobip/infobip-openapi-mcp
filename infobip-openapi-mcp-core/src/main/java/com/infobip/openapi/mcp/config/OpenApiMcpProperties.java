@@ -40,7 +40,7 @@ public record OpenApiMcpProperties(
         String userAgent,
         Map<String, Boolean> filters,
         @NestedConfigurationProperty @Valid Tools tools,
-        @NestedConfigurationProperty @Valid LiveReload liveReload) {
+        @NestedConfigurationProperty @Valid OpenApiMcpProperties.LiveReload liveReload) {
 
     public static final String PREFIX = "infobip.openapi.mcp";
     public static final Duration DEFAULT_CONNECT_TIMEOUT = Duration.ofSeconds(5);

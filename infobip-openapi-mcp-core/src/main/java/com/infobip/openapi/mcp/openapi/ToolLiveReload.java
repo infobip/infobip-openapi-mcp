@@ -1,5 +1,6 @@
 package com.infobip.openapi.mcp.openapi;
 
+import com.infobip.openapi.mcp.auth.scope.ScopeDiscoveryService;
 import com.infobip.openapi.mcp.config.OpenApiMcpProperties;
 import com.infobip.openapi.mcp.infrastructure.metrics.MetricService;
 import com.infobip.openapi.mcp.openapi.tool.RegisteredTool;
@@ -46,6 +47,10 @@ import org.springframework.scheduling.annotation.Scheduled;
  *   <li>Modified tools (changed name, description, or schema) are replaced</li>
  * </ul>
  *
+ * <h2>Scope Reloading</h2>
+ * <p>When tools are updated and a {@link ScopeDiscoveryService} is available, OAuth scopes are
+ * rediscovered from the updated specification.
+ *
  * <h2>Client Notification</h2>
  * <p>After tools are updated, connected MCP clients are notified via
  * {@link McpSyncServer#notifyToolsListChanged()} for stateful servers. Stateless servers do not
@@ -64,9 +69,9 @@ import org.springframework.scheduling.annotation.Scheduled;
  * @see OpenApiRegistry
  * @see ToolRegistry
  */
-public class OpenApiLiveReload {
+public class ToolLiveReload {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(OpenApiLiveReload.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(ToolLiveReload.class);
 
     private enum Status {
         SUCCESS_TOOLS_UPDATED("success_tools_updated"),
@@ -86,6 +91,7 @@ public class OpenApiLiveReload {
 
     private final Optional<McpSyncServer> mcpSyncServer;
     private final Optional<McpStatelessSyncServer> mcpStatelessSyncServer;
+    private final Optional<ScopeDiscoveryService> scopeDiscoveryService;
     private final OpenApiRegistry openApiRegistry;
     private final ToolRegistry toolRegistry;
     private final ToolSpecBuilder toolSpecBuilder;
@@ -94,9 +100,10 @@ public class OpenApiLiveReload {
 
     private final AtomicBoolean refreshInProgress = new AtomicBoolean(false);
 
-    public OpenApiLiveReload(
+    public ToolLiveReload(
             Optional<McpSyncServer> mcpSyncServer,
             Optional<McpStatelessSyncServer> mcpStatelessSyncServer,
+            Optional<ScopeDiscoveryService> scopeDiscoveryService,
             OpenApiRegistry openApiRegistry,
             ToolRegistry toolRegistry,
             ToolSpecBuilder toolSpecBuilder,
@@ -104,6 +111,7 @@ public class OpenApiLiveReload {
             MetricService metricService) {
         this.mcpSyncServer = mcpSyncServer;
         this.mcpStatelessSyncServer = mcpStatelessSyncServer;
+        this.scopeDiscoveryService = scopeDiscoveryService;
         this.openApiRegistry = openApiRegistry;
         this.toolRegistry = toolRegistry;
         this.toolSpecBuilder = toolSpecBuilder;
@@ -112,7 +120,7 @@ public class OpenApiLiveReload {
     }
 
     @Scheduled(cron = "${infobip.openapi.mcp.live-reload.cron-expression:0 */10 * * * *}")
-    public void refreshOpenApiOnSchedule() throws InterruptedException {
+    public void reloadOnSchedule() throws InterruptedException {
         if (!refreshInProgress.compareAndSet(false, true)) {
             LOGGER.info("OpenAPI refresh already in progress, skipping this execution.");
             return;
@@ -124,13 +132,13 @@ public class OpenApiLiveReload {
         try {
             LOGGER.info("Refreshing OpenAPI on schedule.");
 
-            var currentVersion = openApiRegistry.openApi().getInfo().getVersion();
+            var currentOpenApiVersion = openApiRegistry.openApi().getInfo().getVersion();
             var currentTools = toolRegistry.getRegisteredToolsCache();
 
             var maxRetries = liveReloadConfig.maxRetries();
             for (int attempt = 1; attempt <= maxRetries; attempt++) {
                 try {
-                    var toolsUpdated = refreshOpenApi(currentVersion, currentTools);
+                    var toolsUpdated = reload(currentOpenApiVersion, currentTools);
                     status = toolsUpdated ? Status.SUCCESS_TOOLS_UPDATED : Status.SUCCESS_NO_CHANGE;
                     break;
                 } catch (Exception e) {
@@ -164,16 +172,19 @@ public class OpenApiLiveReload {
     /**
      * Refreshes the OpenAPI specification and updates tools if needed.
      *
-     * @param currentVersion the current OpenAPI version
+     * @param currentOpenApiVersion the current OpenAPI version
      * @param currentTools   the current list of registered tools
      * @return true if tools were updated, false if no changes detected
      */
-    private boolean refreshOpenApi(String currentVersion, List<RegisteredTool> currentTools) {
+    public boolean reload(String currentOpenApiVersion, List<RegisteredTool> currentTools) {
         openApiRegistry.reload();
-        var newVersion = openApiRegistry.openApi().getInfo().getVersion();
-        if (currentVersion.equals(newVersion)) {
+        var newOpenApiVersion = openApiRegistry.openApi().getInfo().getVersion();
+        if (currentOpenApiVersion.equals(newOpenApiVersion)) {
             return false;
         }
+
+        // Reload scopes - always discover as tools can stay the same but the scopes can change
+        scopeDiscoveryService.ifPresent(ScopeDiscoveryService::discover);
 
         var registeredTools = toolRegistry.getTools();
         var registeredToolMap = getToolMap(registeredTools);
@@ -187,8 +198,9 @@ public class OpenApiLiveReload {
         }
 
         // Reload tools
-        mcpSyncServer.ifPresent(ignored -> registerStateful(addedOrChangedTools, deletedTools));
-        mcpStatelessSyncServer.ifPresent(ignored -> registerStateless(addedOrChangedTools, deletedTools));
+        mcpSyncServer.ifPresent(ignored -> registerStateful(addedOrChangedTools, deletedTools, currentToolMap));
+        mcpStatelessSyncServer.ifPresent(
+                ignored -> registerStateless(addedOrChangedTools, deletedTools, currentToolMap));
 
         return true;
     }
@@ -219,18 +231,46 @@ public class OpenApiLiveReload {
                 .toList();
     }
 
-    private void registerStateful(List<RegisteredTool> addedOrChangedTools, List<RegisteredTool> deletedTools) {
+    private void registerStateful(
+            List<RegisteredTool> addedOrChangedTools,
+            List<RegisteredTool> deletedTools,
+            Map<String, RegisteredTool> currentToolMap) {
         var server = mcpSyncServer.get();
-        deletedTools.forEach(deletedTool -> server.removeTool(deletedTool.tool().name()));
-        addedOrChangedTools.forEach(
-                changedTool -> server.addTool(toolSpecBuilder.buildSyncToolSpecification(changedTool)));
+        deletedTools.forEach(deletedTool -> {
+            logToolDeletion(deletedTool);
+            server.removeTool(deletedTool.tool().name());
+        });
+        addedOrChangedTools.forEach(changedTool -> {
+            logToolAdditionOrChange(changedTool, currentToolMap);
+            server.addTool(toolSpecBuilder.buildSyncToolSpecification(changedTool));
+        });
     }
 
-    private void registerStateless(List<RegisteredTool> addedOrChangedTools, List<RegisteredTool> deletedTools) {
+    private void registerStateless(
+            List<RegisteredTool> addedOrChangedTools,
+            List<RegisteredTool> deletedTools,
+            Map<String, RegisteredTool> currentToolMap) {
         var server = mcpStatelessSyncServer.get();
-        deletedTools.forEach(deletedTool -> server.removeTool(deletedTool.tool().name()));
-        addedOrChangedTools.forEach(
-                changedTool -> server.addTool(toolSpecBuilder.buildSyncStatelessToolSpecification(changedTool)));
+        deletedTools.forEach(deletedTool -> {
+            logToolDeletion(deletedTool);
+            server.removeTool(deletedTool.tool().name());
+        });
+        addedOrChangedTools.forEach(changedTool -> {
+            logToolAdditionOrChange(changedTool, currentToolMap);
+            server.addTool(toolSpecBuilder.buildSyncStatelessToolSpecification(changedTool));
+        });
+    }
+
+    private void logToolDeletion(RegisteredTool deletedTool) {
+        LOGGER.info("Removing tool {} from MCP server.", deletedTool.tool().name());
+    }
+
+    private void logToolAdditionOrChange(RegisteredTool addedTool, Map<String, RegisteredTool> currentToolMap) {
+        if (currentToolMap.containsKey(addedTool.tool().name())) {
+            LOGGER.info("Updating tool {} in MCP server.", addedTool.tool().name());
+        } else {
+            LOGGER.info("Adding tool {} to MCP server.", addedTool.tool().name());
+        }
     }
 
     private Map<String, RegisteredTool> getToolMap(List<RegisteredTool> tools) {

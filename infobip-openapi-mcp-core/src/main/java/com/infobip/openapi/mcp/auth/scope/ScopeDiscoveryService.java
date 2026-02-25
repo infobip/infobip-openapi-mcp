@@ -36,7 +36,7 @@ public class ScopeDiscoveryService {
         if (discoveredScopes == null) {
             discover();
         }
-        return Collections.unmodifiableSet(discoveredScopes);
+        return discoveredScopes;
     }
 
     public Set<String> discover() {
@@ -48,7 +48,7 @@ public class ScopeDiscoveryService {
                     Arrays.stream(scopeProperties.mandatoryScopes().split(",")).toList());
         }
 
-        var discoverScopesSet = new HashSet<>(scopeSet);
+        var discoverScopesSet = Set.copyOf(scopeSet); // unmodifiable copy
         this.discoveredScopes = discoverScopesSet;
 
         LOGGER.info("Discovered scopes: {}", discoverScopesSet);

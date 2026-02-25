@@ -4,6 +4,7 @@ import static com.infobip.openapi.mcp.autoconfiguration.Qualifiers.TOOL_HANDLER_
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.infobip.openapi.mcp.McpRequestContextFactory;
+import com.infobip.openapi.mcp.auth.scope.ScopeDiscoveryService;
 import com.infobip.openapi.mcp.config.ApiBaseUrlConfig;
 import com.infobip.openapi.mcp.config.ApiBaseUrlProvider;
 import com.infobip.openapi.mcp.config.OpenApiMcpProperties;
@@ -303,17 +304,19 @@ class OpenApiMcpConfiguration {
 
     @Bean
     @ConditionalOnProperty(prefix = OpenApiMcpProperties.LiveReload.PREFIX, name = "enabled", havingValue = "true")
-    public OpenApiLiveReload openApiLiveReload(
+    public ToolLiveReload openApiLiveReload(
             Optional<McpSyncServer> mcpSyncServer,
             Optional<McpStatelessSyncServer> mcpStatelessSyncServer,
+            Optional<ScopeDiscoveryService> scopeDiscoveryService,
             OpenApiRegistry openApiRegistry,
             ToolRegistry toolRegistry,
             ToolSpecBuilder toolSpecBuilder,
             OpenApiMcpProperties properties,
             MetricService metricService) {
-        return new OpenApiLiveReload(
+        return new ToolLiveReload(
                 mcpSyncServer,
                 mcpStatelessSyncServer,
+                scopeDiscoveryService,
                 openApiRegistry,
                 toolRegistry,
                 toolSpecBuilder,
