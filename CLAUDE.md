@@ -2,8 +2,6 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-After completing any task check and update this document to reflect the new state of the project.
-
 ## Project Overview
 
 **infobip-openapi-mcp** is an open-source Java framework for exposing OpenAPI-documented HTTP APIs as MCP (Model Context
@@ -50,6 +48,13 @@ PAGER=cat sdk list java | grep -E 'installed|local'
 # Pick identifier of installed Java version equal or greater than 21 (for example 25-tem) and enable it with sdkman
 sdk use java <identifier>
 ```
+
+**ALWAYS** do this after completing any coding task:
+
+- Run `mvn spotless:apply` as the final step before presenting results.
+- Update `CHANGELOG.md` under the `[Unreleased]` section using
+  the [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) format (`Added`, `Changed`,  `Fixed`, `Removed`).
+- Check and update `CLAUDE.md` to reflect the new state of the project.
 
 ## Module Structure
 
@@ -124,7 +129,8 @@ since MCP does not support OpenAPI discriminators natively.
 - Integration test profiles (`application-integration.yml`, `application-test-http.yml`, etc.) configure which transport
   and OpenAPI spec to use per test class
 - `@DirtiesContext` is used on integration tests that reload tools to ensure a clean Spring context per test
-- Tests use given-when-then structure, and follow F.I.R.S.T. principles (fast, isolated, repeatable, self-validating, thorough)
+- Tests use given-when-then structure, and follow F.I.R.S.T. principles (fast, isolated, repeatable, self-validating,
+  thorough)
 - In case a lot of setup code is repeated between test methods use parameterized tests
 
 ## Examples
