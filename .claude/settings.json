@@ -1,0 +1,44 @@
+{
+  "enabledMcpjsonServers": [
+    "jetbrains"
+  ],
+  "permissions": {
+    "allow": [
+      "Bash(sdk:*)",
+      "Bash(mvn:*)",
+      "Bash(grep:*)",
+      "Bash(find:*)",
+      "Bash(echo:*)",
+      "Bash(cat:*)",
+      "Bash(head:*)",
+      "Bash(tail:*)",
+      "Bash(ls:*)",
+      "Bash(pwd:*)",
+      "Bash(wc:*)",
+      "Bash(which:*)",
+      "Bash(tree:*)",
+      "Bash(diff:*)",
+      "Bash(sort:*)",
+      "Bash(uniq:*)",
+      "Bash(cut:*)",
+      "Bash(awk:*)",
+      "Bash(sed:*)",
+      "Bash(xargs:*)",
+      "Bash(jq:*)",
+      "Bash(date:*)",
+      "Bash(stat:*)",
+      "Bash(tf:*)",
+      "mcp__jetbrains__*"
+    ],
+    "deny": [
+      "Bash(git push)",
+      "Bash(git push:*)",
+      "Bash(git commit --amend:*)"
+    ],
+    "ask": [
+      "Bash(git rebase:*)",
+      "Bash(git reset:*)",
+      "Bash(git filter-branch:*)"
+    ]
+  }
+}

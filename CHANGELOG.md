@@ -7,7 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Configuration for working with Claude Code on the project.
+
 ## 0.1.7
+
+### Changed
+
+- Live reload now also refreshes the scopes.
 
 ## 0.1.6
 
