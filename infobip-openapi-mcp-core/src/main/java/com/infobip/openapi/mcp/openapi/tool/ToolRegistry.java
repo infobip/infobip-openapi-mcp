@@ -2,8 +2,10 @@ package com.infobip.openapi.mcp.openapi.tool;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import com.infobip.openapi.mcp.config.OpenApiMcpProperties;
 import com.infobip.openapi.mcp.openapi.OpenApiRegistry;
+import com.infobip.openapi.mcp.openapi.schema.InputExampleComposer;
 import com.infobip.openapi.mcp.openapi.schema.InputSchemaComposer;
 import com.infobip.openapi.mcp.openapi.tool.exception.ToolRegistrationException;
 import com.infobip.openapi.mcp.openapi.tool.naming.NamingStrategy;
@@ -42,9 +44,11 @@ public class ToolRegistry {
     private final OpenApiRegistry openApiRegistry;
     private final NamingStrategy namingStrategy;
     private final InputSchemaComposer inputSchemaComposer;
+    private final InputExampleComposer inputExampleComposer;
     private final ToolHandler toolHandler;
     private final OpenApiMapperFactory openApiMapperFactory;
     private final ObjectMapper jsonSchemaMapper = new ObjectMapper();
+    private final ObjectMapper prettyPrintMapper = new ObjectMapper().enable(SerializationFeature.INDENT_OUTPUT);
     private final OpenApiMcpProperties properties;
 
     private List<RegisteredTool> registeredToolsCache = List.of();
@@ -53,12 +57,14 @@ public class ToolRegistry {
             OpenApiRegistry openApiRegistry,
             NamingStrategy namingStrategy,
             InputSchemaComposer inputSchemaComposer,
+            InputExampleComposer inputExampleComposer,
             ToolHandler toolHandler,
             OpenApiMapperFactory openApiMapperFactory,
             OpenApiMcpProperties properties) {
         this.openApiRegistry = openApiRegistry;
         this.namingStrategy = namingStrategy;
         this.inputSchemaComposer = inputSchemaComposer;
+        this.inputExampleComposer = inputExampleComposer;
         this.toolHandler = toolHandler;
         this.openApiMapperFactory = openApiMapperFactory;
         this.properties = properties;
@@ -174,17 +180,21 @@ public class ToolRegistry {
     }
 
     /**
-     * Builds the description for a tool, optionally prepending the summary as a markdown title.
+     * Builds the description for a tool, optionally prepending the summary as a markdown title
+     * and appending request examples as a JSON code block.
      * <p>
      * If the {@code prependSummaryToDescription} property is enabled, both summary and description exist,
      * the summary will be prepended to the description as a markdown H1 heading in the format:
      * {@code # {summary}\n\n{description}}
      * <p>
+     * If the {@code appendExamplesToDescription} property is enabled and request examples exist in the
+     * OpenAPI spec, they are appended as a Markdown JSON code block.
+     * <p>
      * If the feature is disabled or only one of summary/description exists, returns the description if present,
      * otherwise returns the summary.
      *
      * @param fullOperation the OpenAPI operation
-     * @return the constructed description, or null if neither description nor summary exists
+     * @return the constructed description, or null if neither description, summary, nor examples exist
      */
     private String buildDescription(FullOperation fullOperation) {
         var summary = fullOperation.operation().getSummary();
@@ -193,18 +203,50 @@ public class ToolRegistry {
         var hasSummary = summary != null && !summary.isBlank();
         var hasDescription = description != null && !description.isBlank();
 
-        // If neither exists, return null
-        if (!hasSummary && !hasDescription) {
-            return null;
-        }
+        String baseDescription = null;
 
         // If both exist and feature is enabled, prepend summary as markdown H1 title
         if (hasSummary && hasDescription && properties.tools().prependSummaryToDescription()) {
-            return "# " + summary + "\n\n" + description;
+            baseDescription = "# " + summary + "\n\n" + description;
+        } else if (hasDescription) {
+            baseDescription = description;
+        } else if (hasSummary) {
+            baseDescription = summary;
         }
 
-        // Otherwise, prefer description over summary
-        return hasDescription ? description : summary;
+        // Append examples if feature is enabled
+        if (properties.tools().appendExamplesToDescription()) {
+            var exampleBlock = buildExampleBlock(fullOperation);
+            if (exampleBlock != null) {
+                return baseDescription != null ? baseDescription + "\n\n" + exampleBlock : exampleBlock;
+            }
+        }
+
+        return baseDescription;
+    }
+
+    /**
+     * Builds a Markdown JSON code block from the composed example for the given operation.
+     *
+     * @param fullOperation the OpenAPI operation
+     * @return a Markdown code block string, or null if no examples found
+     */
+    private String buildExampleBlock(FullOperation fullOperation) {
+        var example = inputExampleComposer.composeExample(fullOperation);
+        if (example == null) {
+            return null;
+        }
+
+        try {
+            var json = prettyPrintMapper.writeValueAsString(example);
+            return "## Example\n\n```json\n" + json + "\n```";
+        } catch (JsonProcessingException exception) {
+            LOGGER.warn(
+                    "Failed to serialize example for operation '{}': {}",
+                    fullOperation.operation().getOperationId(),
+                    exception.getMessage());
+            return null;
+        }
     }
 
     public List<RegisteredTool> getRegisteredToolsCache() {

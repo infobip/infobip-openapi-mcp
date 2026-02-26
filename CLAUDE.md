@@ -72,8 +72,8 @@ The framework follows this startup flow:
 1. `OpenApiRegistry` reads and caches the OpenAPI spec from `infobip.openapi.mcp.open-api-url`
 2. `OpenApiFilterChain` applies `OpenApiFilter` beans (e.g., `DiscriminatorFlattener`, `PatternPropertyRemover`) to
    transform the spec
-3. `ToolRegistry` converts each API operation into a `RegisteredTool` using `InputSchemaComposer` and the configured
-   `NamingStrategy`
+3. `ToolRegistry` converts each API operation into a `RegisteredTool` using `InputSchemaComposer`, `InputExampleComposer`,
+   and the configured `NamingStrategy`
 4. Tools are registered with the Spring AI MCP server (SSE, Streamable HTTP, Stateless HTTP, or stdio transport)
 
 **Runtime tool call flow:**
@@ -104,6 +104,11 @@ OAuth support (`OAuthConfiguration`, `OAuthController`) proxies `/.well-known` e
 
 `InputSchemaComposer` merges OpenAPI path/query parameters and request body into a single MCP tool input JSON schema.
 When both exist, parameters are wrapped under `_params` key and the request body under `_body` (configurable).
+
+`InputExampleComposer` extracts request examples from OpenAPI parameters and request bodies (using precedence:
+`examples` map > `example` field > `schema.example`) and composes them into a single example object matching
+`InputSchemaComposer`'s combination rules. `ToolRegistry` appends the result as a Markdown JSON code block to tool
+descriptions (controlled by `infobip.openapi.mcp.tools.append-examples-to-description`, default `true`).
 
 `DiscriminatorFlattener` resolves OpenAPI discriminator patterns into JSON Schema–compatible `oneOf`/`allOf` structures
 since MCP does not support OpenAPI discriminators natively.

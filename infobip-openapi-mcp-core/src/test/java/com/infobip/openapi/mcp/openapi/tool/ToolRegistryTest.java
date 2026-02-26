@@ -12,6 +12,7 @@ import com.infobip.openapi.mcp.McpRequestContext;
 import com.infobip.openapi.mcp.config.OpenApiMcpProperties;
 import com.infobip.openapi.mcp.openapi.OpenApiRegistry;
 import com.infobip.openapi.mcp.openapi.schema.DecomposedRequestData;
+import com.infobip.openapi.mcp.openapi.schema.InputExampleComposer;
 import com.infobip.openapi.mcp.openapi.schema.InputSchemaComposer;
 import com.infobip.openapi.mcp.openapi.tool.exception.ToolRegistrationException;
 import com.infobip.openapi.mcp.openapi.tool.naming.OperationIdStrategy;
@@ -44,6 +45,8 @@ class ToolRegistryTest {
     private final OperationIdStrategy namingStrategy = new OperationIdStrategy();
     private final InputSchemaComposer inputSchemaComposer =
             new InputSchemaComposer(new OpenApiMcpProperties.Tools.Schema(null, null));
+    private final InputExampleComposer inputExampleComposer =
+            new InputExampleComposer(new OpenApiMcpProperties.Tools.Schema(null, null));
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final OpenAPIV3Parser parser = new OpenAPIV3Parser();
     private final OpenApiMapperFactory mapperFactory = new OpenApiMapperFactory();
@@ -55,9 +58,22 @@ class ToolRegistryTest {
     void setUp() {
         // Default properties with prepend enabled
         properties = new OpenApiMcpProperties(
-                null, null, null, null, null, null, new OpenApiMcpProperties.Tools(null, null, null, true, null), null);
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                new OpenApiMcpProperties.Tools(null, null, null, true, null, null),
+                null);
         toolRegistry = new ToolRegistry(
-                openApiRegistry, namingStrategy, inputSchemaComposer, toolHandler, mapperFactory, properties);
+                openApiRegistry,
+                namingStrategy,
+                inputSchemaComposer,
+                inputExampleComposer,
+                toolHandler,
+                mapperFactory,
+                properties);
     }
 
     @Test
@@ -889,10 +905,16 @@ class ToolRegistryTest {
                 null,
                 null,
                 null,
-                new OpenApiMcpProperties.Tools(null, null, null, false, null),
+                new OpenApiMcpProperties.Tools(null, null, null, false, null, null),
                 null);
         toolRegistry = new ToolRegistry(
-                openApiRegistry, namingStrategy, inputSchemaComposer, toolHandler, mapperFactory, properties);
+                openApiRegistry,
+                namingStrategy,
+                inputSchemaComposer,
+                inputExampleComposer,
+                toolHandler,
+                mapperFactory,
+                properties);
 
         var openApi = parseOpenAPI("""
             {
@@ -934,10 +956,16 @@ class ToolRegistryTest {
                 null,
                 null,
                 null,
-                new OpenApiMcpProperties.Tools(null, null, null, false, null),
+                new OpenApiMcpProperties.Tools(null, null, null, false, null, null),
                 null);
         toolRegistry = new ToolRegistry(
-                openApiRegistry, namingStrategy, inputSchemaComposer, toolHandler, mapperFactory, properties);
+                openApiRegistry,
+                namingStrategy,
+                inputSchemaComposer,
+                inputExampleComposer,
+                toolHandler,
+                mapperFactory,
+                properties);
 
         var openApi = parseOpenAPI("""
             {
@@ -1254,6 +1282,290 @@ class ToolRegistryTest {
                 .containsExactlyInAnyOrder(
                         tuple("getUsers", "List Users", "# List Users\n\nRetrieve all users"),
                         tuple("createUser", "createUser", "Create a new user"));
+    }
+
+    @Test
+    void shouldAppendExampleBlockToDescriptionWhenExamplesExist() {
+        // Given
+        properties = new OpenApiMcpProperties(
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                new OpenApiMcpProperties.Tools(null, null, null, true, null, true),
+                null);
+        toolRegistry = new ToolRegistry(
+                openApiRegistry,
+                namingStrategy,
+                inputSchemaComposer,
+                inputExampleComposer,
+                toolHandler,
+                mapperFactory,
+                properties);
+
+        var openApi = parseOpenAPI("""
+            {
+              "openapi": "3.1.0",
+              "info": {
+                "title": "Test API",
+                "version": "1.0.0"
+              },
+              "paths": {
+                "/users/{userId}": {
+                  "get": {
+                    "operationId": "getUser",
+                    "summary": "Get User",
+                    "description": "Retrieves a user by ID",
+                    "parameters": [
+                      {
+                        "name": "userId",
+                        "in": "path",
+                        "required": true,
+                        "example": "user-123",
+                        "schema": { "type": "string" }
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+            """);
+        given(openApiRegistry.openApi()).willReturn(openApi);
+
+        // When
+        var result = toolRegistry.getTools();
+
+        // Then
+        then(result).hasSize(1);
+        var description = result.getFirst().tool().description();
+        then(description).startsWith("# Get User\n\nRetrieves a user by ID");
+        then(description).contains("## Example");
+        then(description).contains("\"userId\" : \"user-123\"");
+    }
+
+    @Test
+    void shouldNotAppendExampleBlockWhenFeatureDisabled() {
+        // Given
+        properties = new OpenApiMcpProperties(
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                new OpenApiMcpProperties.Tools(null, null, null, true, null, false),
+                null);
+        toolRegistry = new ToolRegistry(
+                openApiRegistry,
+                namingStrategy,
+                inputSchemaComposer,
+                inputExampleComposer,
+                toolHandler,
+                mapperFactory,
+                properties);
+
+        var openApi = parseOpenAPI("""
+            {
+              "openapi": "3.1.0",
+              "info": {
+                "title": "Test API",
+                "version": "1.0.0"
+              },
+              "paths": {
+                "/users/{userId}": {
+                  "get": {
+                    "operationId": "getUser",
+                    "description": "Retrieves a user by ID",
+                    "parameters": [
+                      {
+                        "name": "userId",
+                        "in": "path",
+                        "required": true,
+                        "example": "user-123",
+                        "schema": { "type": "string" }
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+            """);
+        given(openApiRegistry.openApi()).willReturn(openApi);
+
+        // When
+        var result = toolRegistry.getTools();
+
+        // Then
+        then(result).hasSize(1);
+        then(result.getFirst().tool().description()).isEqualTo("Retrieves a user by ID");
+    }
+
+    @Test
+    void shouldNotAppendExampleBlockWhenNoExamplesExist() {
+        // Given
+        var openApi = parseOpenAPI("""
+            {
+              "openapi": "3.1.0",
+              "info": {
+                "title": "Test API",
+                "version": "1.0.0"
+              },
+              "paths": {
+                "/users": {
+                  "get": {
+                    "operationId": "getUsers",
+                    "description": "List all users",
+                    "parameters": [
+                      {
+                        "name": "limit",
+                        "in": "query",
+                        "schema": { "type": "integer" }
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+            """);
+        given(openApiRegistry.openApi()).willReturn(openApi);
+
+        // When
+        var result = toolRegistry.getTools();
+
+        // Then
+        then(result).hasSize(1);
+        then(result.getFirst().tool().description()).isEqualTo("List all users");
+    }
+
+    @Test
+    void shouldReturnExampleBlockAsDescriptionWhenNoSummaryOrDescription() {
+        // Given
+        properties = new OpenApiMcpProperties(
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                new OpenApiMcpProperties.Tools(null, null, null, true, null, true),
+                null);
+        toolRegistry = new ToolRegistry(
+                openApiRegistry,
+                namingStrategy,
+                inputSchemaComposer,
+                inputExampleComposer,
+                toolHandler,
+                mapperFactory,
+                properties);
+        var openApi = parseOpenAPI("""
+            {
+              "openapi": "3.1.0",
+              "info": {
+                "title": "Test API",
+                "version": "1.0.0"
+              },
+              "paths": {
+                "/users/{userId}": {
+                  "get": {
+                    "operationId": "getUser",
+                    "parameters": [
+                      {
+                        "name": "userId",
+                        "in": "path",
+                        "required": true,
+                        "example": "user-123",
+                        "schema": { "type": "string" }
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+            """);
+        given(openApiRegistry.openApi()).willReturn(openApi);
+
+        // When
+        var result = toolRegistry.getTools();
+
+        // Then
+        then(result).hasSize(1);
+        var description = result.getFirst().tool().description();
+        then(description).startsWith("## Example");
+        then(description).contains("\"userId\" : \"user-123\"");
+    }
+
+    @Test
+    void shouldAppendCombinedExampleWithParamsAndBody() {
+        // Given
+        properties = new OpenApiMcpProperties(
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                new OpenApiMcpProperties.Tools(null, null, null, true, null, true),
+                null);
+        toolRegistry = new ToolRegistry(
+                openApiRegistry,
+                namingStrategy,
+                inputSchemaComposer,
+                inputExampleComposer,
+                toolHandler,
+                mapperFactory,
+                properties);
+
+        var openApi = parseOpenAPI("""
+            {
+              "openapi": "3.1.0",
+              "info": {
+                "title": "Test API",
+                "version": "1.0.0"
+              },
+              "paths": {
+                "/messages/{channelId}": {
+                  "post": {
+                    "operationId": "sendMessage",
+                    "description": "Send a message",
+                    "parameters": [
+                      {
+                        "name": "channelId",
+                        "in": "path",
+                        "required": true,
+                        "example": "channel-1",
+                        "schema": { "type": "string" }
+                      }
+                    ],
+                    "requestBody": {
+                      "content": {
+                        "application/json": {
+                          "example": {
+                            "to": "41793026727",
+                            "text": "Hello"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+            """);
+        given(openApiRegistry.openApi()).willReturn(openApi);
+
+        // When
+        var result = toolRegistry.getTools();
+
+        // Then
+        then(result).hasSize(1);
+        var description = result.getFirst().tool().description();
+        then(description).contains("## Example");
+        then(description).contains("\"_params\"");
+        then(description).contains("\"channelId\" : \"channel-1\"");
+        then(description).contains("\"_body\"");
+        then(description).contains("\"to\" : \"41793026727\"");
     }
 
     private OpenAPI parseOpenAPI(String jsonSpec) {

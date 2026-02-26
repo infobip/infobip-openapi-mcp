@@ -9,6 +9,7 @@ import static org.mockito.Mockito.times;
 import com.infobip.openapi.mcp.auth.scope.ScopeDiscoveryService;
 import com.infobip.openapi.mcp.config.OpenApiMcpProperties;
 import com.infobip.openapi.mcp.infrastructure.metrics.MetricService;
+import com.infobip.openapi.mcp.openapi.schema.InputExampleComposer;
 import com.infobip.openapi.mcp.openapi.schema.InputSchemaComposer;
 import com.infobip.openapi.mcp.openapi.tool.RegisteredTool;
 import com.infobip.openapi.mcp.openapi.tool.ToolHandler;
@@ -51,7 +52,7 @@ class ToolLiveReloadTest {
             null,
             null,
             null,
-            new OpenApiMcpProperties.Tools(null, null, null, true, null),
+            new OpenApiMcpProperties.Tools(null, null, null, true, null, null),
             new OpenApiMcpProperties.LiveReload(true, "0 */1 * * * *", 1));
 
     @Mock
@@ -86,13 +87,21 @@ class ToolLiveReloadTest {
     private final OperationIdStrategy namingStrategy = new OperationIdStrategy();
     private final InputSchemaComposer inputSchemaComposer =
             new InputSchemaComposer(new OpenApiMcpProperties.Tools.Schema(null, null));
+    private final InputExampleComposer inputExampleComposer =
+            new InputExampleComposer(new OpenApiMcpProperties.Tools.Schema(null, null));
 
     private ToolRegistry givenToolRegistry;
 
     @BeforeEach
     void setUp() {
         givenToolRegistry = new ToolRegistry(
-                givenOpenApiRegistry, namingStrategy, inputSchemaComposer, toolHandler, mapperFactory, PROPERTIES);
+                givenOpenApiRegistry,
+                namingStrategy,
+                inputSchemaComposer,
+                inputExampleComposer,
+                toolHandler,
+                mapperFactory,
+                PROPERTIES);
         given(metricService.startLiveReloadTimer()).willReturn(liveReloadTimer);
     }
 

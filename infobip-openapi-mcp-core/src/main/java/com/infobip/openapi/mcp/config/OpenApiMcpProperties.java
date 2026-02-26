@@ -64,7 +64,7 @@ public record OpenApiMcpProperties(
             filters = new HashMap<>();
         }
         if (tools == null) {
-            tools = new Tools(null, null, null, null, null);
+            tools = new Tools(null, null, null, null, null, null);
         }
         if (liveReload == null) {
             liveReload = new LiveReload(null, null, null);
@@ -100,16 +100,25 @@ public record OpenApiMcpProperties(
      * @param mock                              Whether to run MCP server in mock mode, where it avoids calling API
      *                                          during tool calls and instead returns results based on examples
      *                                          provided in OpenAPI specification. Default is false.
+     * @param appendExamplesToDescription       Whether to append request examples from the OpenAPI specification
+     *                                          as a Markdown JSON code block to the tool description. When using this
+     *                                          feature be mindful of the size of examples and added context that
+     *                                          enabling this feature will use. Contrast this with the benefit of
+     *                                          examples for LLMs. One option is to streamline examples using either
+     *                                          OpenAPI overlays or implement a filter. That way you can reduce the
+     *                                          number / size of examples in the spec. Default is false.
      */
     public record Tools(
             @NestedConfigurationProperty @Valid Naming naming,
             @NestedConfigurationProperty @Valid Schema schema,
             Boolean jsonDoubleSerializationMitigation,
             Boolean prependSummaryToDescription,
-            Boolean mock) {
+            Boolean mock,
+            Boolean appendExamplesToDescription) {
         public static final boolean DEFAULT_JSON_DOUBLE_SERIALIZATION_MITIGATION = true;
         public static final boolean DEFAULT_PREPEND_SUMMARY_TO_DESCRIPTION = true;
         public static final boolean DEFAULT_MOCK = false;
+        public static final boolean DEFAULT_APPEND_EXAMPLES_TO_DESCRIPTION = false;
 
         /**
          * Constructor with defaults for optional properties.
@@ -129,6 +138,9 @@ public record OpenApiMcpProperties(
             }
             if (mock == null) {
                 mock = DEFAULT_MOCK;
+            }
+            if (appendExamplesToDescription == null) {
+                appendExamplesToDescription = DEFAULT_APPEND_EXAMPLES_TO_DESCRIPTION;
             }
         }
 
