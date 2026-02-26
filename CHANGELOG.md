@@ -12,8 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Configuration for working with Claude Code on the project.
-- `InputExampleComposer` that extracts request examples from OpenAPI parameters and request bodies, composing them into a single example object matching `InputSchemaComposer`'s combination rules.
-- Tool descriptions now include a `## Example` Markdown JSON code block when the OpenAPI spec provides request examples (enabled by default, configurable via `infobip.openapi.mcp.tools.append-examples-to-description`).
+- Tool descriptions now include a request example when the OpenAPI spec provides one. The example is rendered as a JSON code block, helping LLMs understand how to call the tool. Opt in via `infobip.openapi.mcp.tools.append-examples-to-description = true`.
 
 ### Changed
 
