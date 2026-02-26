@@ -13,16 +13,22 @@ import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Composes a representative request example for an OpenAPI operation by extracting
+ * Composes representative request examples for an OpenAPI operation by extracting
  * examples from parameters and request body, then combining them using the same
  * structure as {@link InputSchemaComposer}.
  * <p>
- * The composed example follows these combination rules (mirroring {@code InputSchemaComposer.compose()}):
+ * When the request body exposes multiple named examples (via the {@code examples} map),
+ * each entry produces its own {@link ComposedExample} — merged with the common parameter
+ * examples — so that all variants are surfaced in the tool description.  Inline
+ * ({@code example} / {@code schema.example}) body values always yield a single entry.
+ * <p>
+ * The composed example follows these combination rules (mirroring
+ * {@code InputSchemaComposer.compose()}):
  * <ul>
  *   <li><b>Only parameters</b> - flat object {@code {"paramName": value, ...}}</li>
  *   <li><b>Only body</b> - body example value directly</li>
  *   <li><b>Both</b> - {@code {"<parametersKey>": {...}, "<requestBodyKey>": {...}}}</li>
- *   <li><b>Neither</b> - returns null</li>
+ *   <li><b>Neither</b> - returns an empty list</li>
  * </ul>
  * <p>
  * Example extraction precedence per parameter:
@@ -43,30 +49,45 @@ public class InputExampleComposer {
     }
 
     /**
-     * Composes a representative example object for the given operation.
+     * Composes representative examples for the given operation.
+     * <p>
+     * Returns one {@link ComposedExample} per distinct body example found in the
+     * {@code examples} map (each merged with the common parameter examples), or a
+     * single entry for inline body examples / parameter-only operations.
      *
      * @param fullOperation the OpenAPI operation to extract examples from
-     * @return a Map/Object ready for JSON serialization, or null if no examples found
+     * @return an ordered list of composed examples; empty if no examples were found
      */
-    public @Nullable Object composeExample(FullOperation fullOperation) {
+    public List<ComposedExample> composeExamples(FullOperation fullOperation) {
         var operation = fullOperation.operation();
 
         var paramExamples =
                 operation.getParameters() != null ? extractParameterExamples(operation.getParameters()) : null;
 
-        var bodyExample = operation.getRequestBody() != null ? extractBodyExample(operation.getRequestBody()) : null;
+        var bodyExamples = operation.getRequestBody() != null
+                ? extractBodyExamples(operation.getRequestBody())
+                : List.<ComposedExample>of();
 
-        if (paramExamples != null) {
-            if (bodyExample != null) {
-                var combined = new LinkedHashMap<String, Object>();
-                combined.put(parametersKey, paramExamples);
-                combined.put(requestBodyKey, bodyExample);
-                return combined;
+        if (bodyExamples.isEmpty()) {
+            if (paramExamples == null) {
+                return List.of();
             }
-            return paramExamples;
+            return List.of(new ComposedExample(null, null, paramExamples));
         }
 
-        return bodyExample;
+        if (paramExamples == null) {
+            return bodyExamples;
+        }
+
+        // Merge param examples into every body example
+        var result = new ArrayList<ComposedExample>(bodyExamples.size());
+        for (var bodyExample : bodyExamples) {
+            var combined = new LinkedHashMap<String, Object>();
+            combined.put(parametersKey, paramExamples);
+            combined.put(requestBodyKey, bodyExample.value());
+            result.add(new ComposedExample(bodyExample.title(), bodyExample.description(), combined));
+        }
+        return Collections.unmodifiableList(result);
     }
 
     private @Nullable Map<String, Object> extractParameterExamples(List<Parameter> parameters) {
@@ -109,40 +130,48 @@ public class InputExampleComposer {
         return null;
     }
 
-    private @Nullable Object extractBodyExample(RequestBody requestBody) {
+    /**
+     * Extracts all body examples from the {@code application/json} media type.
+     * <p>
+     * When the media type has a named {@code examples} map, each entry (with a non-null
+     * value) becomes its own {@link ComposedExample} carrying the entry's {@code summary}
+     * and {@code description}.  Inline {@code example} and {@code schema.example} sources
+     * each produce a single unnamed entry.
+     */
+    private List<ComposedExample> extractBodyExamples(RequestBody requestBody) {
         if (requestBody.getContent() == null) {
-            return null;
+            return List.of();
         }
 
         var mediaType = requestBody.getContent().get(DecomposedRequestData.SUPPORTED_MEDIA_TYPE.toString());
         if (mediaType == null) {
-            return null;
+            return List.of();
         }
 
         return extractFromMediaType(mediaType);
     }
 
     /**
-     * Extracts an example from a media type using the precedence:
+     * Extracts examples from a media type using the precedence:
      * mediaType.examples > mediaType.example > mediaType.schema.example
      */
-    private @Nullable Object extractFromMediaType(MediaType mediaType) {
-        // 1. mediaType.examples (Map<String, Example>)
+    private List<ComposedExample> extractFromMediaType(MediaType mediaType) {
+        // 1. mediaType.examples (Map<String, Example>) — one ComposedExample per entry
         if (mediaType.getExamples() != null && !mediaType.getExamples().isEmpty()) {
-            return extractFirstExampleValue(mediaType.getExamples());
+            return extractAllExampleValues(mediaType.getExamples());
         }
 
         // 2. mediaType.example (raw value)
         if (mediaType.getExample() != null) {
-            return mediaType.getExample();
+            return List.of(new ComposedExample(null, null, mediaType.getExample()));
         }
 
         // 3. mediaType.schema.example
         if (mediaType.getSchema() != null && mediaType.getSchema().getExample() != null) {
-            return mediaType.getSchema().getExample();
+            return List.of(new ComposedExample(null, null, mediaType.getSchema().getExample()));
         }
 
-        return null;
+        return List.of();
     }
 
     private @Nullable Object extractFirstExampleValue(Map<String, Example> examples) {
@@ -151,5 +180,17 @@ public class InputExampleComposer {
                 .map(Example::getValue)
                 .findFirst()
                 .orElse(null);
+    }
+
+    private List<ComposedExample> extractAllExampleValues(Map<String, Example> examples) {
+        var result = new ArrayList<ComposedExample>(examples.size());
+        for (var entry : examples.entrySet()) {
+            var example = entry.getValue();
+            if (example.getValue() == null) {
+                continue;
+            }
+            result.add(new ComposedExample(example.getSummary(), example.getDescription(), example.getValue()));
+        }
+        return Collections.unmodifiableList(result);
     }
 }

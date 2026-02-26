@@ -26,28 +26,28 @@ class InputExampleComposerTest {
     // -- No examples --
 
     @Test
-    void shouldReturnNullWhenNoExamplesExist() {
+    void shouldReturnEmptyListWhenNoExamplesExist() {
         // Given
         var operation = new Operation();
         operation.addParametersItem(new Parameter().name("userId").in("query").schema(new StringSchema()));
 
         // When
-        var result = composer.composeExample(fullOperation(operation));
+        var result = composer.composeExamples(fullOperation(operation));
 
         // Then
-        then(result).isNull();
+        then(result).isEmpty();
     }
 
     @Test
-    void shouldReturnNullWhenOperationHasNoParametersAndNoBody() {
+    void shouldReturnEmptyListWhenOperationHasNoParametersAndNoBody() {
         // Given
         var operation = new Operation();
 
         // When
-        var result = composer.composeExample(fullOperation(operation));
+        var result = composer.composeExamples(fullOperation(operation));
 
         // Then
-        then(result).isNull();
+        then(result).isEmpty();
     }
 
     // -- Parameter examples --
@@ -59,10 +59,13 @@ class InputExampleComposerTest {
         operation.addParametersItem(new Parameter().name("userId").in("query").example("user-123"));
 
         // When
-        var result = composer.composeExample(fullOperation(operation));
+        var result = composer.composeExamples(fullOperation(operation));
 
         // Then
-        then(result).isEqualTo(Map.of("userId", "user-123"));
+        then(result).hasSize(1);
+        then(result.get(0).title()).isNull();
+        then(result.get(0).description()).isNull();
+        then(result.get(0).value()).isEqualTo(Map.of("userId", "user-123"));
     }
 
     @Test
@@ -73,10 +76,11 @@ class InputExampleComposerTest {
         operation.addParametersItem(new Parameter().name("userId").in("query").examples(Map.of("example1", example)));
 
         // When
-        var result = composer.composeExample(fullOperation(operation));
+        var result = composer.composeExamples(fullOperation(operation));
 
         // Then
-        then(result).isEqualTo(Map.of("userId", "user-456"));
+        then(result).hasSize(1);
+        then(result.get(0).value()).isEqualTo(Map.of("userId", "user-456"));
     }
 
     @Test
@@ -88,10 +92,11 @@ class InputExampleComposerTest {
         operation.addParametersItem(new Parameter().name("userId").in("query").schema(schema));
 
         // When
-        var result = composer.composeExample(fullOperation(operation));
+        var result = composer.composeExamples(fullOperation(operation));
 
         // Then
-        then(result).isEqualTo(Map.of("userId", "user-789"));
+        then(result).hasSize(1);
+        then(result.get(0).value()).isEqualTo(Map.of("userId", "user-789"));
     }
 
     @Test
@@ -106,10 +111,11 @@ class InputExampleComposerTest {
                 .examples(Map.of("e1", example)));
 
         // When
-        var result = composer.composeExample(fullOperation(operation));
+        var result = composer.composeExamples(fullOperation(operation));
 
         // Then
-        then(result).isEqualTo(Map.of("userId", "from-examples-map"));
+        then(result).hasSize(1);
+        then(result.get(0).value()).isEqualTo(Map.of("userId", "from-examples-map"));
     }
 
     @Test
@@ -125,10 +131,11 @@ class InputExampleComposerTest {
                 .schema(schema));
 
         // When
-        var result = composer.composeExample(fullOperation(operation));
+        var result = composer.composeExamples(fullOperation(operation));
 
         // Then
-        then(result).isEqualTo(Map.of("userId", "from-parameter"));
+        then(result).hasSize(1);
+        then(result.get(0).value()).isEqualTo(Map.of("userId", "from-parameter"));
     }
 
     @Test
@@ -139,10 +146,11 @@ class InputExampleComposerTest {
         operation.addParametersItem(new Parameter().name("status").in("query").schema(new StringSchema()));
 
         // When
-        var result = composer.composeExample(fullOperation(operation));
+        var result = composer.composeExamples(fullOperation(operation));
 
         // Then
-        then(result).isEqualTo(Map.of("userId", "user-123"));
+        then(result).hasSize(1);
+        then(result.get(0).value()).isEqualTo(Map.of("userId", "user-123"));
     }
 
     @Test
@@ -153,10 +161,10 @@ class InputExampleComposerTest {
                 new Parameter().name("unsupported").in("matrix").example("val"));
 
         // When
-        var result = composer.composeExample(fullOperation(operation));
+        var result = composer.composeExamples(fullOperation(operation));
 
         // Then
-        then(result).isNull();
+        then(result).isEmpty();
     }
 
     @Test
@@ -169,11 +177,12 @@ class InputExampleComposerTest {
         operation.addParametersItem(new Parameter().name("c").in("cookie").example("cookieVal"));
 
         // When
-        var result = composer.composeExample(fullOperation(operation));
+        var result = composer.composeExamples(fullOperation(operation));
 
         // Then
+        then(result).hasSize(1);
         @SuppressWarnings("unchecked")
-        var resultMap = (Map<String, Object>) result;
+        var resultMap = (Map<String, Object>) result.get(0).value();
         then(resultMap)
                 .containsEntry("q", "queryVal")
                 .containsEntry("id", "pathVal")
@@ -191,25 +200,41 @@ class InputExampleComposerTest {
         var operation = operationWithBody(mediaType);
 
         // When
-        var result = composer.composeExample(fullOperation(operation));
+        var result = composer.composeExamples(fullOperation(operation));
 
         // Then
-        then(result).isEqualTo(bodyExample);
+        then(result).hasSize(1);
+        then(result.get(0).title()).isNull();
+        then(result.get(0).value()).isEqualTo(bodyExample);
     }
 
     @Test
-    void shouldExtractMediaTypeExamplesMap() {
+    void shouldExtractAllEntriesFromMediaTypeExamplesMap() {
         // Given
-        var exampleValue = Map.of("to", "41793026727");
-        var example = new Example().value(exampleValue);
-        var mediaType = new MediaType().examples(Map.of("sms", example));
+        var firstValue = Map.of("to", "41793026727");
+        var secondValue = Map.of("to", "41793026728");
+        var examples = new LinkedHashMap<String, Example>();
+        examples.put("sms", new Example().summary("Standard SMS").value(firstValue));
+        examples.put(
+                "flash",
+                new Example()
+                        .summary("Flash SMS")
+                        .description("A flash message")
+                        .value(secondValue));
+        var mediaType = new MediaType().examples(examples);
         var operation = operationWithBody(mediaType);
 
         // When
-        var result = composer.composeExample(fullOperation(operation));
+        var result = composer.composeExamples(fullOperation(operation));
 
-        // Then
-        then(result).isEqualTo(exampleValue);
+        // Then — both entries preserved in insertion order
+        then(result).hasSize(2);
+        then(result.get(0).title()).isEqualTo("Standard SMS");
+        then(result.get(0).description()).isNull();
+        then(result.get(0).value()).isEqualTo(firstValue);
+        then(result.get(1).title()).isEqualTo("Flash SMS");
+        then(result.get(1).description()).isEqualTo("A flash message");
+        then(result.get(1).value()).isEqualTo(secondValue);
     }
 
     @Test
@@ -222,10 +247,11 @@ class InputExampleComposerTest {
         var operation = operationWithBody(mediaType);
 
         // When
-        var result = composer.composeExample(fullOperation(operation));
+        var result = composer.composeExamples(fullOperation(operation));
 
         // Then
-        then(result).isEqualTo(schemaExample);
+        then(result).hasSize(1);
+        then(result.get(0).value()).isEqualTo(schemaExample);
     }
 
     @Test
@@ -237,10 +263,11 @@ class InputExampleComposerTest {
         var operation = operationWithBody(mediaType);
 
         // When
-        var result = composer.composeExample(fullOperation(operation));
+        var result = composer.composeExamples(fullOperation(operation));
 
         // Then
-        then(result).isEqualTo(examplesMapValue);
+        then(result).hasSize(1);
+        then(result.get(0).value()).isEqualTo(examplesMapValue);
     }
 
     @Test
@@ -253,14 +280,15 @@ class InputExampleComposerTest {
         var operation = operationWithBody(mediaType);
 
         // When
-        var result = composer.composeExample(fullOperation(operation));
+        var result = composer.composeExamples(fullOperation(operation));
 
         // Then
-        then(result).isEqualTo(directExample);
+        then(result).hasSize(1);
+        then(result.get(0).value()).isEqualTo(directExample);
     }
 
     @Test
-    void shouldReturnNullWhenBodyHasNoJsonMediaType() {
+    void shouldReturnEmptyListWhenBodyHasNoJsonMediaType() {
         // Given
         var content = new Content();
         content.addMediaType("application/xml", new MediaType().example("<xml/>"));
@@ -268,10 +296,10 @@ class InputExampleComposerTest {
         var operation = new Operation().requestBody(requestBody);
 
         // When
-        var result = composer.composeExample(fullOperation(operation));
+        var result = composer.composeExamples(fullOperation(operation));
 
         // Then
-        then(result).isNull();
+        then(result).isEmpty();
     }
 
     // -- Combination rules --
@@ -284,13 +312,14 @@ class InputExampleComposerTest {
         operation.addParametersItem(new Parameter().name("limit").in("query").example(10));
 
         // When
-        var result = composer.composeExample(fullOperation(operation));
+        var result = composer.composeExamples(fullOperation(operation));
 
         // Then
+        then(result).hasSize(1);
         var expected = new LinkedHashMap<String, Object>();
         expected.put("userId", "user-123");
         expected.put("limit", 10);
-        then(result).isEqualTo(expected);
+        then(result.get(0).value()).isEqualTo(expected);
     }
 
     @Test
@@ -301,10 +330,11 @@ class InputExampleComposerTest {
         var operation = operationWithBody(mediaType);
 
         // When
-        var result = composer.composeExample(fullOperation(operation));
+        var result = composer.composeExamples(fullOperation(operation));
 
         // Then
-        then(result).isEqualTo(bodyExample);
+        then(result).hasSize(1);
+        then(result.get(0).value()).isEqualTo(bodyExample);
     }
 
     @Test
@@ -318,14 +348,48 @@ class InputExampleComposerTest {
         operation.setRequestBody(new RequestBody().content(new Content().addMediaType("application/json", mediaType)));
 
         // When
-        var result = composer.composeExample(fullOperation(operation));
+        var result = composer.composeExamples(fullOperation(operation));
 
         // Then
+        then(result).hasSize(1);
         @SuppressWarnings("unchecked")
-        var resultMap = (Map<String, Object>) result;
+        var resultMap = (Map<String, Object>) result.get(0).value();
         then(resultMap).containsKey("_params").containsKey("_body");
         then(resultMap.get("_params")).isEqualTo(Map.of("userId", "user-123"));
         then(resultMap.get("_body")).isEqualTo(bodyExample);
+    }
+
+    @Test
+    void shouldProduceOneWrappedEntryPerBodyExampleWhenBothParamsAndMultipleBodyExamples() {
+        // Given
+        var firstBody = Map.of("to", "41793026727", "text", "Hello");
+        var secondBody = Map.of("to", "41793026728", "text", "Flash");
+        var examples = new LinkedHashMap<String, Example>();
+        examples.put("sms", new Example().summary("Standard SMS").value(firstBody));
+        examples.put("flash", new Example().summary("Flash SMS").value(secondBody));
+
+        var operation = new Operation();
+        operation.addParametersItem(new Parameter().name("userId").in("query").example("user-123"));
+        operation.setRequestBody(new RequestBody()
+                .content(new Content().addMediaType("application/json", new MediaType().examples(examples))));
+
+        // When
+        var result = composer.composeExamples(fullOperation(operation));
+
+        // Then — one entry per body example, each merging the same params
+        then(result).hasSize(2);
+
+        @SuppressWarnings("unchecked")
+        var firstMap = (Map<String, Object>) result.get(0).value();
+        then(result.get(0).title()).isEqualTo("Standard SMS");
+        then(firstMap.get("_params")).isEqualTo(Map.of("userId", "user-123"));
+        then(firstMap.get("_body")).isEqualTo(firstBody);
+
+        @SuppressWarnings("unchecked")
+        var secondMap = (Map<String, Object>) result.get(1).value();
+        then(result.get(1).title()).isEqualTo("Flash SMS");
+        then(secondMap.get("_params")).isEqualTo(Map.of("userId", "user-123"));
+        then(secondMap.get("_body")).isEqualTo(secondBody);
     }
 
     // -- Custom keys --
@@ -343,11 +407,12 @@ class InputExampleComposerTest {
         operation.setRequestBody(new RequestBody().content(new Content().addMediaType("application/json", mediaType)));
 
         // When
-        var result = customComposer.composeExample(fullOperation(operation));
+        var result = customComposer.composeExamples(fullOperation(operation));
 
         // Then
+        then(result).hasSize(1);
         @SuppressWarnings("unchecked")
-        var resultMap = (Map<String, Object>) result;
+        var resultMap = (Map<String, Object>) result.get(0).value();
         then(resultMap).containsKey("parameters").containsKey("body");
         then(resultMap.get("parameters")).isEqualTo(Map.of("id", "123"));
         then(resultMap.get("body")).isEqualTo(bodyExample);
@@ -366,10 +431,11 @@ class InputExampleComposerTest {
         operation.addParametersItem(new Parameter().name("userId").in("query").examples(Map.of("ex1", example)));
 
         // When
-        var result = composer.composeExample(fullOperation(operation));
+        var result = composer.composeExamples(fullOperation(operation));
 
         // Then
-        then(result).isEqualTo(Map.of("userId", "user-resolved"));
+        then(result).hasSize(1);
+        then(result.get(0).value()).isEqualTo(Map.of("userId", "user-resolved"));
     }
 
     @Test
@@ -385,10 +451,11 @@ class InputExampleComposerTest {
         operation.addParametersItem(new Parameter().name("userId").in("query").examples(examples));
 
         // When
-        var result = composer.composeExample(fullOperation(operation));
+        var result = composer.composeExamples(fullOperation(operation));
 
         // Then
-        then(result).isEqualTo(Map.of("userId", "good-value"));
+        then(result).hasSize(1);
+        then(result.get(0).value()).isEqualTo(Map.of("userId", "good-value"));
     }
 
     // -- Helpers --

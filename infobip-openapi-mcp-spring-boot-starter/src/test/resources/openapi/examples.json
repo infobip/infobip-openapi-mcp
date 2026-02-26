@@ -152,7 +152,7 @@
     "/examples/body-media-type-examples-map": {
       "post": {
         "operationId": "post-body-media-type-examples-map",
-        "summary": "Tests example extraction from mediaType.examples map (first entry with value wins)",
+        "summary": "Tests example extraction from mediaType.examples map (all entries rendered)",
         "requestBody": {
           "required": true,
           "content": {
@@ -178,6 +178,7 @@
                 },
                 "flash-sms-example": {
                   "summary": "Flash SMS",
+                  "description": "Sends a flash message displayed directly on the recipient screen.",
                   "value": {
                     "to": "41793026728",
                     "text": "Flash message"
@@ -269,6 +270,63 @@
               "example": {
                 "to": "41793026727",
                 "text": "Hello combined"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/examples/combined-multi-body/{userId}": {
+      "post": {
+        "operationId": "post-combined-multi-body",
+        "summary": "Tests combined params with multiple body examples each producing a wrapped entry",
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "user-789"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "to": {
+                    "type": "string"
+                  },
+                  "text": {
+                    "type": "string"
+                  }
+                }
+              },
+              "examples": {
+                "sms": {
+                  "summary": "Standard SMS",
+                  "value": {
+                    "to": "41793026727",
+                    "text": "Hello multi"
+                  }
+                },
+                "flash": {
+                  "summary": "Flash SMS",
+                  "description": "A flash message displayed on screen.",
+                  "value": {
+                    "to": "41793026728",
+                    "text": "Flash multi"
+                  }
+                }
               }
             }
           }

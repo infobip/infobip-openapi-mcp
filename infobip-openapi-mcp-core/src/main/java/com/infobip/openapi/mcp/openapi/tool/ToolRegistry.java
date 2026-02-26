@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.infobip.openapi.mcp.config.OpenApiMcpProperties;
 import com.infobip.openapi.mcp.openapi.OpenApiRegistry;
+import com.infobip.openapi.mcp.openapi.schema.ComposedExample;
 import com.infobip.openapi.mcp.openapi.schema.InputExampleComposer;
 import com.infobip.openapi.mcp.openapi.schema.InputSchemaComposer;
 import com.infobip.openapi.mcp.openapi.tool.exception.ToolRegistrationException;
@@ -226,20 +227,55 @@ public class ToolRegistry {
     }
 
     /**
-     * Builds a Markdown JSON code block from the composed example for the given operation.
+     * Builds a Markdown block from the composed examples for the given operation.
+     * <p>
+     * A single unnamed example is rendered as:
+     * <pre>
+     * ## Example
+     *
+     * ```json
+     * { ... }
+     * ```
+     * </pre>
+     * Multiple examples, or a single example that carries a title, are each rendered as:
+     * <pre>
+     * ### {title}
+     *
+     * {description}
+     *
+     * ```json
+     * { ... }
+     * ```
+     * </pre>
+     * where the description paragraph is omitted when absent.
      *
      * @param fullOperation the OpenAPI operation
-     * @return a Markdown code block string, or null if no examples found
+     * @return a Markdown block string, or null if no examples found or serialization fails
      */
     private String buildExampleBlock(FullOperation fullOperation) {
-        var example = inputExampleComposer.composeExample(fullOperation);
-        if (example == null) {
+        var examples = inputExampleComposer.composeExamples(fullOperation);
+        if (examples.isEmpty()) {
             return null;
         }
 
         try {
-            var json = prettyPrintMapper.writeValueAsString(example);
-            return "## Example\n\n```json\n" + json + "\n```";
+            if (examples.size() == 1 && examples.get(0).title() == null) {
+                var json = prettyPrintMapper.writeValueAsString(examples.get(0).value());
+                return "## Example\n\n```json\n" + json + "\n```";
+            }
+
+            var sb = new StringBuilder("## Examples");
+            for (ComposedExample composedExample : examples) {
+                sb.append("\n\n");
+                var title = composedExample.title();
+                sb.append("### ").append(title != null ? title : "Example");
+                if (composedExample.description() != null) {
+                    sb.append("\n\n").append(composedExample.description());
+                }
+                var json = prettyPrintMapper.writeValueAsString(composedExample.value());
+                sb.append("\n\n```json\n").append(json).append("\n```");
+            }
+            return sb.toString();
         } catch (JsonProcessingException exception) {
             LOGGER.warn(
                     "Failed to serialize example for operation '{}': {}",

@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Configuration for working with Claude Code on the project.
-- Tool descriptions now include a request example when the OpenAPI spec provides one. The example is rendered as a JSON code block, helping LLMs understand how to call the tool. Opt in via `infobip.openapi.mcp.tools.append-examples-to-description = true`.
+- Tool descriptions now include request examples when the OpenAPI spec provides them. Examples are rendered as JSON code blocks, helping LLMs understand how to call the tool. When a request body defines multiple named examples (via the `examples` map), all variants are rendered — each with an optional heading derived from the example's `summary` and an optional description paragraph. Opt in via `infobip.openapi.mcp.tools.append-examples-to-description = true`.
 
 ### Changed
 

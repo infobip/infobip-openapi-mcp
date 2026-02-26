@@ -131,6 +131,10 @@ since MCP does not support OpenAPI discriminators natively.
 - **Comments**: Javadoc is welcome on public classes and public methods. Inside test method bodies, `// Given`,
   `// When`, `// Then` section markers are fine. Do **not** use decorative separator blocks between methods (e.g.
   `// ---... SectionName ...---`); let the method names speak for themselves
+- **swagger-models fluent API**: Prefer the fluent builder pattern over setters when constructing OpenAPI model objects.
+  All swagger-models 2.x classes expose property-named fluent methods that return `this` — use them instead of
+  `setXxx(...)` calls. For example: `new OpenAPI().specVersion(V31).info(...).components(...).paths(...)` instead of
+  `openApi.setSpecVersion(V31); openApi.setInfo(...)`
 
 ## Testing Conventions
 

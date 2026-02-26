@@ -119,7 +119,7 @@ public abstract class ExamplesTestBase extends IntegrationTestBase {
     }
 
     @Test
-    void shouldAppendExampleFromBodyMediaTypeExamplesMap() {
+    void shouldAppendAllEntriesFromBodyMediaTypeExamplesMap() {
         withInitializedMcpClient(client -> {
             // Given
             givenOpenAPISpecification(FIXTURE);
@@ -127,16 +127,29 @@ public abstract class ExamplesTestBase extends IntegrationTestBase {
             // When
             McpSchema.Tool tool = findTool(client, "post_body_media_type_examples_map");
 
-            // Then — sms-example is declared first, flash-sms-example is ignored
+            // Then — both entries rendered; flash-sms-example includes its description paragraph
             then(tool.description()).isEqualTo("""
-                            Tests example extraction from mediaType.examples map (first entry with value wins)
+                            Tests example extraction from mediaType.examples map (all entries rendered)
 
-                            ## Example
+                            ## Examples
+
+                            ### Standard SMS
 
                             ```json
                             {
                               "to" : "41793026727",
                               "text" : "Hello from examples map"
+                            }
+                            ```
+
+                            ### Flash SMS
+
+                            Sends a flash message displayed directly on the recipient screen.
+
+                            ```json
+                            {
+                              "to" : "41793026728",
+                              "text" : "Flash message"
                             }
                             ```""");
         });
@@ -197,6 +210,53 @@ public abstract class ExamplesTestBase extends IntegrationTestBase {
     }
 
     @Test
+    void shouldProduceOneWrappedEntryPerBodyExampleWhenBothParamsAndMultipleBodyExamples() {
+        withInitializedMcpClient(client -> {
+            // Given
+            givenOpenAPISpecification(FIXTURE);
+
+            // When
+            McpSchema.Tool tool = findTool(client, "post_combined_multi_body");
+
+            // Then — params merged into each body example; flash entry includes its description
+            then(tool.description()).isEqualTo("""
+                            Tests combined params with multiple body examples each producing a wrapped entry
+
+                            ## Examples
+
+                            ### Standard SMS
+
+                            ```json
+                            {
+                              "_params" : {
+                                "userId" : "user-789"
+                              },
+                              "_body" : {
+                                "to" : "41793026727",
+                                "text" : "Hello multi"
+                              }
+                            }
+                            ```
+
+                            ### Flash SMS
+
+                            A flash message displayed on screen.
+
+                            ```json
+                            {
+                              "_params" : {
+                                "userId" : "user-789"
+                              },
+                              "_body" : {
+                                "to" : "41793026728",
+                                "text" : "Flash multi"
+                              }
+                            }
+                            ```""");
+        });
+    }
+
+    @Test
     void shouldNotAppendExampleBlockWhenNoExamplesPresent() {
         withInitializedMcpClient(client -> {
             // Given
@@ -211,7 +271,7 @@ public abstract class ExamplesTestBase extends IntegrationTestBase {
     }
 
     @Test
-    void shouldLoadAllEightToolsFromFixture() {
+    void shouldLoadAllNineToolsFromFixture() {
         withInitializedMcpClient(client -> {
             // Given
             givenOpenAPISpecification(FIXTURE);
@@ -220,7 +280,7 @@ public abstract class ExamplesTestBase extends IntegrationTestBase {
             var tools = client.listTools().tools();
 
             // Then
-            then(tools).hasSize(8);
+            then(tools).hasSize(9);
             then(tools.stream().map(McpSchema.Tool::name))
                     .containsExactlyInAnyOrder(
                             "get_by_param_example",
@@ -230,6 +290,7 @@ public abstract class ExamplesTestBase extends IntegrationTestBase {
                             "post_body_media_type_examples_map",
                             "post_body_schema_example",
                             "post_combined_params_and_body",
+                            "post_combined_multi_body",
                             "get_no_examples");
         });
     }
