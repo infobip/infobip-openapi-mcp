@@ -15,6 +15,7 @@ import io.swagger.v3.oas.models.media.StringSchema;
 import io.swagger.v3.oas.models.parameters.Parameter;
 import io.swagger.v3.oas.models.parameters.RequestBody;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 
@@ -62,10 +63,10 @@ class InputExampleComposerTest {
         var result = composer.composeExamples(fullOperation(operation));
 
         // Then
-        then(result).hasSize(1);
-        then(result.get(0).title()).isNull();
-        then(result.get(0).description()).isNull();
-        then(result.get(0).value()).isEqualTo(Map.of("userId", "user-123"));
+        then(result)
+                .hasSize(1)
+                .usingRecursiveComparison()
+                .isEqualTo(List.of(new ComposedExample(null, null, Map.of("userId", "user-123"))));
     }
 
     @Test
@@ -79,24 +80,27 @@ class InputExampleComposerTest {
         var result = composer.composeExamples(fullOperation(operation));
 
         // Then
-        then(result).hasSize(1);
-        then(result.get(0).value()).isEqualTo(Map.of("userId", "user-456"));
+        then(result)
+                .hasSize(1)
+                .usingRecursiveComparison()
+                .isEqualTo(List.of(new ComposedExample(null, null, Map.of("userId", "user-456"))));
     }
 
     @Test
     void shouldExtractParameterSchemaExample() {
         // Given
-        var schema = new StringSchema();
-        schema.setExample("user-789");
         var operation = new Operation();
-        operation.addParametersItem(new Parameter().name("userId").in("query").schema(schema));
+        operation.addParametersItem(
+                new Parameter().name("userId").in("query").schema(new StringSchema().example("user-789")));
 
         // When
         var result = composer.composeExamples(fullOperation(operation));
 
         // Then
-        then(result).hasSize(1);
-        then(result.get(0).value()).isEqualTo(Map.of("userId", "user-789"));
+        then(result)
+                .hasSize(1)
+                .usingRecursiveComparison()
+                .isEqualTo(List.of(new ComposedExample(null, null, Map.of("userId", "user-789"))));
     }
 
     @Test
@@ -114,28 +118,30 @@ class InputExampleComposerTest {
         var result = composer.composeExamples(fullOperation(operation));
 
         // Then
-        then(result).hasSize(1);
-        then(result.get(0).value()).isEqualTo(Map.of("userId", "from-examples-map"));
+        then(result)
+                .hasSize(1)
+                .usingRecursiveComparison()
+                .isEqualTo(List.of(new ComposedExample(null, null, Map.of("userId", "from-examples-map"))));
     }
 
     @Test
     void shouldPreferParameterExampleOverSchemaExample() {
         // Given
-        var schema = new StringSchema();
-        schema.setExample("from-schema");
         var operation = new Operation();
         operation.addParametersItem(new Parameter()
                 .name("userId")
                 .in("query")
                 .example("from-parameter")
-                .schema(schema));
+                .schema(new StringSchema().example("from-schema")));
 
         // When
         var result = composer.composeExamples(fullOperation(operation));
 
         // Then
-        then(result).hasSize(1);
-        then(result.get(0).value()).isEqualTo(Map.of("userId", "from-parameter"));
+        then(result)
+                .hasSize(1)
+                .usingRecursiveComparison()
+                .isEqualTo(List.of(new ComposedExample(null, null, Map.of("userId", "from-parameter"))));
     }
 
     @Test
@@ -149,8 +155,10 @@ class InputExampleComposerTest {
         var result = composer.composeExamples(fullOperation(operation));
 
         // Then
-        then(result).hasSize(1);
-        then(result.get(0).value()).isEqualTo(Map.of("userId", "user-123"));
+        then(result)
+                .hasSize(1)
+                .usingRecursiveComparison()
+                .isEqualTo(List.of(new ComposedExample(null, null, Map.of("userId", "user-123"))));
     }
 
     @Test
@@ -180,14 +188,15 @@ class InputExampleComposerTest {
         var result = composer.composeExamples(fullOperation(operation));
 
         // Then
-        then(result).hasSize(1);
-        @SuppressWarnings("unchecked")
-        var resultMap = (Map<String, Object>) result.get(0).value();
-        then(resultMap)
-                .containsEntry("q", "queryVal")
-                .containsEntry("id", "pathVal")
-                .containsEntry("h", "headerVal")
-                .containsEntry("c", "cookieVal");
+        var expectedParams = new LinkedHashMap<String, Object>();
+        expectedParams.put("q", "queryVal");
+        expectedParams.put("id", "pathVal");
+        expectedParams.put("h", "headerVal");
+        expectedParams.put("c", "cookieVal");
+        then(result)
+                .hasSize(1)
+                .usingRecursiveComparison()
+                .isEqualTo(List.of(new ComposedExample(null, null, expectedParams)));
     }
 
     // -- Body examples --
@@ -203,9 +212,10 @@ class InputExampleComposerTest {
         var result = composer.composeExamples(fullOperation(operation));
 
         // Then
-        then(result).hasSize(1);
-        then(result.get(0).title()).isNull();
-        then(result.get(0).value()).isEqualTo(bodyExample);
+        then(result)
+                .hasSize(1)
+                .usingRecursiveComparison()
+                .isEqualTo(List.of(new ComposedExample(null, null, bodyExample)));
     }
 
     @Test
@@ -228,30 +238,31 @@ class InputExampleComposerTest {
         var result = composer.composeExamples(fullOperation(operation));
 
         // Then — both entries preserved in insertion order
-        then(result).hasSize(2);
-        then(result.get(0).title()).isEqualTo("Standard SMS");
-        then(result.get(0).description()).isNull();
-        then(result.get(0).value()).isEqualTo(firstValue);
-        then(result.get(1).title()).isEqualTo("Flash SMS");
-        then(result.get(1).description()).isEqualTo("A flash message");
-        then(result.get(1).value()).isEqualTo(secondValue);
+        then(result)
+                .hasSize(2)
+                .usingRecursiveComparison()
+                .isEqualTo(List.of(
+                        new ComposedExample("Standard SMS", null, firstValue),
+                        new ComposedExample("Flash SMS", "A flash message", secondValue)));
     }
 
     @Test
     void shouldExtractMediaTypeSchemaExample() {
         // Given
         var schemaExample = Map.of("to", "41793026727");
-        var schema = new ObjectSchema();
-        schema.setExample(schemaExample);
-        var mediaType = new MediaType().schema(schema);
+        var bodySchema = new ObjectSchema();
+        bodySchema.setExample(schemaExample);
+        var mediaType = new MediaType().schema(bodySchema);
         var operation = operationWithBody(mediaType);
 
         // When
         var result = composer.composeExamples(fullOperation(operation));
 
         // Then
-        then(result).hasSize(1);
-        then(result.get(0).value()).isEqualTo(schemaExample);
+        then(result)
+                .hasSize(1)
+                .usingRecursiveComparison()
+                .isEqualTo(List.of(new ComposedExample(null, null, schemaExample)));
     }
 
     @Test
@@ -266,25 +277,29 @@ class InputExampleComposerTest {
         var result = composer.composeExamples(fullOperation(operation));
 
         // Then
-        then(result).hasSize(1);
-        then(result.get(0).value()).isEqualTo(examplesMapValue);
+        then(result)
+                .hasSize(1)
+                .usingRecursiveComparison()
+                .isEqualTo(List.of(new ComposedExample("e1", null, examplesMapValue)));
     }
 
     @Test
     void shouldPreferMediaTypeExampleOverSchemaExample() {
         // Given
-        var schema = new ObjectSchema();
-        schema.setExample(Map.of("source", "schema"));
+        var schemaWithExample = new ObjectSchema();
+        schemaWithExample.setExample(Map.of("source", "schema"));
         var directExample = Map.of("source", "mediaType");
-        var mediaType = new MediaType().schema(schema).example(directExample);
+        var mediaType = new MediaType().schema(schemaWithExample).example(directExample);
         var operation = operationWithBody(mediaType);
 
         // When
         var result = composer.composeExamples(fullOperation(operation));
 
         // Then
-        then(result).hasSize(1);
-        then(result.get(0).value()).isEqualTo(directExample);
+        then(result)
+                .hasSize(1)
+                .usingRecursiveComparison()
+                .isEqualTo(List.of(new ComposedExample(null, null, directExample)));
     }
 
     @Test
@@ -315,11 +330,13 @@ class InputExampleComposerTest {
         var result = composer.composeExamples(fullOperation(operation));
 
         // Then
-        then(result).hasSize(1);
-        var expected = new LinkedHashMap<String, Object>();
-        expected.put("userId", "user-123");
-        expected.put("limit", 10);
-        then(result.get(0).value()).isEqualTo(expected);
+        var expectedParams = new LinkedHashMap<String, Object>();
+        expectedParams.put("userId", "user-123");
+        expectedParams.put("limit", 10);
+        then(result)
+                .hasSize(1)
+                .usingRecursiveComparison()
+                .isEqualTo(List.of(new ComposedExample(null, null, expectedParams)));
     }
 
     @Test
@@ -333,8 +350,10 @@ class InputExampleComposerTest {
         var result = composer.composeExamples(fullOperation(operation));
 
         // Then
-        then(result).hasSize(1);
-        then(result.get(0).value()).isEqualTo(bodyExample);
+        then(result)
+                .hasSize(1)
+                .usingRecursiveComparison()
+                .isEqualTo(List.of(new ComposedExample(null, null, bodyExample)));
     }
 
     @Test
@@ -351,12 +370,13 @@ class InputExampleComposerTest {
         var result = composer.composeExamples(fullOperation(operation));
 
         // Then
-        then(result).hasSize(1);
-        @SuppressWarnings("unchecked")
-        var resultMap = (Map<String, Object>) result.get(0).value();
-        then(resultMap).containsKey("_params").containsKey("_body");
-        then(resultMap.get("_params")).isEqualTo(Map.of("userId", "user-123"));
-        then(resultMap.get("_body")).isEqualTo(bodyExample);
+        var expectedValue = new LinkedHashMap<String, Object>();
+        expectedValue.put("_params", Map.of("userId", "user-123"));
+        expectedValue.put("_body", bodyExample);
+        then(result)
+                .hasSize(1)
+                .usingRecursiveComparison()
+                .isEqualTo(List.of(new ComposedExample(null, null, expectedValue)));
     }
 
     @Test
@@ -377,19 +397,18 @@ class InputExampleComposerTest {
         var result = composer.composeExamples(fullOperation(operation));
 
         // Then — one entry per body example, each merging the same params
-        then(result).hasSize(2);
-
-        @SuppressWarnings("unchecked")
-        var firstMap = (Map<String, Object>) result.get(0).value();
-        then(result.get(0).title()).isEqualTo("Standard SMS");
-        then(firstMap.get("_params")).isEqualTo(Map.of("userId", "user-123"));
-        then(firstMap.get("_body")).isEqualTo(firstBody);
-
-        @SuppressWarnings("unchecked")
-        var secondMap = (Map<String, Object>) result.get(1).value();
-        then(result.get(1).title()).isEqualTo("Flash SMS");
-        then(secondMap.get("_params")).isEqualTo(Map.of("userId", "user-123"));
-        then(secondMap.get("_body")).isEqualTo(secondBody);
+        var firstExpected = new LinkedHashMap<String, Object>();
+        firstExpected.put("_params", Map.of("userId", "user-123"));
+        firstExpected.put("_body", firstBody);
+        var secondExpected = new LinkedHashMap<String, Object>();
+        secondExpected.put("_params", Map.of("userId", "user-123"));
+        secondExpected.put("_body", secondBody);
+        then(result)
+                .hasSize(2)
+                .usingRecursiveComparison()
+                .isEqualTo(List.of(
+                        new ComposedExample("Standard SMS", null, firstExpected),
+                        new ComposedExample("Flash SMS", null, secondExpected)));
     }
 
     // -- Custom keys --
@@ -410,12 +429,13 @@ class InputExampleComposerTest {
         var result = customComposer.composeExamples(fullOperation(operation));
 
         // Then
-        then(result).hasSize(1);
-        @SuppressWarnings("unchecked")
-        var resultMap = (Map<String, Object>) result.get(0).value();
-        then(resultMap).containsKey("parameters").containsKey("body");
-        then(resultMap.get("parameters")).isEqualTo(Map.of("id", "123"));
-        then(resultMap.get("body")).isEqualTo(bodyExample);
+        var expectedValue = new LinkedHashMap<String, Object>();
+        expectedValue.put("parameters", Map.of("id", "123"));
+        expectedValue.put("body", bodyExample);
+        then(result)
+                .hasSize(1)
+                .usingRecursiveComparison()
+                .isEqualTo(List.of(new ComposedExample(null, null, expectedValue)));
     }
 
     // -- Example Objects with value --
@@ -434,8 +454,10 @@ class InputExampleComposerTest {
         var result = composer.composeExamples(fullOperation(operation));
 
         // Then
-        then(result).hasSize(1);
-        then(result.get(0).value()).isEqualTo(Map.of("userId", "user-resolved"));
+        then(result)
+                .hasSize(1)
+                .usingRecursiveComparison()
+                .isEqualTo(List.of(new ComposedExample(null, null, Map.of("userId", "user-resolved"))));
     }
 
     @Test
@@ -454,8 +476,70 @@ class InputExampleComposerTest {
         var result = composer.composeExamples(fullOperation(operation));
 
         // Then
-        then(result).hasSize(1);
-        then(result.get(0).value()).isEqualTo(Map.of("userId", "good-value"));
+        then(result)
+                .hasSize(1)
+                .usingRecursiveComparison()
+                .isEqualTo(List.of(new ComposedExample(null, null, Map.of("userId", "good-value"))));
+    }
+
+    @Test
+    void shouldUseMapKeyAsTitleWhenExampleSummaryIsAbsent() {
+        // Given
+        var firstValue = Map.of("to", "41793026727");
+        var secondValue = Map.of("to", "41793026728");
+        var examples = new LinkedHashMap<String, Example>();
+        examples.put("sms-example", new Example().value(firstValue));
+        examples.put("flash-example", new Example().value(secondValue));
+        var mediaType = new MediaType().examples(examples);
+        var operation = operationWithBody(mediaType);
+
+        // When
+        var result = composer.composeExamples(fullOperation(operation));
+
+        // Then — map keys used as titles when summary is absent
+        then(result)
+                .hasSize(2)
+                .usingRecursiveComparison()
+                .isEqualTo(List.of(
+                        new ComposedExample("sms-example", null, firstValue),
+                        new ComposedExample("flash-example", null, secondValue)));
+    }
+
+    @Test
+    void shouldUseMapKeyAsTitleWhenExampleSummaryIsBlank() {
+        // Given
+        var value = Map.of("to", "41793026727");
+        var examples = Map.of("my-example", new Example().summary("  ").value(value));
+        var mediaType = new MediaType().examples(examples);
+        var operation = operationWithBody(mediaType);
+
+        // When
+        var result = composer.composeExamples(fullOperation(operation));
+
+        // Then — blank summary treated the same as absent; key used instead
+        then(result)
+                .hasSize(1)
+                .usingRecursiveComparison()
+                .isEqualTo(List.of(new ComposedExample("my-example", null, value)));
+    }
+
+    @Test
+    void shouldPreferSummaryOverMapKeyWhenSummaryIsPresent() {
+        // Given
+        var value = Map.of("to", "41793026727");
+        var examples =
+                Map.of("internal-key", new Example().summary("Friendly Title").value(value));
+        var mediaType = new MediaType().examples(examples);
+        var operation = operationWithBody(mediaType);
+
+        // When
+        var result = composer.composeExamples(fullOperation(operation));
+
+        // Then — explicit summary takes precedence over key
+        then(result)
+                .hasSize(1)
+                .usingRecursiveComparison()
+                .isEqualTo(List.of(new ComposedExample("Friendly Title", null, value)));
     }
 
     // -- Helpers --
@@ -465,9 +549,7 @@ class InputExampleComposerTest {
     }
 
     private static Operation operationWithBody(MediaType mediaType) {
-        var content = new Content();
-        content.addMediaType("application/json", mediaType);
-        var requestBody = new RequestBody().content(content);
-        return new Operation().requestBody(requestBody);
+        return new Operation()
+                .requestBody(new RequestBody().content(new Content().addMediaType("application/json", mediaType)));
     }
 }

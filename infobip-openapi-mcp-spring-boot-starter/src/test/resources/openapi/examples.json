@@ -338,6 +338,50 @@
         }
       }
     },
+    "/examples/body-examples-map-no-summary": {
+      "post": {
+        "operationId": "post-body-examples-map-no-summary",
+        "summary": "Tests that map keys are used as headings when example summary is absent",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "to": {
+                    "type": "string"
+                  },
+                  "text": {
+                    "type": "string"
+                  }
+                }
+              },
+              "examples": {
+                "sms-request": {
+                  "value": {
+                    "to": "41793026727",
+                    "text": "Hello from key fallback"
+                  }
+                },
+                "flash-request": {
+                  "description": "A flash message",
+                  "value": {
+                    "to": "41793026728",
+                    "text": "Flash from key fallback"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/examples/no-examples/{userId}": {
       "get": {
         "operationId": "get-no-examples",

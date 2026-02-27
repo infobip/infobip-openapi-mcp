@@ -135,6 +135,8 @@ since MCP does not support OpenAPI discriminators natively.
   All swagger-models 2.x classes expose property-named fluent methods that return `this` — use them instead of
   `setXxx(...)` calls. For example: `new OpenAPI().specVersion(V31).info(...).components(...).paths(...)` instead of
   `openApi.setSpecVersion(V31); openApi.setInfo(...)`
+- **List access**: Prefer `list.getFirst()` over `list.get(0)` when accessing the first element of a list.
+- **Assertion style**: When validating an object or a list of objects in tests, construct the expected instance(s) and assert using `then(actual).usingRecursiveComparison().isEqualTo(expected)` instead of asserting each property individually. For a list, pass a `List.of(...)` as the expected value.
 
 ## Testing Conventions
 

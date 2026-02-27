@@ -135,8 +135,9 @@ public class InputExampleComposer {
      * <p>
      * When the media type has a named {@code examples} map, each entry (with a non-null
      * value) becomes its own {@link ComposedExample} carrying the entry's {@code summary}
-     * and {@code description}.  Inline {@code example} and {@code schema.example} sources
-     * each produce a single unnamed entry.
+     * as the title, falling back to the map key when {@code summary} is absent or blank.
+     * Inline {@code example} and {@code schema.example} sources each produce a single
+     * unnamed entry.
      */
     private List<ComposedExample> extractBodyExamples(RequestBody requestBody) {
         if (requestBody.getContent() == null) {
@@ -189,7 +190,9 @@ public class InputExampleComposer {
             if (example.getValue() == null) {
                 continue;
             }
-            result.add(new ComposedExample(example.getSummary(), example.getDescription(), example.getValue()));
+            var summary = example.getSummary();
+            var title = (summary != null && !summary.isBlank()) ? summary : entry.getKey();
+            result.add(new ComposedExample(title, example.getDescription(), example.getValue()));
         }
         return Collections.unmodifiableList(result);
     }

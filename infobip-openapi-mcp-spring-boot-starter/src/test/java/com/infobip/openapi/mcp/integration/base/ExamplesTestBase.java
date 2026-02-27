@@ -257,6 +257,43 @@ public abstract class ExamplesTestBase extends IntegrationTestBase {
     }
 
     @Test
+    void shouldUseMapKeyAsHeadingWhenExampleSummaryIsAbsent() {
+        withInitializedMcpClient(client -> {
+            // Given
+            givenOpenAPISpecification(FIXTURE);
+
+            // When
+            McpSchema.Tool tool = findTool(client, "post_body_examples_map_no_summary");
+
+            // Then — map keys used as headings instead of the repeated generic "Example"
+            then(tool.description()).isEqualTo("""
+                            Tests that map keys are used as headings when example summary is absent
+
+                            ## Examples
+
+                            ### sms-request
+
+                            ```json
+                            {
+                              "to" : "41793026727",
+                              "text" : "Hello from key fallback"
+                            }
+                            ```
+
+                            ### flash-request
+
+                            A flash message
+
+                            ```json
+                            {
+                              "to" : "41793026728",
+                              "text" : "Flash from key fallback"
+                            }
+                            ```""");
+        });
+    }
+
+    @Test
     void shouldNotAppendExampleBlockWhenNoExamplesPresent() {
         withInitializedMcpClient(client -> {
             // Given
@@ -271,7 +308,7 @@ public abstract class ExamplesTestBase extends IntegrationTestBase {
     }
 
     @Test
-    void shouldLoadAllNineToolsFromFixture() {
+    void shouldLoadAllTenToolsFromFixture() {
         withInitializedMcpClient(client -> {
             // Given
             givenOpenAPISpecification(FIXTURE);
@@ -280,7 +317,7 @@ public abstract class ExamplesTestBase extends IntegrationTestBase {
             var tools = client.listTools().tools();
 
             // Then
-            then(tools).hasSize(9);
+            then(tools).hasSize(10);
             then(tools.stream().map(McpSchema.Tool::name))
                     .containsExactlyInAnyOrder(
                             "get_by_param_example",
@@ -291,6 +328,7 @@ public abstract class ExamplesTestBase extends IntegrationTestBase {
                             "post_body_schema_example",
                             "post_combined_params_and_body",
                             "post_combined_multi_body",
+                            "post_body_examples_map_no_summary",
                             "get_no_examples");
         });
     }
