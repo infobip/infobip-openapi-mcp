@@ -87,7 +87,33 @@ public abstract class AnnotatedExamplesTestBase extends IntegrationTestBase {
     }
 
     @Test
-    void shouldLoadThreeToolsFromFixture() {
+    void shouldAppendOnlyAnnotatedComponentRefExample() {
+        withInitializedMcpClient(client -> {
+            // Given
+            givenOpenAPISpecification(FIXTURE);
+
+            // When
+            McpSchema.Tool tool = findTool(client, "post_body_component_ref_annotated");
+
+            // Then — the $ref resolves to the component Example; only the annotated one is included
+            then(tool.description()).isEqualTo("""
+                            Only the annotated $ref body example is appended in ANNOTATED mode
+
+                            ## Examples
+
+                            ### Annotated component SMS
+
+                            ```json
+                            {
+                              "to" : "41793026727",
+                              "text" : "Hello from annotated component ref"
+                            }
+                            ```""");
+        });
+    }
+
+    @Test
+    void shouldLoadFourToolsFromFixture() {
         withInitializedMcpClient(client -> {
             // Given
             givenOpenAPISpecification(FIXTURE);
@@ -96,10 +122,13 @@ public abstract class AnnotatedExamplesTestBase extends IntegrationTestBase {
             var tools = client.listTools().tools();
 
             // Then
-            then(tools).hasSize(3);
+            then(tools).hasSize(4);
             then(tools.stream().map(McpSchema.Tool::name))
                     .containsExactlyInAnyOrder(
-                            "post_body_annotated_only", "get_param_annotated_only", "post_inline_body_ignored");
+                            "post_body_annotated_only",
+                            "get_param_annotated_only",
+                            "post_inline_body_ignored",
+                            "post_body_component_ref_annotated");
         });
     }
 

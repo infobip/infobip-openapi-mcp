@@ -130,6 +130,62 @@
           }
         }
       }
+    },
+    "/annotated/body-component-ref": {
+      "post": {
+        "operationId": "post-body-component-ref-annotated",
+        "summary": "Only the annotated $ref body example is appended in ANNOTATED mode",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "to": {
+                    "type": "string"
+                  },
+                  "text": {
+                    "type": "string"
+                  }
+                }
+              },
+              "examples": {
+                "annotated-ref": {
+                  "$ref": "#/components/examples/AnnotatedSms"
+                },
+                "unannotated-ref": {
+                  "$ref": "#/components/examples/UnannotatedSms"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "examples": {
+      "AnnotatedSms": {
+        "summary": "Annotated component SMS",
+        "value": {
+          "to": "41793026727",
+          "text": "Hello from annotated component ref"
+        },
+        "x-mcp-example": true
+      },
+      "UnannotatedSms": {
+        "summary": "Unannotated component SMS",
+        "value": {
+          "to": "41793026728",
+          "text": "Hello from unannotated component ref"
+        }
+      }
     }
   }
 }

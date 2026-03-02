@@ -411,6 +411,62 @@
           }
         }
       }
+    },
+    "/examples/body-component-ref": {
+      "post": {
+        "operationId": "post-body-component-ref",
+        "summary": "Tests that $ref examples in request body are resolved from components",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "to": {
+                    "type": "string"
+                  },
+                  "text": {
+                    "type": "string"
+                  }
+                }
+              },
+              "examples": {
+                "sms-ref": {
+                  "$ref": "#/components/examples/SmsBody"
+                },
+                "flash-ref": {
+                  "$ref": "#/components/examples/FlashBody"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "examples": {
+      "SmsBody": {
+        "summary": "Standard SMS",
+        "description": "A plain-text outbound SMS.",
+        "value": {
+          "to": "41793026727",
+          "text": "Hello from component ref"
+        }
+      },
+      "FlashBody": {
+        "summary": "Flash SMS",
+        "value": {
+          "to": "41793026728",
+          "text": "Flash from component ref"
+        }
+      }
     }
   }
 }

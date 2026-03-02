@@ -294,6 +294,43 @@ public abstract class ExamplesTestBase extends IntegrationTestBase {
     }
 
     @Test
+    void shouldResolveAndAppendExamplesDefinedAsComponentRefs() {
+        withInitializedMcpClient(client -> {
+            // Given
+            givenOpenAPISpecification(FIXTURE);
+
+            // When
+            McpSchema.Tool tool = findTool(client, "post_body_component_ref");
+
+            // Then — $ref pointers are resolved; both component examples are rendered
+            then(tool.description()).isEqualTo("""
+                            Tests that $ref examples in request body are resolved from components
+
+                            ## Examples
+
+                            ### Standard SMS
+
+                            A plain-text outbound SMS.
+
+                            ```json
+                            {
+                              "to" : "41793026727",
+                              "text" : "Hello from component ref"
+                            }
+                            ```
+
+                            ### Flash SMS
+
+                            ```json
+                            {
+                              "to" : "41793026728",
+                              "text" : "Flash from component ref"
+                            }
+                            ```""");
+        });
+    }
+
+    @Test
     void shouldNotAppendExampleBlockWhenNoExamplesPresent() {
         withInitializedMcpClient(client -> {
             // Given
@@ -308,7 +345,7 @@ public abstract class ExamplesTestBase extends IntegrationTestBase {
     }
 
     @Test
-    void shouldLoadAllTenToolsFromFixture() {
+    void shouldLoadAllElevenToolsFromFixture() {
         withInitializedMcpClient(client -> {
             // Given
             givenOpenAPISpecification(FIXTURE);
@@ -317,7 +354,7 @@ public abstract class ExamplesTestBase extends IntegrationTestBase {
             var tools = client.listTools().tools();
 
             // Then
-            then(tools).hasSize(10);
+            then(tools).hasSize(11);
             then(tools.stream().map(McpSchema.Tool::name))
                     .containsExactlyInAnyOrder(
                             "get_by_param_example",
@@ -329,7 +366,8 @@ public abstract class ExamplesTestBase extends IntegrationTestBase {
                             "post_combined_params_and_body",
                             "post_combined_multi_body",
                             "post_body_examples_map_no_summary",
-                            "get_no_examples");
+                            "get_no_examples",
+                            "post_body_component_ref");
         });
     }
 
