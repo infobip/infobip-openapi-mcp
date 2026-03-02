@@ -89,7 +89,7 @@ class OpenApiMcpConfiguration {
 
     @Bean
     public InputExampleComposer inputExampleComposer(OpenApiMcpProperties properties) {
-        return new InputExampleComposer(properties.tools().schema());
+        return new InputExampleComposer(properties);
     }
 
     @Bean

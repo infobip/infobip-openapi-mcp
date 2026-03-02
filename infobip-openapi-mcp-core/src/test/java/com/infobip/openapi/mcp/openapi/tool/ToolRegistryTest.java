@@ -46,8 +46,7 @@ class ToolRegistryTest {
     private final OperationIdStrategy namingStrategy = new OperationIdStrategy();
     private final InputSchemaComposer inputSchemaComposer =
             new InputSchemaComposer(new OpenApiMcpProperties.Tools.Schema(null, null));
-    private final InputExampleComposer inputExampleComposer =
-            new InputExampleComposer(new OpenApiMcpProperties.Tools.Schema(null, null));
+    private InputExampleComposer inputExampleComposer = new InputExampleComposer(OpenApiMcpProperties.withDefaults());
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final OpenAPIV3Parser parser = new OpenAPIV3Parser();
     private final OpenApiMapperFactory mapperFactory = new OpenApiMapperFactory();
@@ -1297,6 +1296,7 @@ class ToolRegistryTest {
                 null,
                 new OpenApiMcpProperties.Tools(null, null, null, true, null, ExamplesMode.ALL),
                 null);
+        inputExampleComposer = new InputExampleComposer(properties);
         toolRegistry = new ToolRegistry(
                 openApiRegistry,
                 namingStrategy,
@@ -1358,6 +1358,7 @@ class ToolRegistryTest {
                 null,
                 new OpenApiMcpProperties.Tools(null, null, null, true, null, ExamplesMode.SKIP),
                 null);
+        inputExampleComposer = new InputExampleComposer(properties);
         toolRegistry = new ToolRegistry(
                 openApiRegistry,
                 namingStrategy,
@@ -1452,6 +1453,7 @@ class ToolRegistryTest {
                 null,
                 new OpenApiMcpProperties.Tools(null, null, null, true, null, ExamplesMode.ALL),
                 null);
+        inputExampleComposer = new InputExampleComposer(properties);
         toolRegistry = new ToolRegistry(
                 openApiRegistry,
                 namingStrategy,
@@ -1509,6 +1511,7 @@ class ToolRegistryTest {
                 null,
                 new OpenApiMcpProperties.Tools(null, null, null, true, null, ExamplesMode.ALL),
                 null);
+        inputExampleComposer = new InputExampleComposer(properties);
         toolRegistry = new ToolRegistry(
                 openApiRegistry,
                 namingStrategy,
@@ -1581,6 +1584,7 @@ class ToolRegistryTest {
                 null,
                 new OpenApiMcpProperties.Tools(null, null, null, true, null, ExamplesMode.ANNOTATED),
                 null);
+        inputExampleComposer = new InputExampleComposer(properties);
         toolRegistry = new ToolRegistry(
                 openApiRegistry,
                 namingStrategy,

@@ -22,8 +22,8 @@ import org.junit.jupiter.api.Test;
 
 class InputExampleComposerTest {
 
-    private final InputExampleComposer composer =
-            new InputExampleComposer(new OpenApiMcpProperties.Tools.Schema(null, null));
+    private final InputExampleComposer composer = composerWithMode(ExamplesMode.ALL);
+    private final InputExampleComposer annotatedComposer = composerWithMode(ExamplesMode.ANNOTATED);
 
     // -- No examples --
 
@@ -34,7 +34,7 @@ class InputExampleComposerTest {
         operation.addParametersItem(new Parameter().name("userId").in("query").schema(new StringSchema()));
 
         // When
-        var result = composer.composeExamples(fullOperation(operation), ExamplesMode.ALL);
+        var result = composer.composeExamples(fullOperation(operation));
 
         // Then
         then(result).isEmpty();
@@ -46,7 +46,7 @@ class InputExampleComposerTest {
         var operation = new Operation();
 
         // When
-        var result = composer.composeExamples(fullOperation(operation), ExamplesMode.ALL);
+        var result = composer.composeExamples(fullOperation(operation));
 
         // Then
         then(result).isEmpty();
@@ -61,7 +61,7 @@ class InputExampleComposerTest {
         operation.addParametersItem(new Parameter().name("userId").in("query").example("user-123"));
 
         // When
-        var result = composer.composeExamples(fullOperation(operation), ExamplesMode.ALL);
+        var result = composer.composeExamples(fullOperation(operation));
 
         // Then
         then(result)
@@ -78,7 +78,7 @@ class InputExampleComposerTest {
         operation.addParametersItem(new Parameter().name("userId").in("query").examples(Map.of("example1", example)));
 
         // When
-        var result = composer.composeExamples(fullOperation(operation), ExamplesMode.ALL);
+        var result = composer.composeExamples(fullOperation(operation));
 
         // Then
         then(result)
@@ -95,7 +95,7 @@ class InputExampleComposerTest {
                 new Parameter().name("userId").in("query").schema(new StringSchema().example("user-789")));
 
         // When
-        var result = composer.composeExamples(fullOperation(operation), ExamplesMode.ALL);
+        var result = composer.composeExamples(fullOperation(operation));
 
         // Then
         then(result)
@@ -116,7 +116,7 @@ class InputExampleComposerTest {
                 .examples(Map.of("e1", example)));
 
         // When
-        var result = composer.composeExamples(fullOperation(operation), ExamplesMode.ALL);
+        var result = composer.composeExamples(fullOperation(operation));
 
         // Then
         then(result)
@@ -136,7 +136,7 @@ class InputExampleComposerTest {
                 .schema(new StringSchema().example("from-schema")));
 
         // When
-        var result = composer.composeExamples(fullOperation(operation), ExamplesMode.ALL);
+        var result = composer.composeExamples(fullOperation(operation));
 
         // Then
         then(result)
@@ -153,7 +153,7 @@ class InputExampleComposerTest {
         operation.addParametersItem(new Parameter().name("status").in("query").schema(new StringSchema()));
 
         // When
-        var result = composer.composeExamples(fullOperation(operation), ExamplesMode.ALL);
+        var result = composer.composeExamples(fullOperation(operation));
 
         // Then
         then(result)
@@ -170,7 +170,7 @@ class InputExampleComposerTest {
                 new Parameter().name("unsupported").in("matrix").example("val"));
 
         // When
-        var result = composer.composeExamples(fullOperation(operation), ExamplesMode.ALL);
+        var result = composer.composeExamples(fullOperation(operation));
 
         // Then
         then(result).isEmpty();
@@ -186,7 +186,7 @@ class InputExampleComposerTest {
         operation.addParametersItem(new Parameter().name("c").in("cookie").example("cookieVal"));
 
         // When
-        var result = composer.composeExamples(fullOperation(operation), ExamplesMode.ALL);
+        var result = composer.composeExamples(fullOperation(operation));
 
         // Then
         var expectedParams = new LinkedHashMap<String, Object>();
@@ -210,7 +210,7 @@ class InputExampleComposerTest {
         var operation = operationWithBody(mediaType);
 
         // When
-        var result = composer.composeExamples(fullOperation(operation), ExamplesMode.ALL);
+        var result = composer.composeExamples(fullOperation(operation));
 
         // Then
         then(result)
@@ -236,7 +236,7 @@ class InputExampleComposerTest {
         var operation = operationWithBody(mediaType);
 
         // When
-        var result = composer.composeExamples(fullOperation(operation), ExamplesMode.ALL);
+        var result = composer.composeExamples(fullOperation(operation));
 
         // Then — both entries preserved in insertion order
         then(result)
@@ -257,7 +257,7 @@ class InputExampleComposerTest {
         var operation = operationWithBody(mediaType);
 
         // When
-        var result = composer.composeExamples(fullOperation(operation), ExamplesMode.ALL);
+        var result = composer.composeExamples(fullOperation(operation));
 
         // Then
         then(result)
@@ -275,7 +275,7 @@ class InputExampleComposerTest {
         var operation = operationWithBody(mediaType);
 
         // When
-        var result = composer.composeExamples(fullOperation(operation), ExamplesMode.ALL);
+        var result = composer.composeExamples(fullOperation(operation));
 
         // Then
         then(result)
@@ -294,7 +294,7 @@ class InputExampleComposerTest {
         var operation = operationWithBody(mediaType);
 
         // When
-        var result = composer.composeExamples(fullOperation(operation), ExamplesMode.ALL);
+        var result = composer.composeExamples(fullOperation(operation));
 
         // Then
         then(result)
@@ -312,7 +312,7 @@ class InputExampleComposerTest {
         var operation = new Operation().requestBody(requestBody);
 
         // When
-        var result = composer.composeExamples(fullOperation(operation), ExamplesMode.ALL);
+        var result = composer.composeExamples(fullOperation(operation));
 
         // Then
         then(result).isEmpty();
@@ -328,7 +328,7 @@ class InputExampleComposerTest {
         operation.addParametersItem(new Parameter().name("limit").in("query").example(10));
 
         // When
-        var result = composer.composeExamples(fullOperation(operation), ExamplesMode.ALL);
+        var result = composer.composeExamples(fullOperation(operation));
 
         // Then
         var expectedParams = new LinkedHashMap<String, Object>();
@@ -348,7 +348,7 @@ class InputExampleComposerTest {
         var operation = operationWithBody(mediaType);
 
         // When
-        var result = composer.composeExamples(fullOperation(operation), ExamplesMode.ALL);
+        var result = composer.composeExamples(fullOperation(operation));
 
         // Then
         then(result)
@@ -368,7 +368,7 @@ class InputExampleComposerTest {
         operation.setRequestBody(new RequestBody().content(new Content().addMediaType("application/json", mediaType)));
 
         // When
-        var result = composer.composeExamples(fullOperation(operation), ExamplesMode.ALL);
+        var result = composer.composeExamples(fullOperation(operation));
 
         // Then
         var expectedValue = new LinkedHashMap<String, Object>();
@@ -395,7 +395,7 @@ class InputExampleComposerTest {
                 .content(new Content().addMediaType("application/json", new MediaType().examples(examples))));
 
         // When
-        var result = composer.composeExamples(fullOperation(operation), ExamplesMode.ALL);
+        var result = composer.composeExamples(fullOperation(operation));
 
         // Then — one entry per body example, each merging the same params
         var firstExpected = new LinkedHashMap<String, Object>();
@@ -417,7 +417,7 @@ class InputExampleComposerTest {
     @Test
     void shouldUseCustomKeysWhenBothParamsAndBodyHaveExamples() {
         // Given
-        var customComposer = new InputExampleComposer(new OpenApiMcpProperties.Tools.Schema("parameters", "body"));
+        var customComposer = composerWithModeAndSchema(ExamplesMode.ALL, "parameters", "body");
 
         var bodyExample = Map.of("to", "41793026727");
         var mediaType = new MediaType().example(bodyExample);
@@ -427,7 +427,7 @@ class InputExampleComposerTest {
         operation.setRequestBody(new RequestBody().content(new Content().addMediaType("application/json", mediaType)));
 
         // When
-        var result = customComposer.composeExamples(fullOperation(operation), ExamplesMode.ALL);
+        var result = customComposer.composeExamples(fullOperation(operation));
 
         // Then
         var expectedValue = new LinkedHashMap<String, Object>();
@@ -452,7 +452,7 @@ class InputExampleComposerTest {
         operation.addParametersItem(new Parameter().name("userId").in("query").examples(Map.of("ex1", example)));
 
         // When
-        var result = composer.composeExamples(fullOperation(operation), ExamplesMode.ALL);
+        var result = composer.composeExamples(fullOperation(operation));
 
         // Then
         then(result)
@@ -474,7 +474,7 @@ class InputExampleComposerTest {
         operation.addParametersItem(new Parameter().name("userId").in("query").examples(examples));
 
         // When
-        var result = composer.composeExamples(fullOperation(operation), ExamplesMode.ALL);
+        var result = composer.composeExamples(fullOperation(operation));
 
         // Then
         then(result)
@@ -495,7 +495,7 @@ class InputExampleComposerTest {
         var operation = operationWithBody(mediaType);
 
         // When
-        var result = composer.composeExamples(fullOperation(operation), ExamplesMode.ALL);
+        var result = composer.composeExamples(fullOperation(operation));
 
         // Then — map keys used as titles when summary is absent
         then(result)
@@ -515,7 +515,7 @@ class InputExampleComposerTest {
         var operation = operationWithBody(mediaType);
 
         // When
-        var result = composer.composeExamples(fullOperation(operation), ExamplesMode.ALL);
+        var result = composer.composeExamples(fullOperation(operation));
 
         // Then — blank summary treated the same as absent; key used instead
         then(result)
@@ -534,7 +534,7 @@ class InputExampleComposerTest {
         var operation = operationWithBody(mediaType);
 
         // When
-        var result = composer.composeExamples(fullOperation(operation), ExamplesMode.ALL);
+        var result = composer.composeExamples(fullOperation(operation));
 
         // Then — explicit summary takes precedence over key
         then(result)
@@ -559,7 +559,7 @@ class InputExampleComposerTest {
         operation.addParametersItem(new Parameter().name("userId").in("query").examples(examples));
 
         // When
-        var result = composer.composeExamples(fullOperation(operation), ExamplesMode.ANNOTATED);
+        var result = annotatedComposer.composeExamples(fullOperation(operation));
 
         // Then — only the annotated entry is picked
         then(result)
@@ -580,7 +580,7 @@ class InputExampleComposerTest {
                 .examples(Map.of("noAnnotation", unannotated)));
 
         // When
-        var result = composer.composeExamples(fullOperation(operation), ExamplesMode.ANNOTATED);
+        var result = annotatedComposer.composeExamples(fullOperation(operation));
 
         // Then — no annotated entry found, inline sources are not consulted; parameter excluded
         then(result).isEmpty();
@@ -601,7 +601,7 @@ class InputExampleComposerTest {
         var operation = operationWithBody(mediaType);
 
         // When
-        var result = composer.composeExamples(fullOperation(operation), ExamplesMode.ANNOTATED);
+        var result = annotatedComposer.composeExamples(fullOperation(operation));
 
         // Then — only the annotated entry is returned
         then(result)
@@ -619,7 +619,7 @@ class InputExampleComposerTest {
         var operation = operationWithBody(mediaType);
 
         // When
-        var result = composer.composeExamples(fullOperation(operation), ExamplesMode.ANNOTATED);
+        var result = annotatedComposer.composeExamples(fullOperation(operation));
 
         // Then — no annotated entry found, inline sources are not consulted
         then(result).isEmpty();
@@ -638,7 +638,7 @@ class InputExampleComposerTest {
         var operation = operationWithBody(mediaType);
 
         // When
-        var result = composer.composeExamples(fullOperation(operation), ExamplesMode.ALL);
+        var result = composer.composeExamples(fullOperation(operation));
 
         // Then — both entries returned; annotation flag is ignored in ALL mode
         then(result)
@@ -650,6 +650,29 @@ class InputExampleComposerTest {
     }
 
     // -- Helpers --
+
+    private static InputExampleComposer composerWithMode(ExamplesMode mode) {
+        return composerWithModeAndSchema(mode, null, null);
+    }
+
+    private static InputExampleComposer composerWithModeAndSchema(
+            ExamplesMode mode, String parametersKey, String requestBodyKey) {
+        return new InputExampleComposer(new OpenApiMcpProperties(
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                new OpenApiMcpProperties.Tools(
+                        null,
+                        new OpenApiMcpProperties.Tools.Schema(parametersKey, requestBodyKey),
+                        null,
+                        null,
+                        null,
+                        mode),
+                null));
+    }
 
     private static FullOperation fullOperation(Operation operation) {
         return new FullOperation("/test", PathItem.HttpMethod.GET, operation, new OpenAPI());

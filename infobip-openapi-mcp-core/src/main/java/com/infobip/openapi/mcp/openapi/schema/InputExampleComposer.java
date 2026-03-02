@@ -44,30 +44,39 @@ import org.jspecify.annotations.Nullable;
  * Example extraction precedence for request body (from {@code application/json} media type)
  * in {@link ExamplesMode#ALL} mode:
  * {@code mediaType.examples} &gt; {@code mediaType.example} &gt; {@code mediaType.schema.example}
+ * <p>
+ * Returns an empty list when configured with {@link ExamplesMode#SKIP}.
  */
 @NullMarked
 public class InputExampleComposer {
 
     private final String parametersKey;
     private final String requestBodyKey;
+    private final ExamplesMode examplesMode;
 
-    public InputExampleComposer(OpenApiMcpProperties.Tools.Schema schemaProperties) {
-        this.parametersKey = schemaProperties.parametersKey();
-        this.requestBodyKey = schemaProperties.requestBodyKey();
+    public InputExampleComposer(OpenApiMcpProperties properties) {
+        this.parametersKey = properties.tools().schema().parametersKey();
+        this.requestBodyKey = properties.tools().schema().requestBodyKey();
+        this.examplesMode = properties.tools().examplesMode();
     }
 
     /**
-     * Composes representative examples for the given operation.
+     * Composes representative examples for the given operation using the configured
+     * {@link ExamplesMode}.
      * <p>
      * Returns one {@link ComposedExample} per distinct body example found in the
      * {@code examples} map (each merged with the common parameter examples), or a
      * single entry for inline body examples / parameter-only operations.
+     * Returns an empty list when the configured mode is {@link ExamplesMode#SKIP}.
      *
      * @param fullOperation the OpenAPI operation to extract examples from
-     * @param mode          controls which examples to include
-     * @return an ordered list of composed examples; empty if no examples were found
+     * @return an ordered list of composed examples; empty if no examples were found or mode is SKIP
      */
-    public List<ComposedExample> composeExamples(FullOperation fullOperation, ExamplesMode mode) {
+    public List<ComposedExample> composeExamples(FullOperation fullOperation) {
+        if (examplesMode == ExamplesMode.SKIP) {
+            return List.of();
+        }
+        var mode = examplesMode;
         var operation = fullOperation.operation();
 
         var paramExamples =

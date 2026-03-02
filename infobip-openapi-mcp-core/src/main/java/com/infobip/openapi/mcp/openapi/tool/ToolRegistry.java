@@ -8,7 +8,6 @@ import com.infobip.openapi.mcp.openapi.OpenApiRegistry;
 import com.infobip.openapi.mcp.openapi.schema.ComposedExample;
 import com.infobip.openapi.mcp.openapi.schema.InputExampleComposer;
 import com.infobip.openapi.mcp.openapi.schema.InputSchemaComposer;
-import com.infobip.openapi.mcp.openapi.schema.Spec.ExamplesMode;
 import com.infobip.openapi.mcp.openapi.tool.exception.ToolRegistrationException;
 import com.infobip.openapi.mcp.openapi.tool.naming.NamingStrategy;
 import com.infobip.openapi.mcp.util.OpenApiMapperFactory;
@@ -189,11 +188,10 @@ public class ToolRegistry {
      * the summary will be prepended to the description as a markdown H1 heading in the format:
      * {@code # {summary}\n\n{description}}
      * <p>
-     * If the {@code examplesMode} property is enabled and request examples exist in the
-     * OpenAPI spec, they are appended as a Markdown JSON code block.
+     * If request examples exist in the OpenAPI spec (as determined by the configured
+     * {@code examplesMode}), they are appended as a Markdown JSON code block.
      * <p>
-     * If the feature is disabled or only one of summary/description exists, returns the description if present,
-     * otherwise returns the summary.
+     * If only one of summary/description exists, returns whichever is present.
      *
      * @param fullOperation the OpenAPI operation
      * @return the constructed description, or null if neither description, summary, nor examples exist
@@ -217,12 +215,9 @@ public class ToolRegistry {
         }
 
         // Append examples if feature is enabled
-        if (properties.tools().examplesMode() != ExamplesMode.SKIP) {
-            var exampleBlock =
-                    buildExampleBlock(fullOperation, properties.tools().examplesMode());
-            if (exampleBlock != null) {
-                return baseDescription != null ? baseDescription + "\n\n" + exampleBlock : exampleBlock;
-            }
+        var exampleBlock = buildExampleBlock(fullOperation);
+        if (exampleBlock != null) {
+            return baseDescription != null ? baseDescription + "\n\n" + exampleBlock : exampleBlock;
         }
 
         return baseDescription;
@@ -252,11 +247,10 @@ public class ToolRegistry {
      * where the description paragraph is omitted when absent.
      *
      * @param fullOperation the OpenAPI operation
-     * @param mode          the examples mode controlling which examples to include
      * @return a Markdown block string, or null if no examples found or serialization fails
      */
-    private String buildExampleBlock(FullOperation fullOperation, ExamplesMode mode) {
-        var examples = inputExampleComposer.composeExamples(fullOperation, mode);
+    private String buildExampleBlock(FullOperation fullOperation) {
+        var examples = inputExampleComposer.composeExamples(fullOperation);
         if (examples.isEmpty()) {
             return null;
         }

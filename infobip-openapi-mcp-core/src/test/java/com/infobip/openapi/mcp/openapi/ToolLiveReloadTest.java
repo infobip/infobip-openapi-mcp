@@ -87,8 +87,7 @@ class ToolLiveReloadTest {
     private final OperationIdStrategy namingStrategy = new OperationIdStrategy();
     private final InputSchemaComposer inputSchemaComposer =
             new InputSchemaComposer(new OpenApiMcpProperties.Tools.Schema(null, null));
-    private final InputExampleComposer inputExampleComposer =
-            new InputExampleComposer(new OpenApiMcpProperties.Tools.Schema(null, null));
+    private final InputExampleComposer inputExampleComposer = new InputExampleComposer(PROPERTIES);
 
     private ToolRegistry givenToolRegistry;
 
