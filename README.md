@@ -175,12 +175,34 @@ operation summary, or it can combine it with operation description. The behavior
 
 The framework can also append a request example to each tool description as a Markdown JSON code block. Examples are
 extracted from the OpenAPI specification — from parameters and request bodies — and combined into a single object
-mirroring the tool's input schema structure. This is disabled by default and can be enabled with
-`infobip.openapi.mcp.tools.append-examples-to-description`.
+mirroring the tool's input schema structure. The behavior is controlled by the
+`infobip.openapi.mcp.tools.examples-mode` property, which accepts three values:
+
+- `SKIP` (default) — no examples are appended.
+- `ALL` — all examples from the OpenAPI specification are included.
+- `ANNOTATED` — only examples explicitly marked for MCP use are included. Mark an example by adding
+  `x-mcp-example: true` directly on the OpenAPI `Example` Object (inside the `examples` map of a parameter or request
+  body):
+
+  ```yaml
+  examples:
+    basicRequest:
+      summary: Basic SMS
+      x-mcp-example: true
+      value:
+        to: "41793026727"
+        text: "Hello"
+    advancedRequest:
+      summary: Advanced SMS (not shown in MCP)
+      value:
+        to: "41793026727"
+        text: "Hello"
+        validityPeriod: 720
+  ```
 
 > [!TIP] Be mindful that examples add to the context size consumed by tool descriptions. If the examples in your OpenAPI
-> specification are large or numerous, consider trimming them using [OpenAPI overlays][12] or a custom `OpenApiFilter`
-> before enabling this feature.
+> specification are large or numerous, `ANNOTATED` mode is the recommended approach — it lets you selectively expose
+> only the examples that are most useful for the LLM, without needing OpenAPI overlays or custom filters.
 
 ### Authentication
 
@@ -347,7 +369,7 @@ infobip:
 | `infobip.openapi.mcp.tools.json-double-serialization-mitigation`                   | Whether to enable automatic JSON double serialization mitigation.                                                                                                                                                                                                                                                                                                                                                                                            | `true`                         | 
 | `infobip.openapi.mcp.tools.prepend-summary-to-description`                         | Whether to prepend the operation summary as a markdown title to the description.                                                                                                                                                                                                                                                                                                                                                                             | `true`                         | 
 | `infobip.openapi.mcp.tools.mock`                                                   | Whether to run MCP server in mock mode, where it avoids calling API during tool calls and instead returns results based on examples provided in OpenAPI specification. Default is false.                                                                                                                                                                                                                                                                     | `false`                        |
-| `infobip.openapi.mcp.tools.append-examples-to-description`                         | Whether to append request examples from the OpenAPI specification as a Markdown JSON code block to the tool description. When using this feature be mindful of the size of examples and added context that enabling this feature will use. Contrast this with the benefit of examples for LLMs. One option is to streamline examples using either OpenAPI overlays or implement a filter. That way you can reduce the number / size of examples in the spec. | `false`                        |
+| `infobip.openapi.mcp.tools.examples-mode`                         | Accepts `SKIP`, `ALL`, or `ANNOTATED`. `SKIP` — no examples appended. `ALL` — all examples from the OpenAPI spec are included. `ANNOTATED` — only examples with `x-mcp-example: true` on the OpenAPI Example Object are included, giving fine-grained control over what reaches MCP tool descriptions. | `SKIP`                         |
 | `infobip.openapi.mcp.live-reload.enabled`                                          | Whether tool reload is enabled. When enabled, the framework periodically fetches the OpenAPI specification and updates registered MCP tools if changes are detected. Requires `@EnableScheduling` on your application.                                                                                                                                                                                                                                       | `false`                        |
 | `infobip.openapi.mcp.live-reload.cron-expression`                                  | Cron expression for scheduling OpenAPI specification reload attempts. Uses Spring's cron format (6 fields: second, minute, hour, day-of-month, month, day-of-week). Requires `@EnableScheduling` on your application.                                                                                                                                                                                                                                        | `0 */10 * * * *`               |
 | `infobip.openapi.mcp.live-reload.max-retries`                                      | Maximum number of reload attempts per scheduled execution. The loop terminates early on the first successful reload. Retries only occur on failure, using exponential backoff.                                                                                                                                                                                                                                                                               | `3`                            |

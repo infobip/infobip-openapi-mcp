@@ -14,6 +14,7 @@ import com.infobip.openapi.mcp.openapi.OpenApiRegistry;
 import com.infobip.openapi.mcp.openapi.schema.DecomposedRequestData;
 import com.infobip.openapi.mcp.openapi.schema.InputExampleComposer;
 import com.infobip.openapi.mcp.openapi.schema.InputSchemaComposer;
+import com.infobip.openapi.mcp.openapi.schema.Spec.ExamplesMode;
 import com.infobip.openapi.mcp.openapi.tool.exception.ToolRegistrationException;
 import com.infobip.openapi.mcp.openapi.tool.naming.OperationIdStrategy;
 import com.infobip.openapi.mcp.util.OpenApiMapperFactory;
@@ -1294,7 +1295,7 @@ class ToolRegistryTest {
                 null,
                 null,
                 null,
-                new OpenApiMcpProperties.Tools(null, null, null, true, null, true),
+                new OpenApiMcpProperties.Tools(null, null, null, true, null, ExamplesMode.ALL),
                 null);
         toolRegistry = new ToolRegistry(
                 openApiRegistry,
@@ -1355,7 +1356,7 @@ class ToolRegistryTest {
                 null,
                 null,
                 null,
-                new OpenApiMcpProperties.Tools(null, null, null, true, null, false),
+                new OpenApiMcpProperties.Tools(null, null, null, true, null, ExamplesMode.SKIP),
                 null);
         toolRegistry = new ToolRegistry(
                 openApiRegistry,
@@ -1449,7 +1450,7 @@ class ToolRegistryTest {
                 null,
                 null,
                 null,
-                new OpenApiMcpProperties.Tools(null, null, null, true, null, true),
+                new OpenApiMcpProperties.Tools(null, null, null, true, null, ExamplesMode.ALL),
                 null);
         toolRegistry = new ToolRegistry(
                 openApiRegistry,
@@ -1506,7 +1507,7 @@ class ToolRegistryTest {
                 null,
                 null,
                 null,
-                new OpenApiMcpProperties.Tools(null, null, null, true, null, true),
+                new OpenApiMcpProperties.Tools(null, null, null, true, null, ExamplesMode.ALL),
                 null);
         toolRegistry = new ToolRegistry(
                 openApiRegistry,
@@ -1566,6 +1567,75 @@ class ToolRegistryTest {
         then(description).contains("\"channelId\" : \"channel-1\"");
         then(description).contains("\"_body\"");
         then(description).contains("\"to\" : \"41793026727\"");
+    }
+
+    @Test
+    void shouldAppendOnlyAnnotatedExamplesWhenModeIsAnnotated() {
+        // Given
+        properties = new OpenApiMcpProperties(
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                new OpenApiMcpProperties.Tools(null, null, null, true, null, ExamplesMode.ANNOTATED),
+                null);
+        toolRegistry = new ToolRegistry(
+                openApiRegistry,
+                namingStrategy,
+                inputSchemaComposer,
+                inputExampleComposer,
+                toolHandler,
+                mapperFactory,
+                properties);
+
+        var openApi = parseOpenAPI("""
+            {
+              "openapi": "3.1.0",
+              "info": {
+                "title": "Test API",
+                "version": "1.0.0"
+              },
+              "paths": {
+                "/messages": {
+                  "post": {
+                    "operationId": "sendMessage",
+                    "description": "Send a message",
+                    "requestBody": {
+                      "content": {
+                        "application/json": {
+                          "examples": {
+                            "basic": {
+                              "summary": "Basic SMS",
+                              "x-mcp-example": true,
+                              "value": { "to": "41793026727", "text": "Hello" }
+                            },
+                            "advanced": {
+                              "summary": "Advanced SMS",
+                              "value": { "to": "41793026727", "text": "Hello", "validityPeriod": 720 }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+            """);
+        given(openApiRegistry.openApi()).willReturn(openApi);
+
+        // When
+        var result = toolRegistry.getTools();
+
+        // Then — only the annotated example appears in the description
+        then(result).hasSize(1);
+        var description = result.getFirst().tool().description();
+        then(description).contains("Basic SMS");
+        then(description).doesNotContain("Advanced SMS");
+        then(description).contains("\"to\" : \"41793026727\"");
+        then(description).doesNotContain("validityPeriod");
     }
 
     private OpenAPI parseOpenAPI(String jsonSpec) {

@@ -10,27 +10,19 @@ public class ExamplesIntegrationTest {
     @Nested
     @ActiveProfiles("integration")
     @TestPropertySource(
-            properties = {
-                "spring.ai.mcp.server.protocol = streamable",
-                "infobip.openapi.mcp.tools.append-examples-to-description = true"
+            properties = {"spring.ai.mcp.server.protocol = streamable", "infobip.openapi.mcp.tools.examples-mode = ALL"
             })
     class ExamplesHttpTest extends ExamplesTestBase {}
 
     @Nested
     @ActiveProfiles("integration")
     @TestPropertySource(
-            properties = {
-                "spring.ai.mcp.server.protocol = sse",
-                "infobip.openapi.mcp.tools.append-examples-to-description = true"
-            })
+            properties = {"spring.ai.mcp.server.protocol = sse", "infobip.openapi.mcp.tools.examples-mode = ALL"})
     class ExamplesSseTest extends ExamplesTestBase {}
 
     @Nested
     @ActiveProfiles("integration")
     @TestPropertySource(
-            properties = {
-                "spring.ai.mcp.server.protocol = stateless",
-                "infobip.openapi.mcp.tools.append-examples-to-description = true"
-            })
+            properties = {"spring.ai.mcp.server.protocol = stateless", "infobip.openapi.mcp.tools.examples-mode = ALL"})
     class ExamplesStatelessTest extends ExamplesTestBase {}
 }

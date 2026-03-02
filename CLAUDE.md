@@ -114,7 +114,7 @@ When both exist, parameters are wrapped under `_params` key and the request body
 `InputExampleComposer` extracts request examples from OpenAPI parameters and request bodies (using precedence:
 `examples` map > `example` field > `schema.example`) and composes them into a single example object matching
 `InputSchemaComposer`'s combination rules. `ToolRegistry` appends the result as a Markdown JSON code block to tool
-descriptions (controlled by `infobip.openapi.mcp.tools.append-examples-to-description`, default `true`).
+descriptions.
 
 `DiscriminatorFlattener` resolves OpenAPI discriminator patterns into JSON Schema–compatible `oneOf`/`allOf` structures
 since MCP does not support OpenAPI discriminators natively.
@@ -136,6 +136,10 @@ since MCP does not support OpenAPI discriminators natively.
   `setXxx(...)` calls. For example: `new OpenAPI().specVersion(V31).info(...).components(...).paths(...)` instead of
   `openApi.setSpecVersion(V31); openApi.setInfo(...)`
 - **List access**: Prefer `list.getFirst()` over `list.get(0)` when accessing the first element of a list.
+- **Collection literals**: Prefer `Map.of(...)` and `List.of(...)` over creating a mutable instance and calling
+  `put`/`add` repeatedly, when all elements are known upfront. Do **not** use these when: (a) the collection must
+  remain mutable after construction, (b) insertion order must be preserved (`Map.of` is unordered — use
+  `LinkedHashMap` instead), or (c) elements are accumulated in a loop/stream.
 - **Assertion style**: When validating an object or a list of objects in tests, construct the expected instance(s) and assert using `then(actual).usingRecursiveComparison().isEqualTo(expected)` instead of asserting each property individually. For a list, pass a `List.of(...)` as the expected value.
 
 ## Testing Conventions

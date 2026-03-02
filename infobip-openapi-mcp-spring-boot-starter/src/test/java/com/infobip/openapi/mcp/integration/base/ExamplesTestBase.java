@@ -15,7 +15,7 @@ import org.junit.jupiter.api.Test;
  * <p>Concrete test classes activating this base must enable example appending:
  * <pre>
  *   &#64;TestPropertySource(properties =
- *       "infobip.openapi.mcp.tools.append-examples-to-description = true")
+ *       "infobip.openapi.mcp.tools.examples-mode = ALL")
  * </pre>
  */
 public abstract class ExamplesTestBase extends IntegrationTestBase {

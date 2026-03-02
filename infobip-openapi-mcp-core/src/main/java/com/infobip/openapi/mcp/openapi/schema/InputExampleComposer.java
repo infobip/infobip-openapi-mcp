@@ -1,8 +1,10 @@
 package com.infobip.openapi.mcp.openapi.schema;
 
+import static com.infobip.openapi.mcp.openapi.schema.Spec.MCP_EXAMPLE_EXTENSION;
 import static com.infobip.openapi.mcp.openapi.schema.Spec.SUPPORTED_PARAMETER_TYPES;
 
 import com.infobip.openapi.mcp.config.OpenApiMcpProperties;
+import com.infobip.openapi.mcp.openapi.schema.Spec.ExamplesMode;
 import com.infobip.openapi.mcp.openapi.tool.FullOperation;
 import io.swagger.v3.oas.models.examples.Example;
 import io.swagger.v3.oas.models.media.MediaType;
@@ -31,10 +33,16 @@ import org.jspecify.annotations.Nullable;
  *   <li><b>Neither</b> - returns an empty list</li>
  * </ul>
  * <p>
- * Example extraction precedence per parameter:
+ * Example extraction precedence per parameter in {@link ExamplesMode#ALL} mode:
  * {@code parameter.examples} &gt; {@code parameter.example} &gt; {@code parameter.schema.example}
  * <p>
- * Example extraction precedence for request body (from {@code application/json} media type):
+ * In {@link ExamplesMode#ANNOTATED} mode only named {@code Example} objects carrying
+ * {@code x-mcp-example: true} are eligible. Inline sources ({@code parameter.example},
+ * {@code schema.example}, {@code mediaType.example}) are never included because they
+ * cannot be annotated.
+ * <p>
+ * Example extraction precedence for request body (from {@code application/json} media type)
+ * in {@link ExamplesMode#ALL} mode:
  * {@code mediaType.examples} &gt; {@code mediaType.example} &gt; {@code mediaType.schema.example}
  */
 @NullMarked
@@ -56,16 +64,17 @@ public class InputExampleComposer {
      * single entry for inline body examples / parameter-only operations.
      *
      * @param fullOperation the OpenAPI operation to extract examples from
+     * @param mode          controls which examples to include
      * @return an ordered list of composed examples; empty if no examples were found
      */
-    public List<ComposedExample> composeExamples(FullOperation fullOperation) {
+    public List<ComposedExample> composeExamples(FullOperation fullOperation, ExamplesMode mode) {
         var operation = fullOperation.operation();
 
         var paramExamples =
-                operation.getParameters() != null ? extractParameterExamples(operation.getParameters()) : null;
+                operation.getParameters() != null ? extractParameterExamples(operation.getParameters(), mode) : null;
 
         var bodyExamples = operation.getRequestBody() != null
-                ? extractBodyExamples(operation.getRequestBody())
+                ? extractBodyExamples(operation.getRequestBody(), mode)
                 : List.<ComposedExample>of();
 
         if (bodyExamples.isEmpty()) {
@@ -90,7 +99,7 @@ public class InputExampleComposer {
         return Collections.unmodifiableList(result);
     }
 
-    private @Nullable Map<String, Object> extractParameterExamples(List<Parameter> parameters) {
+    private @Nullable Map<String, Object> extractParameterExamples(List<Parameter> parameters, ExamplesMode mode) {
         var result = new LinkedHashMap<String, Object>();
 
         for (var parameter : parameters) {
@@ -98,7 +107,7 @@ public class InputExampleComposer {
                 continue;
             }
 
-            var example = extractParameterExample(parameter);
+            var example = extractParameterExample(parameter, mode);
             if (example != null) {
                 result.put(parameter.getName(), example);
             }
@@ -108,25 +117,34 @@ public class InputExampleComposer {
     }
 
     /**
-     * Extracts an example value from a parameter using the precedence:
-     * parameter.examples > parameter.example > parameter.schema.example
+     * Extracts an example value from a parameter.
+     * <p>
+     * In {@link ExamplesMode#ALL} mode the first entry of {@code parameter.examples} is used,
+     * falling through to {@code parameter.example} and then {@code schema.example}.
+     * <p>
+     * In {@link ExamplesMode#ANNOTATED} mode only the first {@code parameter.examples} entry
+     * annotated with {@code x-mcp-example: true} is returned. Inline sources
+     * ({@code parameter.example}, {@code schema.example}) are never consulted because they
+     * cannot carry the annotation.
      */
-    private @Nullable Object extractParameterExample(Parameter parameter) {
-        // 1. parameter.examples (Map<String, Example>)
+    private @Nullable Object extractParameterExample(Parameter parameter, ExamplesMode mode) {
+        if (mode == ExamplesMode.ANNOTATED) {
+            if (parameter.getExamples() != null && !parameter.getExamples().isEmpty()) {
+                return extractFirstAnnotatedExampleValue(parameter.getExamples());
+            }
+            return null;
+        }
+
+        // ALL mode: parameter.examples > parameter.example > schema.example
         if (parameter.getExamples() != null && !parameter.getExamples().isEmpty()) {
             return extractFirstExampleValue(parameter.getExamples());
         }
-
-        // 2. parameter.example (raw value)
         if (parameter.getExample() != null) {
             return parameter.getExample();
         }
-
-        // 3. parameter.schema.example
         if (parameter.getSchema() != null && parameter.getSchema().getExample() != null) {
             return parameter.getSchema().getExample();
         }
-
         return null;
     }
 
@@ -139,7 +157,7 @@ public class InputExampleComposer {
      * Inline {@code example} and {@code schema.example} sources each produce a single
      * unnamed entry.
      */
-    private List<ComposedExample> extractBodyExamples(RequestBody requestBody) {
+    private List<ComposedExample> extractBodyExamples(RequestBody requestBody, ExamplesMode mode) {
         if (requestBody.getContent() == null) {
             return List.of();
         }
@@ -149,35 +167,52 @@ public class InputExampleComposer {
             return List.of();
         }
 
-        return extractFromMediaType(mediaType);
+        return extractFromMediaType(mediaType, mode);
     }
 
     /**
-     * Extracts examples from a media type using the precedence:
-     * mediaType.examples > mediaType.example > mediaType.schema.example
+     * Extracts examples from a media type.
+     * <p>
+     * In {@link ExamplesMode#ALL} mode the full {@code examples} map is returned, falling
+     * through to {@code mediaType.example} and then {@code schema.example}.
+     * <p>
+     * In {@link ExamplesMode#ANNOTATED} mode only entries in the {@code examples} map
+     * annotated with {@code x-mcp-example: true} are returned. Inline sources
+     * ({@code mediaType.example}, {@code schema.example}) are never consulted because they
+     * cannot carry the annotation.
      */
-    private List<ComposedExample> extractFromMediaType(MediaType mediaType) {
-        // 1. mediaType.examples (Map<String, Example>) — one ComposedExample per entry
+    private List<ComposedExample> extractFromMediaType(MediaType mediaType, ExamplesMode mode) {
+        if (mode == ExamplesMode.ANNOTATED) {
+            if (mediaType.getExamples() != null && !mediaType.getExamples().isEmpty()) {
+                return extractAnnotatedExampleValues(mediaType.getExamples());
+            }
+            return List.of();
+        }
+
+        // ALL mode: mediaType.examples > mediaType.example > schema.example
         if (mediaType.getExamples() != null && !mediaType.getExamples().isEmpty()) {
             return extractAllExampleValues(mediaType.getExamples());
         }
-
-        // 2. mediaType.example (raw value)
         if (mediaType.getExample() != null) {
             return List.of(new ComposedExample(null, null, mediaType.getExample()));
         }
-
-        // 3. mediaType.schema.example
         if (mediaType.getSchema() != null && mediaType.getSchema().getExample() != null) {
             return List.of(new ComposedExample(null, null, mediaType.getSchema().getExample()));
         }
-
         return List.of();
     }
 
     private @Nullable Object extractFirstExampleValue(Map<String, Example> examples) {
         return examples.values().stream()
                 .filter(e -> e.getValue() != null)
+                .map(Example::getValue)
+                .findFirst()
+                .orElse(null);
+    }
+
+    private @Nullable Object extractFirstAnnotatedExampleValue(Map<String, Example> examples) {
+        return examples.values().stream()
+                .filter(e -> e.getValue() != null && isMcpAnnotated(e))
                 .map(Example::getValue)
                 .findFirst()
                 .orElse(null);
@@ -195,5 +230,24 @@ public class InputExampleComposer {
             result.add(new ComposedExample(title, example.getDescription(), example.getValue()));
         }
         return Collections.unmodifiableList(result);
+    }
+
+    private List<ComposedExample> extractAnnotatedExampleValues(Map<String, Example> examples) {
+        var result = new ArrayList<ComposedExample>();
+        for (var entry : examples.entrySet()) {
+            var example = entry.getValue();
+            if (example.getValue() == null || !isMcpAnnotated(example)) {
+                continue;
+            }
+            var summary = example.getSummary();
+            var title = (summary != null && !summary.isBlank()) ? summary : entry.getKey();
+            result.add(new ComposedExample(title, example.getDescription(), example.getValue()));
+        }
+        return Collections.unmodifiableList(result);
+    }
+
+    private boolean isMcpAnnotated(Example example) {
+        var extensions = example.getExtensions();
+        return extensions != null && Boolean.TRUE.equals(extensions.get(MCP_EXAMPLE_EXTENSION));
     }
 }

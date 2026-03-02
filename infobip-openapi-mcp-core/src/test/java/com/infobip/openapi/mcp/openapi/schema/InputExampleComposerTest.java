@@ -3,6 +3,7 @@ package com.infobip.openapi.mcp.openapi.schema;
 import static org.assertj.core.api.BDDAssertions.then;
 
 import com.infobip.openapi.mcp.config.OpenApiMcpProperties;
+import com.infobip.openapi.mcp.openapi.schema.Spec.ExamplesMode;
 import com.infobip.openapi.mcp.openapi.tool.FullOperation;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.Operation;
@@ -33,7 +34,7 @@ class InputExampleComposerTest {
         operation.addParametersItem(new Parameter().name("userId").in("query").schema(new StringSchema()));
 
         // When
-        var result = composer.composeExamples(fullOperation(operation));
+        var result = composer.composeExamples(fullOperation(operation), ExamplesMode.ALL);
 
         // Then
         then(result).isEmpty();
@@ -45,7 +46,7 @@ class InputExampleComposerTest {
         var operation = new Operation();
 
         // When
-        var result = composer.composeExamples(fullOperation(operation));
+        var result = composer.composeExamples(fullOperation(operation), ExamplesMode.ALL);
 
         // Then
         then(result).isEmpty();
@@ -60,7 +61,7 @@ class InputExampleComposerTest {
         operation.addParametersItem(new Parameter().name("userId").in("query").example("user-123"));
 
         // When
-        var result = composer.composeExamples(fullOperation(operation));
+        var result = composer.composeExamples(fullOperation(operation), ExamplesMode.ALL);
 
         // Then
         then(result)
@@ -77,7 +78,7 @@ class InputExampleComposerTest {
         operation.addParametersItem(new Parameter().name("userId").in("query").examples(Map.of("example1", example)));
 
         // When
-        var result = composer.composeExamples(fullOperation(operation));
+        var result = composer.composeExamples(fullOperation(operation), ExamplesMode.ALL);
 
         // Then
         then(result)
@@ -94,7 +95,7 @@ class InputExampleComposerTest {
                 new Parameter().name("userId").in("query").schema(new StringSchema().example("user-789")));
 
         // When
-        var result = composer.composeExamples(fullOperation(operation));
+        var result = composer.composeExamples(fullOperation(operation), ExamplesMode.ALL);
 
         // Then
         then(result)
@@ -115,7 +116,7 @@ class InputExampleComposerTest {
                 .examples(Map.of("e1", example)));
 
         // When
-        var result = composer.composeExamples(fullOperation(operation));
+        var result = composer.composeExamples(fullOperation(operation), ExamplesMode.ALL);
 
         // Then
         then(result)
@@ -135,7 +136,7 @@ class InputExampleComposerTest {
                 .schema(new StringSchema().example("from-schema")));
 
         // When
-        var result = composer.composeExamples(fullOperation(operation));
+        var result = composer.composeExamples(fullOperation(operation), ExamplesMode.ALL);
 
         // Then
         then(result)
@@ -152,7 +153,7 @@ class InputExampleComposerTest {
         operation.addParametersItem(new Parameter().name("status").in("query").schema(new StringSchema()));
 
         // When
-        var result = composer.composeExamples(fullOperation(operation));
+        var result = composer.composeExamples(fullOperation(operation), ExamplesMode.ALL);
 
         // Then
         then(result)
@@ -169,7 +170,7 @@ class InputExampleComposerTest {
                 new Parameter().name("unsupported").in("matrix").example("val"));
 
         // When
-        var result = composer.composeExamples(fullOperation(operation));
+        var result = composer.composeExamples(fullOperation(operation), ExamplesMode.ALL);
 
         // Then
         then(result).isEmpty();
@@ -185,7 +186,7 @@ class InputExampleComposerTest {
         operation.addParametersItem(new Parameter().name("c").in("cookie").example("cookieVal"));
 
         // When
-        var result = composer.composeExamples(fullOperation(operation));
+        var result = composer.composeExamples(fullOperation(operation), ExamplesMode.ALL);
 
         // Then
         var expectedParams = new LinkedHashMap<String, Object>();
@@ -209,7 +210,7 @@ class InputExampleComposerTest {
         var operation = operationWithBody(mediaType);
 
         // When
-        var result = composer.composeExamples(fullOperation(operation));
+        var result = composer.composeExamples(fullOperation(operation), ExamplesMode.ALL);
 
         // Then
         then(result)
@@ -235,7 +236,7 @@ class InputExampleComposerTest {
         var operation = operationWithBody(mediaType);
 
         // When
-        var result = composer.composeExamples(fullOperation(operation));
+        var result = composer.composeExamples(fullOperation(operation), ExamplesMode.ALL);
 
         // Then — both entries preserved in insertion order
         then(result)
@@ -256,7 +257,7 @@ class InputExampleComposerTest {
         var operation = operationWithBody(mediaType);
 
         // When
-        var result = composer.composeExamples(fullOperation(operation));
+        var result = composer.composeExamples(fullOperation(operation), ExamplesMode.ALL);
 
         // Then
         then(result)
@@ -274,7 +275,7 @@ class InputExampleComposerTest {
         var operation = operationWithBody(mediaType);
 
         // When
-        var result = composer.composeExamples(fullOperation(operation));
+        var result = composer.composeExamples(fullOperation(operation), ExamplesMode.ALL);
 
         // Then
         then(result)
@@ -293,7 +294,7 @@ class InputExampleComposerTest {
         var operation = operationWithBody(mediaType);
 
         // When
-        var result = composer.composeExamples(fullOperation(operation));
+        var result = composer.composeExamples(fullOperation(operation), ExamplesMode.ALL);
 
         // Then
         then(result)
@@ -311,7 +312,7 @@ class InputExampleComposerTest {
         var operation = new Operation().requestBody(requestBody);
 
         // When
-        var result = composer.composeExamples(fullOperation(operation));
+        var result = composer.composeExamples(fullOperation(operation), ExamplesMode.ALL);
 
         // Then
         then(result).isEmpty();
@@ -327,7 +328,7 @@ class InputExampleComposerTest {
         operation.addParametersItem(new Parameter().name("limit").in("query").example(10));
 
         // When
-        var result = composer.composeExamples(fullOperation(operation));
+        var result = composer.composeExamples(fullOperation(operation), ExamplesMode.ALL);
 
         // Then
         var expectedParams = new LinkedHashMap<String, Object>();
@@ -347,7 +348,7 @@ class InputExampleComposerTest {
         var operation = operationWithBody(mediaType);
 
         // When
-        var result = composer.composeExamples(fullOperation(operation));
+        var result = composer.composeExamples(fullOperation(operation), ExamplesMode.ALL);
 
         // Then
         then(result)
@@ -367,7 +368,7 @@ class InputExampleComposerTest {
         operation.setRequestBody(new RequestBody().content(new Content().addMediaType("application/json", mediaType)));
 
         // When
-        var result = composer.composeExamples(fullOperation(operation));
+        var result = composer.composeExamples(fullOperation(operation), ExamplesMode.ALL);
 
         // Then
         var expectedValue = new LinkedHashMap<String, Object>();
@@ -394,7 +395,7 @@ class InputExampleComposerTest {
                 .content(new Content().addMediaType("application/json", new MediaType().examples(examples))));
 
         // When
-        var result = composer.composeExamples(fullOperation(operation));
+        var result = composer.composeExamples(fullOperation(operation), ExamplesMode.ALL);
 
         // Then — one entry per body example, each merging the same params
         var firstExpected = new LinkedHashMap<String, Object>();
@@ -426,7 +427,7 @@ class InputExampleComposerTest {
         operation.setRequestBody(new RequestBody().content(new Content().addMediaType("application/json", mediaType)));
 
         // When
-        var result = customComposer.composeExamples(fullOperation(operation));
+        var result = customComposer.composeExamples(fullOperation(operation), ExamplesMode.ALL);
 
         // Then
         var expectedValue = new LinkedHashMap<String, Object>();
@@ -451,7 +452,7 @@ class InputExampleComposerTest {
         operation.addParametersItem(new Parameter().name("userId").in("query").examples(Map.of("ex1", example)));
 
         // When
-        var result = composer.composeExamples(fullOperation(operation));
+        var result = composer.composeExamples(fullOperation(operation), ExamplesMode.ALL);
 
         // Then
         then(result)
@@ -473,7 +474,7 @@ class InputExampleComposerTest {
         operation.addParametersItem(new Parameter().name("userId").in("query").examples(examples));
 
         // When
-        var result = composer.composeExamples(fullOperation(operation));
+        var result = composer.composeExamples(fullOperation(operation), ExamplesMode.ALL);
 
         // Then
         then(result)
@@ -494,7 +495,7 @@ class InputExampleComposerTest {
         var operation = operationWithBody(mediaType);
 
         // When
-        var result = composer.composeExamples(fullOperation(operation));
+        var result = composer.composeExamples(fullOperation(operation), ExamplesMode.ALL);
 
         // Then — map keys used as titles when summary is absent
         then(result)
@@ -514,7 +515,7 @@ class InputExampleComposerTest {
         var operation = operationWithBody(mediaType);
 
         // When
-        var result = composer.composeExamples(fullOperation(operation));
+        var result = composer.composeExamples(fullOperation(operation), ExamplesMode.ALL);
 
         // Then — blank summary treated the same as absent; key used instead
         then(result)
@@ -533,13 +534,119 @@ class InputExampleComposerTest {
         var operation = operationWithBody(mediaType);
 
         // When
-        var result = composer.composeExamples(fullOperation(operation));
+        var result = composer.composeExamples(fullOperation(operation), ExamplesMode.ALL);
 
         // Then — explicit summary takes precedence over key
         then(result)
                 .hasSize(1)
                 .usingRecursiveComparison()
                 .isEqualTo(List.of(new ComposedExample("Friendly Title", null, value)));
+    }
+
+    // -- ANNOTATED mode —parameter examples --
+
+    @Test
+    void shouldPickAnnotatedParameterExampleInAnnotatedMode() {
+        // Given
+        var annotated = new Example().value("annotated-value");
+        annotated.addExtension("x-mcp-example", true);
+        var unannotated = new Example().value("unannotated-value");
+        var examples = new LinkedHashMap<String, Example>();
+        examples.put("skip", unannotated);
+        examples.put("pick", annotated);
+
+        var operation = new Operation();
+        operation.addParametersItem(new Parameter().name("userId").in("query").examples(examples));
+
+        // When
+        var result = composer.composeExamples(fullOperation(operation), ExamplesMode.ANNOTATED);
+
+        // Then — only the annotated entry is picked
+        then(result)
+                .hasSize(1)
+                .usingRecursiveComparison()
+                .isEqualTo(List.of(new ComposedExample(null, null, Map.of("userId", "annotated-value"))));
+    }
+
+    @Test
+    void shouldExcludeParameterWhenNoAnnotatedEntryInAnnotatedMode() {
+        // Given
+        var unannotated = new Example().value("unannotated-value");
+        var operation = new Operation();
+        operation.addParametersItem(new Parameter()
+                .name("userId")
+                .in("query")
+                .example("inline-value")
+                .examples(Map.of("noAnnotation", unannotated)));
+
+        // When
+        var result = composer.composeExamples(fullOperation(operation), ExamplesMode.ANNOTATED);
+
+        // Then — no annotated entry found, inline sources are not consulted; parameter excluded
+        then(result).isEmpty();
+    }
+
+    // -- ANNOTATED mode — body examples --
+
+    @Test
+    void shouldFilterBodyExamplesMapToAnnotatedOnlyInAnnotatedMode() {
+        // Given
+        var annotated = new Example().summary("Annotated SMS").value(Map.of("to", "41793026727"));
+        annotated.addExtension("x-mcp-example", true);
+        var unannotated = new Example().summary("Unannotated SMS").value(Map.of("to", "41793026728"));
+        var examples = new LinkedHashMap<String, Example>();
+        examples.put("annotated", annotated);
+        examples.put("unannotated", unannotated);
+        var mediaType = new MediaType().examples(examples);
+        var operation = operationWithBody(mediaType);
+
+        // When
+        var result = composer.composeExamples(fullOperation(operation), ExamplesMode.ANNOTATED);
+
+        // Then — only the annotated entry is returned
+        then(result)
+                .hasSize(1)
+                .usingRecursiveComparison()
+                .isEqualTo(List.of(new ComposedExample("Annotated SMS", null, Map.of("to", "41793026727"))));
+    }
+
+    @Test
+    void shouldReturnEmptyWhenNoAnnotatedBodyEntriesInAnnotatedMode() {
+        // Given
+        var unannotated = new Example().value(Map.of("to", "41793026727"));
+        var mediaType =
+                new MediaType().examples(Map.of("noAnnotation", unannotated)).example(Map.of("to", "inline-body"));
+        var operation = operationWithBody(mediaType);
+
+        // When
+        var result = composer.composeExamples(fullOperation(operation), ExamplesMode.ANNOTATED);
+
+        // Then — no annotated entry found, inline sources are not consulted
+        then(result).isEmpty();
+    }
+
+    @Test
+    void shouldIgnoreAnnotationAndReturnAllEntriesInAllMode() {
+        // Given
+        var annotated = new Example().summary("Annotated").value(Map.of("to", "41793026727"));
+        annotated.addExtension("x-mcp-example", true);
+        var unannotated = new Example().summary("Unannotated").value(Map.of("to", "41793026728"));
+        var examples = new LinkedHashMap<String, Example>();
+        examples.put("annotated", annotated);
+        examples.put("unannotated", unannotated);
+        var mediaType = new MediaType().examples(examples);
+        var operation = operationWithBody(mediaType);
+
+        // When
+        var result = composer.composeExamples(fullOperation(operation), ExamplesMode.ALL);
+
+        // Then — both entries returned; annotation flag is ignored in ALL mode
+        then(result)
+                .hasSize(2)
+                .usingRecursiveComparison()
+                .isEqualTo(List.of(
+                        new ComposedExample("Annotated", null, Map.of("to", "41793026727")),
+                        new ComposedExample("Unannotated", null, Map.of("to", "41793026728"))));
     }
 
     // -- Helpers --
