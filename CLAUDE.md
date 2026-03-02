@@ -24,11 +24,11 @@ mvn test
 
 # Run tests for a specific module
 mvn test -pl infobip-openapi-mcp-core
-mvn test -pl infobip-openapi-mcp-spring-boot-starter
+mvn test -pl infobip-openapi-mcp-spring-boot-starter -am
 
 # Run a single test class
 mvn test -pl infobip-openapi-mcp-core -Dtest=DiscriminatorFlattenerTest
-mvn test -pl infobip-openapi-mcp-spring-boot-starter -Dtest=ToolCallIntegrationTest
+mvn test -pl infobip-openapi-mcp-spring-boot-starter -am -Dtest=ToolCallIntegrationTest
 
 # Apply code formatting (Palantir Java Format via Spotless)
 mvn spotless:apply
