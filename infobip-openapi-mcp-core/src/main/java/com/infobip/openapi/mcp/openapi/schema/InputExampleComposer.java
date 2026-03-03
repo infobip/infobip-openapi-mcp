@@ -24,14 +24,20 @@ import org.jspecify.annotations.Nullable;
  * examples — so that all variants are surfaced in the tool description.  Inline
  * ({@code example} / {@code schema.example}) body values always yield a single entry.
  * <p>
- * The composed example follows these combination rules (mirroring
- * {@code InputSchemaComposer.compose()}):
+ * The composed example follows these combination rules:
  * <ul>
- *   <li><b>Only parameters</b> - flat object {@code {"paramName": value, ...}}</li>
- *   <li><b>Only body</b> - body example value directly</li>
- *   <li><b>Both</b> - {@code {"<parametersKey>": {...}, "<requestBodyKey>": {...}}}</li>
+ *   <li><b>Only parameters declared, param examples present</b> - flat object {@code {"paramName": value, ...}}</li>
+ *   <li><b>Only body declared, body examples present</b> - body example value directly</li>
+ *   <li><b>Both declared, only param examples present</b> - {@code {"<parametersKey>": {...}}}</li>
+ *   <li><b>Both declared, only body examples present</b> - {@code {"<requestBodyKey>": {...}}}</li>
+ *   <li><b>Both declared, both have examples</b> - {@code {"<parametersKey>": {...}, "<requestBodyKey>": {...}}}</li>
  *   <li><b>Neither</b> - returns an empty list</li>
  * </ul>
+ * <p>
+ * The wrapping decision is driven by the presence of parameters and request body in the
+ * operation definition, not by whether they carry examples. When both exist, the output is
+ * always wrapped so that the MCP client can unambiguously distinguish parameters from the
+ * request body.
  * <p>
  * Example extraction precedence per parameter in {@link ExamplesMode#ALL} mode:
  * {@code parameter.examples} &gt; {@code parameter.example} &gt; {@code parameter.schema.example}
@@ -79,25 +85,47 @@ public class InputExampleComposer {
         var mode = examplesMode;
         var operation = fullOperation.operation();
 
-        var paramExamples =
-                operation.getParameters() != null ? extractParameterExamples(operation.getParameters(), mode) : null;
+        var parameters = operation.getParameters();
+        var hasParameters = parameters != null && !parameters.isEmpty();
+        var hasRequestBody = operation.getRequestBody() != null;
 
-        var bodyExamples = operation.getRequestBody() != null
-                ? extractBodyExamples(operation.getRequestBody(), mode)
-                : List.<ComposedExample>of();
+        var paramExamples = hasParameters ? extractParameterExamples(parameters, mode) : null;
+        var bodyExamples =
+                hasRequestBody ? extractBodyExamples(operation.getRequestBody(), mode) : List.<ComposedExample>of();
 
-        if (bodyExamples.isEmpty()) {
-            if (paramExamples == null) {
-                return List.of();
+        if (!hasParameters || !hasRequestBody) {
+            // Only one side present — return without wrapping
+            if (bodyExamples.isEmpty()) {
+                if (paramExamples == null) {
+                    return List.of();
+                }
+                return List.of(new ComposedExample(null, null, paramExamples));
             }
-            return List.of(new ComposedExample(null, null, paramExamples));
-        }
-
-        if (paramExamples == null) {
             return bodyExamples;
         }
 
-        // Merge param examples into every body example
+        // Both parameters and request body exist — always wrap under keys
+        if (paramExamples == null && bodyExamples.isEmpty()) {
+            return List.of();
+        }
+
+        if (bodyExamples.isEmpty()) {
+            var wrapped = new LinkedHashMap<String, Object>();
+            wrapped.put(parametersKey, paramExamples);
+            return List.of(new ComposedExample(null, null, wrapped));
+        }
+
+        if (paramExamples == null) {
+            var result = new ArrayList<ComposedExample>(bodyExamples.size());
+            for (var bodyExample : bodyExamples) {
+                var wrapped = new LinkedHashMap<String, Object>();
+                wrapped.put(requestBodyKey, bodyExample.value());
+                result.add(new ComposedExample(bodyExample.title(), bodyExample.description(), wrapped));
+            }
+            return Collections.unmodifiableList(result);
+        }
+
+        // Both have examples — merge param examples into every body example
         var result = new ArrayList<ComposedExample>(bodyExamples.size());
         for (var bodyExample : bodyExamples) {
             var combined = new LinkedHashMap<String, Object>();

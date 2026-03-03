@@ -412,6 +412,48 @@ class InputExampleComposerTest {
                         new ComposedExample("Flash SMS", null, secondExpected)));
     }
 
+    @Test
+    void shouldReturnWrappedBodyExampleWhenParamHasNoExampleButBodyDoes() {
+        // Given
+        var bodyExample = Map.of("to", "41793026727", "text", "Hello");
+        var mediaType = new MediaType().example(bodyExample);
+
+        var operation = new Operation();
+        operation.addParametersItem(new Parameter().name("filter").in("query").schema(new StringSchema()));
+        operation.setRequestBody(new RequestBody().content(new Content().addMediaType("application/json", mediaType)));
+
+        // When
+        var result = composer.composeExamples(fullOperation(operation));
+
+        // Then — param has no example, but body should still be wrapped under _body
+        var expectedValue = new LinkedHashMap<String, Object>();
+        expectedValue.put("_body", bodyExample);
+        then(result)
+                .hasSize(1)
+                .usingRecursiveComparison()
+                .isEqualTo(List.of(new ComposedExample(null, null, expectedValue)));
+    }
+
+    @Test
+    void shouldReturnWrappedParamsExampleWhenBodyHasNoExampleButParamsDo() {
+        // Given
+        var operation = new Operation();
+        operation.addParametersItem(new Parameter().name("userId").in("query").example("user-123"));
+        operation.setRequestBody(
+                new RequestBody().content(new Content().addMediaType("application/json", new MediaType())));
+
+        // When
+        var result = composer.composeExamples(fullOperation(operation));
+
+        // Then — body has no example, but params should still be wrapped under _params
+        var expectedValue = new LinkedHashMap<String, Object>();
+        expectedValue.put("_params", Map.of("userId", "user-123"));
+        then(result)
+                .hasSize(1)
+                .usingRecursiveComparison()
+                .isEqualTo(List.of(new ComposedExample(null, null, expectedValue)));
+    }
+
     // -- Custom keys --
 
     @Test
