@@ -134,7 +134,7 @@ public class ToolRegistry {
      * Otherwise, the tool name will be used as a fallback.
      *
      * @param fullOperation the OpenAPI operation
-     * @param toolName the name of the tool (used as fallback)
+     * @param toolName      the name of the tool (used as fallback)
      * @return the resolved title
      */
     private String resolveTitle(FullOperation fullOperation, String toolName) {
@@ -207,7 +207,11 @@ public class ToolRegistry {
 
         // If both exist and feature is enabled, prepend summary as markdown H1 title
         if (hasSummary && hasDescription && properties.tools().prependSummaryToDescription()) {
-            baseDescription = "# " + summary + "\n\n" + description;
+            baseDescription = new StringBuilder("# ")
+                    .append(summary)
+                    .append("\n\n")
+                    .append(description)
+                    .toString();
         } else if (hasDescription) {
             baseDescription = description;
         } else if (hasSummary) {
@@ -217,7 +221,12 @@ public class ToolRegistry {
         // Append examples if feature is enabled
         var exampleBlock = buildExampleBlock(fullOperation);
         if (exampleBlock != null) {
-            return baseDescription != null ? baseDescription + "\n\n" + exampleBlock : exampleBlock;
+            return baseDescription != null
+                    ? new StringBuilder(baseDescription)
+                            .append("\n\n")
+                            .append(exampleBlock)
+                            .toString()
+                    : exampleBlock;
         }
 
         return baseDescription;
@@ -256,9 +265,15 @@ public class ToolRegistry {
         }
 
         try {
-            if (examples.size() == 1 && examples.get(0).title() == null) {
-                var json = prettyPrintMapper.writeValueAsString(examples.get(0).value());
-                return "## Example\n\n```json\n" + json + "\n```";
+            if (examples.size() == 1 && examples.getFirst().title() == null) {
+                var example = examples.getFirst();
+                var json = prettyPrintMapper.writeValueAsString(example.value());
+                var sb = new StringBuilder("## Example");
+                if (example.description() != null) {
+                    sb.append("\n\n").append(example.description());
+                }
+                sb.append("\n\n```json\n").append(json).append("\n```");
+                return sb.toString();
             }
 
             var sb = new StringBuilder("## Examples");
@@ -275,7 +290,8 @@ public class ToolRegistry {
             return sb.toString();
         } catch (JsonProcessingException exception) {
             LOGGER.warn(
-                    "Failed to serialize example for operation '{}': {}",
+                    "Failed to serialize example for operation '{}': {},\n "
+                            + "will leave the examples section of tool description blank",
                     fullOperation.operation().getOperationId(),
                     exception.getMessage());
             return null;

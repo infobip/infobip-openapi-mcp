@@ -55,8 +55,9 @@ sdk use java <identifier>
 - Update `CHANGELOG.md` under the `[Unreleased]` section using
   the [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) format (`Added`, `Changed`,  `Fixed`, `Removed`).
   Write entries from a user perspective — describe the feature and its value, not the classes or internal mechanics
-  behind it. It is fine to mention configuration properties needed to enable or customize a feature, but avoid
-  class names, method names, test names, and other implementation details.
+  behind it. It is fine to mention configuration properties needed to enable or customize a feature, or java interfaces
+  that users can implement such as `OpenApiFilter` or `ApiRequestEnricher`. Avoid class names, method names, test names,
+  and other implementation details.
 - If you added or changed an external configuration property, add or update its row in the properties table in
   `README.md`.
 - Check and update `CLAUDE.md` to reflect the new state of the project.
@@ -140,7 +141,14 @@ since MCP does not support OpenAPI discriminators natively.
   `put`/`add` repeatedly, when all elements are known upfront. Do **not** use these when: (a) the collection must
   remain mutable after construction, (b) insertion order must be preserved (`Map.of` is unordered — use
   `LinkedHashMap` instead), or (c) elements are accumulated in a loop/stream.
-- **Assertion style**: When validating an object or a list of objects in tests, construct the expected instance(s) and assert using `then(actual).usingRecursiveComparison().isEqualTo(expected)` instead of asserting each property individually. For a list, pass a `List.of(...)` as the expected value.
+- **Assertion style**: When validating an object or a list of objects in tests, construct the expected instance(s) and
+  assert using `then(actual).usingRecursiveComparison().isEqualTo(expected)` instead of asserting each property
+  individually. For a collections prefer AssertJ fluent assertions, such as `containsExactly`.
+- **String manipulation**: Within a single class, use one consistent approach — either `+` concatenation or
+  `StringBuilder` — do not mix both. Choose whichever fits the class's dominant use case: prefer `StringBuilder` when
+  the class contains any method that builds strings conditionally or in a loop; prefer `+` concatenation in classes
+  where all string building is simple and unconditional. Assigning a plain variable (`x = someString`) does not count as
+  string manipulation and does not influence the choice.
 
 ## Testing Conventions
 

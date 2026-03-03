@@ -11,6 +11,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.infobip.openapi.mcp.McpRequestContext;
 import com.infobip.openapi.mcp.config.OpenApiMcpProperties;
 import com.infobip.openapi.mcp.openapi.OpenApiRegistry;
+import com.infobip.openapi.mcp.openapi.schema.ComposedExample;
 import com.infobip.openapi.mcp.openapi.schema.DecomposedRequestData;
 import com.infobip.openapi.mcp.openapi.schema.InputExampleComposer;
 import com.infobip.openapi.mcp.openapi.schema.InputSchemaComposer;
@@ -1497,6 +1498,49 @@ class ToolRegistryTest {
         var description = result.getFirst().tool().description();
         then(description).startsWith("## Example");
         then(description).contains("\"userId\" : \"user-123\"");
+    }
+
+    @Test
+    void shouldIncludeDescriptionInSingleUnnamedExampleBlock() {
+        // Given
+        var mockExampleComposer = BDDMockito.mock(InputExampleComposer.class);
+        var localRegistry = new ToolRegistry(
+                openApiRegistry,
+                namingStrategy,
+                inputSchemaComposer,
+                mockExampleComposer,
+                toolHandler,
+                mapperFactory,
+                properties);
+
+        var openApi = parseOpenAPI("""
+            {
+              "openapi": "3.1.0",
+              "info": {
+                "title": "Test API",
+                "version": "1.0.0"
+              },
+              "paths": {
+                "/users": {
+                  "get": {
+                    "operationId": "getUsers"
+                  }
+                }
+              }
+            }
+            """);
+        given(openApiRegistry.openApi()).willReturn(openApi);
+        given(mockExampleComposer.composeExamples(any()))
+                .willReturn(List.of(new ComposedExample(null, "An example description", Map.of("id", "user-123"))));
+
+        // When
+        var result = localRegistry.getTools();
+
+        // Then
+        then(result).hasSize(1);
+        var description = result.getFirst().tool().description();
+        then(description)
+                .isEqualTo("## Example\n\nAn example description\n\n```json\n{\n  \"id\" : \"user-123\"\n}\n```");
     }
 
     @Test
