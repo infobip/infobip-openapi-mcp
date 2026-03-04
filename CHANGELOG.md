@@ -7,9 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## 0.1.8
+
 ### Added
 
 - Configuration for working with Claude Code on the project.
+
+### Changed
+
+- Upgraded versions of dependencies (notably: Spring AI from `1.1.0` to `1.1.2`, and Jackson from `2.19.4` to `2.21.1`)
 
 ## 0.1.7
 

@@ -5,7 +5,7 @@
 	<parent>
 		<groupId>com.infobip.openapi.mcp</groupId>
 		<artifactId>infobip-openapi-mcp</artifactId>
-		<version>0.1.8-SNAPSHOT</version>
+		<version>0.1.9-SNAPSHOT</version>
 	</parent>
 
 	<artifactId>infobip-openapi-mcp-core</artifactId>
@@ -13,8 +13,8 @@
 
 	<properties>
         <jakarta-servlet.version>6.1.0</jakarta-servlet.version>
-		<swagger-parser.version>2.1.36</swagger-parser.version>
-        <nimbus-jwt.version>10.6</nimbus-jwt.version>
+		<swagger-parser.version>2.1.38</swagger-parser.version>
+        <nimbus-jwt.version>10.8</nimbus-jwt.version>
 	</properties>
 
 	<dependencies>
