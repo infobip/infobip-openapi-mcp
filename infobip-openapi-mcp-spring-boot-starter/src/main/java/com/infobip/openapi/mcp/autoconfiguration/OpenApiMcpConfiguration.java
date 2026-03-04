@@ -20,6 +20,7 @@ import com.infobip.openapi.mcp.openapi.filter.DiscriminatorFlattener;
 import com.infobip.openapi.mcp.openapi.filter.OpenApiFilter;
 import com.infobip.openapi.mcp.openapi.filter.OpenApiFilterChain;
 import com.infobip.openapi.mcp.openapi.filter.PatternPropertyRemover;
+import com.infobip.openapi.mcp.openapi.schema.InputExampleComposer;
 import com.infobip.openapi.mcp.openapi.schema.InputSchemaComposer;
 import com.infobip.openapi.mcp.openapi.tool.*;
 import com.infobip.openapi.mcp.openapi.tool.naming.NamingStrategy;
@@ -84,6 +85,11 @@ class OpenApiMcpConfiguration {
     @Bean
     public InputSchemaComposer inputSchemaComposer(OpenApiMcpProperties properties) {
         return new InputSchemaComposer(properties.tools().schema());
+    }
+
+    @Bean
+    public InputExampleComposer inputExampleComposer(OpenApiMcpProperties properties) {
+        return new InputExampleComposer(properties);
     }
 
     @Bean
@@ -171,11 +177,18 @@ class OpenApiMcpConfiguration {
             OpenApiRegistry openApiRegistry,
             NamingStrategy namingStrategy,
             InputSchemaComposer inputSchemaComposer,
+            InputExampleComposer inputExampleComposer,
             ToolHandler toolHandler,
             OpenApiMapperFactory openApiMapperFactory,
             OpenApiMcpProperties properties) {
         return new ToolRegistry(
-                openApiRegistry, namingStrategy, inputSchemaComposer, toolHandler, openApiMapperFactory, properties);
+                openApiRegistry,
+                namingStrategy,
+                inputSchemaComposer,
+                inputExampleComposer,
+                toolHandler,
+                openApiMapperFactory,
+                properties);
     }
 
     @Bean
