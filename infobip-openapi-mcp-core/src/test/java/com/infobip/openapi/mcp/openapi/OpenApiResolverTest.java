@@ -261,300 +261,218 @@ class OpenApiResolverTest {
         then(responseSchema.getProperties()).containsOnlyKeys("name", "email");
     }
 
+    @Test
+    void shouldPreserveAllExamplesMapEntriesAfterRoundTrip() {
+        // Given
+        var spec = """
+                {
+                  "openapi": "3.1.0",
+                  "info": { "title": "T", "version": "1.0" },
+                  "paths": {
+                    "/test": {
+                      "post": {
+                        "operationId": "test",
+                        "requestBody": {
+                          "content": {
+                            "application/json": {
+                              "examples": {
+                                "first":  { "summary": "First",  "value": { "a": 1 } },
+                                "second": { "summary": "Second", "value": { "b": 2 } }
+                              }
+                            }
+                          }
+                        },
+                        "responses": { "200": { "description": "OK" } }
+                      }
+                    }
+                  }
+                }
+                """;
+        var realParser = new OpenAPIV3Parser();
+        var realResolver = new OpenApiResolver(realParser, mapperFactory);
+        var initial = realParser.readContents(spec, null, new ParseOptions()).getOpenAPI();
+
+        // When
+        var resolved = realResolver.resolve(initial);
+
+        // Then
+        var mediaType = resolved.getPaths()
+                .get("/test")
+                .getPost()
+                .getRequestBody()
+                .getContent()
+                .get("application/json");
+        then(mediaType.getExamples()).isNotNull().hasSize(2);
+        then(mediaType.getExamples()).containsKeys("first", "second");
+        then(mediaType.getExamples().get("first").getSummary()).isEqualTo("First");
+        then(mediaType.getExamples().get("second").getSummary()).isEqualTo("Second");
+    }
+
     // Helper methods to create real OpenAPI specifications with references
 
     private OpenAPI createOpenAPI30WithSchemaReferences() {
-        var openApi = new OpenAPI(SpecVersion.V30);
-        openApi.setOpenapi("3.0.1");
-        openApi.setInfo(new Info().title("User API").version("1.0.0"));
+        var userSchema = new ObjectSchema()
+                .addProperty("id", new StringSchema())
+                .addProperty("name", new StringSchema())
+                .addProperty("email", new StringSchema());
 
-        // Create components with schemas
-        var components = new Components();
-        var userSchema = new ObjectSchema();
-        userSchema.addProperty("id", new StringSchema());
-        userSchema.addProperty("name", new StringSchema());
-        userSchema.addProperty("email", new StringSchema());
-        components.addSchemas("User", userSchema);
-        openApi.setComponents(components);
+        var getOperation = new Operation()
+                .operationId("getUser")
+                .responses(new ApiResponses()
+                        .addApiResponse(
+                                "200",
+                                new ApiResponse()
+                                        .content(new Content()
+                                                .addMediaType(
+                                                        "application/json",
+                                                        new MediaType()
+                                                                .schema(new Schema<>()
+                                                                        .$ref("#/components/schemas/User"))))));
 
-        // Create path with reference to User schema
-        var paths = new Paths();
-        var pathItem = new PathItem();
-        var getOperation = new Operation();
-        getOperation.setOperationId("getUser");
-
-        var response = new ApiResponse();
-        var content = new Content();
-        var mediaType = new MediaType();
-
-        // Create reference schema
-        var refSchema = new Schema<>();
-        refSchema.set$ref("#/components/schemas/User");
-        mediaType.setSchema(refSchema);
-
-        content.addMediaType("application/json", mediaType);
-        response.setContent(content);
-
-        var responses = new ApiResponses();
-        responses.addApiResponse("200", response);
-        getOperation.setResponses(responses);
-
-        pathItem.setGet(getOperation);
-        paths.addPathItem("/users/{id}", pathItem);
-        openApi.setPaths(paths);
-
-        return openApi;
+        return new OpenAPI(SpecVersion.V30)
+                .openapi("3.0.1")
+                .info(new Info().title("User API").version("1.0.0"))
+                .components(new Components().addSchemas("User", userSchema))
+                .paths(new Paths().addPathItem("/users/{id}", new PathItem().get(getOperation)));
     }
 
     private OpenAPI createOpenAPI31WithComponentReferences() {
-        var openApi = new OpenAPI(SpecVersion.V31);
-        openApi.setOpenapi("3.1.0");
-        openApi.setInfo(new Info().title("User Management API").version("2.0.0"));
+        var userSchema =
+                new ObjectSchema().addProperty("name", new StringSchema()).addProperty("email", new StringSchema());
 
-        // Create components
-        var components = new Components();
+        var requestBodyComponent = new RequestBody()
+                .content(new Content()
+                        .addMediaType(
+                                "application/json",
+                                new MediaType().schema(new Schema<>().$ref("#/components/schemas/UserInput"))));
 
-        // User schema
-        var userSchema = new ObjectSchema();
-        userSchema.addProperty("name", new StringSchema());
-        userSchema.addProperty("email", new StringSchema());
-        components.addSchemas("UserInput", userSchema);
+        var postOperation = new Operation()
+                .operationId("createUser")
+                .requestBody(new RequestBody().$ref("#/components/requestBodies/UserRequest"))
+                .responses(new ApiResponses().addApiResponse("201", new ApiResponse().description("Created")));
 
-        // Request body component
-        var requestBody = new RequestBody();
-        var content = new Content();
-        var mediaType = new MediaType();
-        var refSchema = new Schema<>();
-        refSchema.set$ref("#/components/schemas/UserInput");
-        mediaType.setSchema(refSchema);
-        content.addMediaType("application/json", mediaType);
-        requestBody.setContent(content);
-        components.addRequestBodies("UserRequest", requestBody);
-
-        openApi.setComponents(components);
-
-        // Create path with reference to request body
-        var paths = new Paths();
-        var pathItem = new PathItem();
-        var postOperation = new Operation();
-        postOperation.setOperationId("createUser");
-
-        var refRequestBody = new RequestBody();
-        refRequestBody.set$ref("#/components/requestBodies/UserRequest");
-        postOperation.setRequestBody(refRequestBody);
-
-        var responses = new ApiResponses();
-        responses.addApiResponse("201", new ApiResponse().description("Created"));
-        postOperation.setResponses(responses);
-
-        pathItem.setPost(postOperation);
-        paths.addPathItem("/users", pathItem);
-        openApi.setPaths(paths);
-
-        return openApi;
+        return new OpenAPI(SpecVersion.V31)
+                .openapi("3.1.0")
+                .info(new Info().title("User Management API").version("2.0.0"))
+                .components(new Components()
+                        .addSchemas("UserInput", userSchema)
+                        .addRequestBodies("UserRequest", requestBodyComponent))
+                .paths(new Paths().addPathItem("/users", new PathItem().post(postOperation)));
     }
 
     private OpenAPI createOpenAPIWithNestedReferences() {
-        var openApi = new OpenAPI();
-        openApi.setSpecVersion(SpecVersion.V31);
-        openApi.setInfo(new Info().title("Organization API").version("1.0.0"));
+        var userSchema =
+                new ObjectSchema().addProperty("id", new StringSchema()).addProperty("name", new StringSchema());
 
-        var components = new Components();
+        var orgSchema =
+                new ObjectSchema().addProperty("id", new StringSchema()).addProperty("name", new StringSchema());
 
-        // User schema
-        var userSchema = new ObjectSchema();
-        userSchema.addProperty("id", new StringSchema());
-        userSchema.addProperty("name", new StringSchema());
-        components.addSchemas("User", userSchema);
+        var usersArraySchema = new ArraySchema().items(new Schema<>().$ref("#/components/schemas/User"));
 
-        // Organization schema referencing User
-        var orgSchema = new ObjectSchema();
-        orgSchema.addProperty("id", new StringSchema());
-        orgSchema.addProperty("name", new StringSchema());
-        components.addSchemas("Organization", orgSchema);
+        var responseSchema = new ObjectSchema()
+                .addProperty("organization", new Schema<>().$ref("#/components/schemas/Organization"))
+                .addProperty("users", usersArraySchema);
 
-        // Response schema with nested references
-        var responseSchema = new ObjectSchema();
-        var orgRefSchema = new Schema<>();
-        orgRefSchema.set$ref("#/components/schemas/Organization");
-        responseSchema.addProperty("organization", orgRefSchema);
+        var getOperation = new Operation()
+                .responses(
+                        new ApiResponses()
+                                .addApiResponse(
+                                        "200",
+                                        new ApiResponse()
+                                                .content(
+                                                        new Content()
+                                                                .addMediaType(
+                                                                        "application/json",
+                                                                        new MediaType()
+                                                                                .schema(
+                                                                                        new Schema<>()
+                                                                                                .$ref(
+                                                                                                        "#/components/schemas/OrganizationWithUsers"))))));
 
-        var usersArraySchema = new Schema<>();
-        usersArraySchema.setType("array");
-        var userRefSchema = new Schema<>();
-        userRefSchema.set$ref("#/components/schemas/User");
-        usersArraySchema.setItems(userRefSchema);
-        responseSchema.addProperty("users", usersArraySchema);
-
-        components.addSchemas("OrganizationWithUsers", responseSchema);
-        openApi.setComponents(components);
-
-        // Create path
-        var paths = new Paths();
-        var pathItem = new PathItem();
-        var getOperation = new Operation();
-
-        var response = new ApiResponse();
-        var content = new Content();
-        var mediaType = new MediaType();
-        var refResponseSchema = new Schema<>();
-        refResponseSchema.set$ref("#/components/schemas/OrganizationWithUsers");
-        mediaType.setSchema(refResponseSchema);
-        content.addMediaType("application/json", mediaType);
-        response.setContent(content);
-
-        var responses = new ApiResponses();
-        responses.addApiResponse("200", response);
-        getOperation.setResponses(responses);
-
-        pathItem.setGet(getOperation);
-        paths.addPathItem("/organizations/{id}/users", pathItem);
-        openApi.setPaths(paths);
-
-        return openApi;
+        return new OpenAPI()
+                .specVersion(SpecVersion.V31)
+                .info(new Info().title("Organization API").version("1.0.0"))
+                .components(new Components()
+                        .addSchemas("User", userSchema)
+                        .addSchemas("Organization", orgSchema)
+                        .addSchemas("OrganizationWithUsers", responseSchema))
+                .paths(new Paths().addPathItem("/organizations/{id}/users", new PathItem().get(getOperation)));
     }
 
     private OpenAPI createOpenAPIWithCombinators() {
-        var openApi = new OpenAPI();
-        openApi.setSpecVersion(SpecVersion.V31);
-        openApi.setInfo(new Info().title("Entity API").version("1.0.0"));
+        var baseSchema = new ObjectSchema().addProperty("id", new StringSchema());
+        var nameSchema = new ObjectSchema().addProperty("name", new StringSchema());
+        var entitySchema = new ObjectSchema()
+                .allOf(List.of(
+                        new Schema<>().$ref("#/components/schemas/BaseEntity"),
+                        new Schema<>().$ref("#/components/schemas/Named")));
 
-        var components = new Components();
+        var postOperation = new Operation()
+                .requestBody(new RequestBody()
+                        .content(new Content()
+                                .addMediaType(
+                                        "application/json",
+                                        new MediaType().schema(new Schema<>().$ref("#/components/schemas/Entity")))))
+                .responses(new ApiResponses().addApiResponse("201", new ApiResponse().description("Created")));
 
-        // Base schemas
-        var baseSchema = new ObjectSchema();
-        baseSchema.addProperty("id", new StringSchema());
-        components.addSchemas("BaseEntity", baseSchema);
-
-        var nameSchema = new ObjectSchema();
-        nameSchema.addProperty("name", new StringSchema());
-        components.addSchemas("Named", nameSchema);
-
-        // AllOf schema
-        var entitySchema = new ObjectSchema();
-        var allOfList = List.of(
-                new Schema<>().$ref("#/components/schemas/BaseEntity"),
-                new Schema<>().$ref("#/components/schemas/Named"));
-        entitySchema.setAllOf(allOfList);
-        components.addSchemas("Entity", entitySchema);
-
-        openApi.setComponents(components);
-
-        // Create path
-        var paths = new Paths();
-        var pathItem = new PathItem();
-        var postOperation = new Operation();
-
-        var requestBody = new RequestBody();
-        var content = new Content();
-        var mediaType = new MediaType();
-        var refSchema = new Schema<>();
-        refSchema.set$ref("#/components/schemas/Entity");
-        mediaType.setSchema(refSchema);
-        content.addMediaType("application/json", mediaType);
-        requestBody.setContent(content);
-        postOperation.setRequestBody(requestBody);
-
-        var responses = new ApiResponses();
-        responses.addApiResponse("201", new ApiResponse().description("Created"));
-        postOperation.setResponses(responses);
-
-        pathItem.setPost(postOperation);
-        paths.addPathItem("/entities", pathItem);
-        openApi.setPaths(paths);
-
-        return openApi;
+        return new OpenAPI()
+                .specVersion(SpecVersion.V31)
+                .info(new Info().title("Entity API").version("1.0.0"))
+                .components(new Components()
+                        .addSchemas("BaseEntity", baseSchema)
+                        .addSchemas("Named", nameSchema)
+                        .addSchemas("Entity", entitySchema))
+                .paths(new Paths().addPathItem("/entities", new PathItem().post(postOperation)));
     }
 
     private OpenAPI createOpenAPIWithCircularReferences() {
-        var openApi = new OpenAPI();
-        openApi.setSpecVersion(SpecVersion.V31);
-        openApi.setInfo(new Info().title("Circular Reference API").version("1.0.0"));
+        var childrenArraySchema = new ArraySchema().items(new Schema<>().$ref("#/components/schemas/Node"));
+        var nodeSchema = new ObjectSchema()
+                .addProperty("id", new StringSchema())
+                .addProperty("name", new StringSchema())
+                .addProperty("children", childrenArraySchema);
 
-        var components = new Components();
-
-        // Create circular reference: Node -> children: Node[]
-        var nodeSchema = new ObjectSchema();
-        nodeSchema.addProperty("id", new StringSchema());
-        nodeSchema.addProperty("name", new StringSchema());
-
-        var childrenArraySchema = new Schema<>();
-        childrenArraySchema.setType("array");
-        var nodeRefSchema = new Schema<>();
-        nodeRefSchema.set$ref("#/components/schemas/Node");
-        childrenArraySchema.setItems(nodeRefSchema);
-        nodeSchema.addProperty("children", childrenArraySchema);
-
-        components.addSchemas("Node", nodeSchema);
-        openApi.setComponents(components);
-
-        return openApi;
+        return new OpenAPI()
+                .specVersion(SpecVersion.V31)
+                .info(new Info().title("Circular Reference API").version("1.0.0"))
+                .components(new Components().addSchemas("Node", nodeSchema));
     }
 
     private OpenAPI createOpenAPIWithRequestBodyAndResponseReferences() {
-        var openApi = new OpenAPI();
-        openApi.setSpecVersion(SpecVersion.V31);
-        openApi.setInfo(new Info().title("Request Body Ref API").version("1.0.0"));
+        var userSchema =
+                new ObjectSchema().addProperty("name", new StringSchema()).addProperty("email", new StringSchema());
 
-        var components = new Components();
+        var requestBodyComponent = new RequestBody()
+                .content(new Content()
+                        .addMediaType(
+                                "application/json",
+                                new MediaType().schema(new Schema<>().$ref("#/components/schemas/User"))));
 
-        // Schema component
-        var userSchema = new ObjectSchema();
-        userSchema.addProperty("name", new StringSchema());
-        userSchema.addProperty("email", new StringSchema());
-        components.addSchemas("User", userSchema);
+        var responseComponent = new ApiResponse()
+                .content(new Content()
+                        .addMediaType(
+                                "application/json",
+                                new MediaType().schema(new Schema<>().$ref("#/components/schemas/User"))));
 
-        // Request body component
-        var requestBody = new RequestBody();
-        var content = new Content();
-        var mediaType = new MediaType();
-        var refSchema = new Schema<>();
-        refSchema.set$ref("#/components/schemas/User");
-        mediaType.setSchema(refSchema);
-        content.addMediaType("application/json", mediaType);
-        requestBody.setContent(content);
-        components.addRequestBodies("UserRequest", requestBody);
+        var postOperation = new Operation()
+                .requestBody(new RequestBody().$ref("#/components/requestBodies/UserRequest"))
+                .responses(new ApiResponses()
+                        .addApiResponse("201", new ApiResponse().$ref("#/components/responses/UserResponse")));
 
-        // Response component
-        var response = new ApiResponse();
-        var responseContent = new Content();
-        var responseMediaType = new MediaType();
-        var responseRefSchema = new Schema<>();
-        responseRefSchema.set$ref("#/components/schemas/User");
-        responseMediaType.setSchema(responseRefSchema);
-        responseContent.addMediaType("application/json", responseMediaType);
-        response.setContent(responseContent);
-        components.addResponses("UserResponse", response);
-
-        openApi.setComponents(components);
-
-        // Create path with references
-        var paths = new Paths();
-        var pathItem = new PathItem();
-        var postOperation = new Operation();
-
-        var refRequestBody = new RequestBody();
-        refRequestBody.set$ref("#/components/requestBodies/UserRequest");
-        postOperation.setRequestBody(refRequestBody);
-
-        var responses = new ApiResponses();
-        var refResponse = new ApiResponse();
-        refResponse.set$ref("#/components/responses/UserResponse");
-        responses.addApiResponse("201", refResponse);
-        postOperation.setResponses(responses);
-
-        pathItem.setPost(postOperation);
-        paths.addPathItem("/users", pathItem);
-        openApi.setPaths(paths);
-
-        return openApi;
+        return new OpenAPI()
+                .specVersion(SpecVersion.V31)
+                .info(new Info().title("Request Body Ref API").version("1.0.0"))
+                .components(new Components()
+                        .addSchemas("User", userSchema)
+                        .addRequestBodies("UserRequest", requestBodyComponent)
+                        .addResponses("UserResponse", responseComponent))
+                .paths(new Paths().addPathItem("/users", new PathItem().post(postOperation)));
     }
 
     private OpenAPI createSimpleOpenAPI30() {
-        var openApi = new OpenAPI();
-        openApi.setSpecVersion(SpecVersion.V30);
-        openApi.setInfo(new Info().title("Simple API").version("1.0.0"));
-        return openApi;
+        return new OpenAPI()
+                .specVersion(SpecVersion.V30)
+                .info(new Info().title("Simple API").version("1.0.0"));
     }
 
     private SwaggerParseResult createSuccessfulParseResult() {

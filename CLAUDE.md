@@ -24,11 +24,11 @@ mvn test
 
 # Run tests for a specific module
 mvn test -pl infobip-openapi-mcp-core
-mvn test -pl infobip-openapi-mcp-spring-boot-starter
+mvn test -pl infobip-openapi-mcp-spring-boot-starter -am
 
 # Run a single test class
 mvn test -pl infobip-openapi-mcp-core -Dtest=DiscriminatorFlattenerTest
-mvn test -pl infobip-openapi-mcp-spring-boot-starter -Dtest=ToolCallIntegrationTest
+mvn test -pl infobip-openapi-mcp-spring-boot-starter -am -Dtest=ToolCallIntegrationTest
 
 # Apply code formatting (Palantir Java Format via Spotless)
 mvn spotless:apply
@@ -54,15 +54,21 @@ sdk use java <identifier>
 - Run `mvn spotless:apply` as the final step before presenting results.
 - Update `CHANGELOG.md` under the `[Unreleased]` section using
   the [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) format (`Added`, `Changed`,  `Fixed`, `Removed`).
+  Write entries from a user perspective — describe the feature and its value, not the classes or internal mechanics
+  behind it. It is fine to mention configuration properties needed to enable or customize a feature, or java interfaces
+  that users can implement such as `OpenApiFilter` or `ApiRequestEnricher`. Avoid class names, method names, test names,
+  and other implementation details.
+- If you added or changed an external configuration property, add or update its row in the properties table in
+  `README.md`.
 - Check and update `CLAUDE.md` to reflect the new state of the project.
 
 ## Module Structure
 
 This is a two-module Maven project:
 
-- **`infobip-openapi-mcp-core`** — Framework core logic. No Spring Boot auto-configuration, suitable as a library
+- **`infobip-openapi-mcp-core`** — Framework core logic. No Spring Boot autoconfiguration, suitable as a library
   dependency.
-- **`infobip-openapi-mcp-spring-boot-starter`** — Spring Boot auto-configuration that wires the core beans. This is what
+- **`infobip-openapi-mcp-spring-boot-starter`** — Spring Boot autoconfiguration that wires the core beans. This is what
   users add to their `pom.xml`.
 
 ## Architecture
@@ -72,8 +78,9 @@ The framework follows this startup flow:
 1. `OpenApiRegistry` reads and caches the OpenAPI spec from `infobip.openapi.mcp.open-api-url`
 2. `OpenApiFilterChain` applies `OpenApiFilter` beans (e.g., `DiscriminatorFlattener`, `PatternPropertyRemover`) to
    transform the spec
-3. `ToolRegistry` converts each API operation into a `RegisteredTool` using `InputSchemaComposer` and the configured
-   `NamingStrategy`
+3. `ToolRegistry` converts each API operation into a `RegisteredTool` using `InputSchemaComposer`,
+   `InputExampleComposer`,
+   and the configured `NamingStrategy`
 4. Tools are registered with the Spring AI MCP server (SSE, Streamable HTTP, Stateless HTTP, or stdio transport)
 
 **Runtime tool call flow:**
@@ -105,6 +112,11 @@ OAuth support (`OAuthConfiguration`, `OAuthController`) proxies `/.well-known` e
 `InputSchemaComposer` merges OpenAPI path/query parameters and request body into a single MCP tool input JSON schema.
 When both exist, parameters are wrapped under `_params` key and the request body under `_body` (configurable).
 
+`InputExampleComposer` extracts request examples from OpenAPI parameters and request bodies (using precedence:
+`examples` map > `example` field > `schema.example`) and composes them into a single example object matching
+`InputSchemaComposer`'s combination rules. `ToolRegistry` appends the result as a Markdown JSON code block to tool
+descriptions.
+
 `DiscriminatorFlattener` resolves OpenAPI discriminator patterns into JSON Schema–compatible `oneOf`/`allOf` structures
 since MCP does not support OpenAPI discriminators natively.
 
@@ -115,8 +127,28 @@ since MCP does not support OpenAPI discriminators natively.
 - **Null annotations**: JSpecify (`@Nullable`, `@NonNull`) — see `package-info.java` files in enricher package (for
   every new package you create put `package-info.java` into it and annotate the package with `@NullMarked`)
 - **Java version**: 21 (records, pattern matching, text blocks are in use throughout)
-- **Async server is explicitly blocked**: The auto-configuration throws `BeanCreationNotAllowedException` if
+- **Async server is explicitly blocked**: The autoconfiguration throws `BeanCreationNotAllowedException` if
   `spring.ai.mcp.server.type=ASYNC` to enforce sync-only usage
+- **Comments**: Javadoc is welcome on public classes and public methods. Inside test method bodies, `// Given`,
+  `// When`, `// Then` section markers are fine. Do **not** use decorative separator blocks between methods (e.g.
+  `// ---... SectionName ...---`); let the method names speak for themselves
+- **swagger-models fluent API**: Prefer the fluent builder pattern over setters when constructing OpenAPI model objects.
+  All swagger-models 2.x classes expose property-named fluent methods that return `this` — use them instead of
+  `setXxx(...)` calls. For example: `new OpenAPI().specVersion(V31).info(...).components(...).paths(...)` instead of
+  `openApi.setSpecVersion(V31); openApi.setInfo(...)`
+- **List access**: Prefer `list.getFirst()` over `list.get(0)` when accessing the first element of a list.
+- **Collection literals**: Prefer `Map.of(...)` and `List.of(...)` over creating a mutable instance and calling
+  `put`/`add` repeatedly, when all elements are known upfront. Do **not** use these when: (a) the collection must
+  remain mutable after construction, (b) insertion order must be preserved (`Map.of` is unordered — use
+  `LinkedHashMap` instead), or (c) elements are accumulated in a loop/stream.
+- **Assertion style**: When validating an object or a list of objects in tests, construct the expected instance(s) and
+  assert using `then(actual).usingRecursiveComparison().isEqualTo(expected)` instead of asserting each property
+  individually. For a collections prefer AssertJ fluent assertions, such as `containsExactly`.
+- **String manipulation**: Within a single class, use one consistent approach — either `+` concatenation or
+  `StringBuilder` — do not mix both. Choose whichever fits the class's dominant use case: prefer `StringBuilder` when
+  the class contains any method that builds strings conditionally or in a loop; prefer `+` concatenation in classes
+  where all string building is simple and unconditional. Assigning a plain variable (`x = someString`) does not count as
+  string manipulation and does not influence the choice.
 
 ## Testing Conventions
 

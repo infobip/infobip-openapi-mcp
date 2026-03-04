@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Tool descriptions can now include request examples rendered as Markdown JSON code blocks, helping LLMs understand how to call the tool. When a request body defines multiple named examples (via the `examples` map), all variants are rendered — each with an optional heading derived from the example's `summary` and an optional description paragraph. The feature is controlled by `infobip.openapi.mcp.tools.examples-mode`, which accepts three values: `SKIP` (default, no examples), `ALL` (all examples from the spec), or `ANNOTATED` (only examples annotated with `x-mcp-example: true` on the OpenAPI `Example` Object — ideal for selectively surfacing the most relevant examples without cluttering tool descriptions).
+
 ## 0.1.8
 
 ### Added

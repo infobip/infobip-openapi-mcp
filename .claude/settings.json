@@ -28,6 +28,8 @@
       "Bash(date:*)",
       "Bash(stat:*)",
       "Bash(tf:*)",
+      "Bash(tar:*)",
+      "Bash(jar:*)",
       "mcp__jetbrains__*"
     ],
     "deny": [
