@@ -30,8 +30,6 @@ import org.springframework.ai.mcp.server.common.autoconfigure.properties.McpServ
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.annotation.DirtiesContext;
 
-import javax.validation.constraints.Null;
-
 @DirtiesContext(classMode = DirtiesContext.ClassMode.BEFORE_EACH_TEST_METHOD) // Needed for tool reloading
 abstract class IntegrationTestBase extends AuthenticationTestBase {
 
@@ -116,7 +114,8 @@ abstract class IntegrationTestBase extends AuthenticationTestBase {
                     mcpSyncClient = givenMcpClientWithAuthHeader("");
                 }
             }
-        } catch (NullPointerException | InterruptedException ignored) {}
+        } catch (NullPointerException | InterruptedException ignored) {
+        }
     }
 
     protected void givenOpenAPISpecification(String openApiSpecPath) {
