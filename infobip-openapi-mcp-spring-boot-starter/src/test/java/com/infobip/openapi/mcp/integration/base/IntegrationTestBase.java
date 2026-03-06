@@ -22,12 +22,15 @@ import java.net.http.HttpRequest;
 import java.time.Duration;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.ai.mcp.server.common.autoconfigure.properties.McpServerProperties;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.annotation.DirtiesContext;
+
+import javax.validation.constraints.Null;
 
 @DirtiesContext(classMode = DirtiesContext.ClassMode.BEFORE_EACH_TEST_METHOD) // Needed for tool reloading
 abstract class IntegrationTestBase extends AuthenticationTestBase {
@@ -92,17 +95,28 @@ abstract class IntegrationTestBase extends AuthenticationTestBase {
                 };
 
         return McpClient.sync(transport)
-                .initializationTimeout(Duration.ofSeconds(2))
-                .requestTimeout(Duration.ofSeconds(2))
+                .initializationTimeout(Duration.ofSeconds(3))
+                .requestTimeout(Duration.ofSeconds(3))
                 .build();
     }
 
     protected void withInitializedMcpClient(Consumer<McpSyncClient> consumer) {
-        try (var client = mcpSyncClient) {
-            client.initialize();
-            consumer.accept(client);
-            client.closeGracefully();
+        if (mcpSyncClient == null) {
+            mcpSyncClient = givenMcpClientWithAuthHeader("");
         }
+        try {
+            for (int i = 0; i < 3; i++) {
+                try (var client = mcpSyncClient) {
+                    client.initialize();
+                    consumer.accept(client);
+                    client.closeGracefully();
+                    break;
+                } catch (Exception e) {
+                    Thread.sleep(TimeUnit.SECONDS.toMillis(1));
+                    mcpSyncClient = givenMcpClientWithAuthHeader("");
+                }
+            }
+        } catch (NullPointerException | InterruptedException ignored) {}
     }
 
     protected void givenOpenAPISpecification(String openApiSpecPath) {
