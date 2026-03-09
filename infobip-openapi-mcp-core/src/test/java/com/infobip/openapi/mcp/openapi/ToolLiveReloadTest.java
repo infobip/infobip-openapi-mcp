@@ -20,6 +20,7 @@ import com.infobip.openapi.mcp.util.OpenApiMapperFactory;
 import com.infobip.openapi.mcp.util.ToolSpecBuilder;
 import io.modelcontextprotocol.server.McpServerFeatures;
 import io.modelcontextprotocol.server.McpSyncServer;
+import io.modelcontextprotocol.spec.McpSchema;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.parser.OpenAPIV3Parser;
 import java.net.URI;
@@ -45,6 +46,7 @@ class ToolLiveReloadTest {
     private static final String WITH_EDITED_DESCRIPTION_SPEC = "/openapi/live-reload/with-edited-description.json";
     private static final String WITH_EDITED_SCHEMA_SPEC = "/openapi/live-reload/with-edited-schema.json";
     private static final String MULTIPLE_TOOLS_SPEC = "/openapi/live-reload/multiple-tools.json";
+    private static final String WITH_EDITED_ANNOTATIONS_SPEC = "/openapi/live-reload/with-edited-annotations.json";
     private static final String MULTIPLE_TOOLS_EDITED_SPEC = "/openapi/live-reload/multiple-tools-edited.json";
 
     private static final OpenApiMcpProperties PROPERTIES = new OpenApiMcpProperties(
@@ -306,6 +308,34 @@ class ToolLiveReloadTest {
 
             var inputSchema = syncToolSpecCaptor.getValue().tool().inputSchema();
             BDDAssertions.then(inputSchema.properties()).containsKeys("limit", "offset");
+        }
+
+        @Test
+        void shouldDetectChangeWhenToolAnnotationsChange() throws InterruptedException {
+            // Given
+            var givenBaseOpenApi = loadOpenApi(BASE_SPEC);
+            var givenEditedOpenApi = loadOpenApi(WITH_EDITED_ANNOTATIONS_SPEC);
+
+            given(givenOpenApiRegistry.openApi())
+                    .willReturn(givenBaseOpenApi)
+                    .willReturn(givenBaseOpenApi)
+                    .willReturn(givenEditedOpenApi);
+
+            givenToolRegistry.getTools();
+            var givenOpenApiLiveReload = givenOpenApiLiveReload();
+            setupToolSpecBuilderForNewTools();
+
+            // When
+            givenOpenApiLiveReload.reloadOnSchedule();
+
+            // Then
+            then(givenOpenApiRegistry).should().reload();
+            then(givenMcpSyncServer).should().addTool(syncToolSpecCaptor.capture());
+            then(givenMcpSyncServer).should(never()).removeTool(any());
+
+            var capturedAnnotations = syncToolSpecCaptor.getValue().tool().annotations();
+            var expected = new McpSchema.ToolAnnotations(null, false, true, true, true, null);
+            BDDAssertions.then(capturedAnnotations).usingRecursiveComparison().isEqualTo(expected);
         }
 
         @Test
