@@ -28,21 +28,61 @@ public class ToolAnnotationResolver {
 
     static {
         HTTP_METHOD_DEFAULTS.put(
-                PathItem.HttpMethod.GET, new McpSchema.ToolAnnotations(null, true, false, true, true, null));
+                PathItem.HttpMethod.GET,
+                ToolAnnotationsBuilder.builder()
+                        .readOnlyHint(true)
+                        .destructiveHint(false)
+                        .idempotentHint(true)
+                        .build());
         HTTP_METHOD_DEFAULTS.put(
-                PathItem.HttpMethod.HEAD, new McpSchema.ToolAnnotations(null, true, false, true, true, null));
+                PathItem.HttpMethod.HEAD,
+                ToolAnnotationsBuilder.builder()
+                        .readOnlyHint(true)
+                        .destructiveHint(false)
+                        .idempotentHint(true)
+                        .build());
         HTTP_METHOD_DEFAULTS.put(
-                PathItem.HttpMethod.OPTIONS, new McpSchema.ToolAnnotations(null, true, false, true, true, null));
+                PathItem.HttpMethod.OPTIONS,
+                ToolAnnotationsBuilder.builder()
+                        .readOnlyHint(true)
+                        .destructiveHint(false)
+                        .idempotentHint(true)
+                        .build());
         HTTP_METHOD_DEFAULTS.put(
-                PathItem.HttpMethod.PUT, new McpSchema.ToolAnnotations(null, false, false, true, true, null));
+                PathItem.HttpMethod.TRACE,
+                ToolAnnotationsBuilder.builder()
+                        .readOnlyHint(true)
+                        .destructiveHint(false)
+                        .idempotentHint(true)
+                        .build());
         HTTP_METHOD_DEFAULTS.put(
-                PathItem.HttpMethod.POST, new McpSchema.ToolAnnotations(null, false, false, false, true, null));
+                PathItem.HttpMethod.PUT,
+                ToolAnnotationsBuilder.builder()
+                        .readOnlyHint(false)
+                        .destructiveHint(false)
+                        .idempotentHint(true)
+                        .build());
         HTTP_METHOD_DEFAULTS.put(
-                PathItem.HttpMethod.DELETE, new McpSchema.ToolAnnotations(null, false, true, true, true, null));
+                PathItem.HttpMethod.POST,
+                ToolAnnotationsBuilder.builder()
+                        .readOnlyHint(false)
+                        .destructiveHint(false)
+                        .idempotentHint(false)
+                        .build());
         HTTP_METHOD_DEFAULTS.put(
-                PathItem.HttpMethod.PATCH, new McpSchema.ToolAnnotations(null, false, false, false, true, null));
+                PathItem.HttpMethod.DELETE,
+                ToolAnnotationsBuilder.builder()
+                        .readOnlyHint(false)
+                        .destructiveHint(true)
+                        .idempotentHint(true)
+                        .build());
         HTTP_METHOD_DEFAULTS.put(
-                PathItem.HttpMethod.TRACE, new McpSchema.ToolAnnotations(null, true, false, true, true, null));
+                PathItem.HttpMethod.PATCH,
+                ToolAnnotationsBuilder.builder()
+                        .readOnlyHint(false)
+                        .destructiveHint(false)
+                        .idempotentHint(false)
+                        .build());
     }
 
     private final Map<String, OpenApiMcpProperties.Tools.Annotations> configOverrides;
@@ -66,32 +106,29 @@ public class ToolAnnotationResolver {
     }
 
     static McpSchema.ToolAnnotations fromHttpMethod(PathItem.HttpMethod method) {
-        var defaults = HTTP_METHOD_DEFAULTS.get(method);
-        if (defaults != null) {
-            return defaults;
+        if (!HTTP_METHOD_DEFAULTS.containsKey(method)) {
+            return ToolAnnotationsBuilder.defaultAnnotations();
         }
-        return new McpSchema.ToolAnnotations(null, false, false, false, true, null);
+        return HTTP_METHOD_DEFAULTS.get(method);
     }
 
-    @SuppressWarnings("unchecked")
     private McpSchema.ToolAnnotations mergeVendorExtension(
             McpSchema.ToolAnnotations base, FullOperation fullOperation) {
         var extensions = fullOperation.operation().getExtensions();
         if (extensions == null) {
             return base;
         }
-        var raw = extensions.get(Spec.MCP_ANNOTATIONS_EXTENSION);
-        if (!(raw instanceof Map<?, ?>)) {
-            return base;
+
+        if (extensions.get(Spec.MCP_ANNOTATIONS_EXTENSION) instanceof Map<?, ?> map) {
+            return merge(
+                    base,
+                    toBooleanOrNull(map.get("readOnlyHint")),
+                    toBooleanOrNull(map.get("destructiveHint")),
+                    toBooleanOrNull(map.get("idempotentHint")),
+                    toBooleanOrNull(map.get("openWorldHint")),
+                    toBooleanOrNull(map.get("returnDirect")));
         }
-        var map = (Map<String, Object>) raw;
-        return merge(
-                base,
-                toBooleanOrNull(map.get("readOnlyHint")),
-                toBooleanOrNull(map.get("destructiveHint")),
-                toBooleanOrNull(map.get("idempotentHint")),
-                toBooleanOrNull(map.get("openWorldHint")),
-                toBooleanOrNull(map.get("returnDirect")));
+        return base;
     }
 
     private McpSchema.ToolAnnotations mergeConfigOverride(McpSchema.ToolAnnotations base, String toolName) {
@@ -99,6 +136,7 @@ public class ToolAnnotationResolver {
         if (override == null) {
             return base;
         }
+
         return merge(
                 base,
                 override.readOnlyHint(),
@@ -115,11 +153,7 @@ public class ToolAnnotationResolver {
             @Nullable Boolean idempotentHint,
             @Nullable Boolean openWorldHint,
             @Nullable Boolean returnDirect) {
-        if (readOnlyHint == null
-                && destructiveHint == null
-                && idempotentHint == null
-                && openWorldHint == null
-                && returnDirect == null) {
+        if (isAllNull(readOnlyHint, destructiveHint, idempotentHint, openWorldHint, returnDirect)) {
             return base;
         }
         return new McpSchema.ToolAnnotations(
@@ -132,10 +166,71 @@ public class ToolAnnotationResolver {
     }
 
     @Nullable
-    private static Boolean toBooleanOrNull(@Nullable Object value) {
+    private Boolean toBooleanOrNull(@Nullable Object value) {
         if (value instanceof Boolean b) {
             return b;
         }
         return null;
+    }
+
+    private boolean isAllNull(Boolean... annotations) {
+        for (Boolean annotation : annotations) {
+            if (annotation != null) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static class ToolAnnotationsBuilder {
+        private String title = null;
+        private Boolean readOnlyHint = null;
+        private Boolean destructiveHint = null;
+        private Boolean idempotentHint = null;
+        private Boolean openWorldHint = Boolean.TRUE;
+        private Boolean returnDirect = null;
+
+        public static ToolAnnotationsBuilder builder() {
+            return new ToolAnnotationsBuilder();
+        }
+
+        public static McpSchema.ToolAnnotations defaultAnnotations() {
+            return new McpSchema.ToolAnnotations(null, false, false, false, true, null);
+        }
+
+        public ToolAnnotationsBuilder title(String title) {
+            this.title = title;
+            return this;
+        }
+
+        public ToolAnnotationsBuilder readOnlyHint(Boolean readOnlyHint) {
+            this.readOnlyHint = readOnlyHint;
+            return this;
+        }
+
+        public ToolAnnotationsBuilder destructiveHint(Boolean destructiveHint) {
+            this.destructiveHint = destructiveHint;
+            return this;
+        }
+
+        public ToolAnnotationsBuilder idempotentHint(Boolean idempotentHint) {
+            this.idempotentHint = idempotentHint;
+            return this;
+        }
+
+        public ToolAnnotationsBuilder openWorldHint(Boolean openWorldHint) {
+            this.openWorldHint = openWorldHint;
+            return this;
+        }
+
+        public ToolAnnotationsBuilder returnDirect(Boolean returnDirect) {
+            this.returnDirect = returnDirect;
+            return this;
+        }
+
+        public McpSchema.ToolAnnotations build() {
+            return new McpSchema.ToolAnnotations(
+                    title, readOnlyHint, destructiveHint, idempotentHint, openWorldHint, returnDirect);
+        }
     }
 }
