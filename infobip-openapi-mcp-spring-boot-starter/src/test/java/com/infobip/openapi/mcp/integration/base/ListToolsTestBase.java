@@ -76,28 +76,28 @@ public abstract class ListToolsTestBase extends IntegrationTestBase {
             then(actualPatchTool.description()).isEqualTo("test description");
 
             // Verify annotations based on HTTP method semantics
-            var getTool = findTool(tools, "get_test1");
-            then(getTool.annotations())
+            var actualGetTool = findTool(tools, "get_test1");
+            then(actualGetTool.annotations())
                     .usingRecursiveComparison()
                     .isEqualTo(new McpSchema.ToolAnnotations(null, true, false, true, true, null));
 
-            var postTool = findTool(tools, "post_test1");
-            then(postTool.annotations())
+            var actualPostTool = findTool(tools, "post_test1");
+            then(actualPostTool.annotations())
                     .usingRecursiveComparison()
                     .isEqualTo(new McpSchema.ToolAnnotations(null, false, false, false, true, null));
 
-            var putTool = findTool(tools, "put_test1");
-            then(putTool.annotations())
+            var actualPutTool = findTool(tools, "put_test1");
+            then(actualPutTool.annotations())
                     .usingRecursiveComparison()
                     .isEqualTo(new McpSchema.ToolAnnotations(null, false, false, true, true, null));
 
-            var deleteTool = findTool(tools, "delete_test1");
-            then(deleteTool.annotations())
+            var actualDeleteTool = findTool(tools, "delete_test1");
+            then(actualDeleteTool.annotations())
                     .usingRecursiveComparison()
                     .isEqualTo(new McpSchema.ToolAnnotations(null, false, true, true, true, null));
 
-            var headTool = findTool(tools, "head_test2");
-            then(headTool.annotations())
+            var actualHeadTool = findTool(tools, "head_test2");
+            then(actualHeadTool.annotations())
                     .usingRecursiveComparison()
                     .isEqualTo(new McpSchema.ToolAnnotations(null, true, false, true, true, null));
 
@@ -105,8 +105,8 @@ public abstract class ListToolsTestBase extends IntegrationTestBase {
                     .usingRecursiveComparison()
                     .isEqualTo(new McpSchema.ToolAnnotations(null, false, false, false, true, null));
 
-            var optionsTool = findTool(tools, "options_test3");
-            then(optionsTool.annotations())
+            var actualOptionsTool = findTool(tools, "options_test3");
+            then(actualOptionsTool.annotations())
                     .usingRecursiveComparison()
                     .isEqualTo(new McpSchema.ToolAnnotations(null, true, false, true, true, null));
         });

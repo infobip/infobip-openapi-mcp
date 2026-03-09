@@ -21,16 +21,16 @@ class ToolAnnotationResolverTest {
     @ParameterizedTest
     @MethodSource("httpMethodDefaults")
     void shouldReturnCorrectDefaultsForHttpMethod(
-            PathItem.HttpMethod method,
+            PathItem.HttpMethod givenMethod,
             boolean expectedReadOnly,
             boolean expectedDestructive,
             boolean expectedIdempotent) {
         // Given
-        var resolver = new ToolAnnotationResolver(Map.of());
-        var fullOperation = givenFullOperation(method, new Operation());
+        var givenResolver = new ToolAnnotationResolver(Map.of());
+        var givenFullOperation = givenFullOperation(givenMethod, new Operation());
 
         // When
-        var result = resolver.resolve(fullOperation, "testTool");
+        var result = givenResolver.resolve(givenFullOperation, "testTool");
 
         // Then
         var expected = new McpSchema.ToolAnnotations(
@@ -53,15 +53,15 @@ class ToolAnnotationResolverTest {
     @Test
     void shouldOverrideWithVendorExtension() {
         // Given
-        var resolver = new ToolAnnotationResolver(Map.of());
-        var operation = new Operation();
-        operation.addExtension(Spec.MCP_ANNOTATIONS_EXTENSION, Map.of("idempotentHint", true));
-        var fullOperation = givenFullOperation(PathItem.HttpMethod.POST, operation);
+        var givenResolver = new ToolAnnotationResolver(Map.of());
+        var givenOperation = new Operation();
+        givenOperation.addExtension(Spec.MCP_ANNOTATIONS_EXTENSION, Map.of("idempotentHint", true));
+        var givenFullOperation = givenFullOperation(PathItem.HttpMethod.POST, givenOperation);
 
         // When
-        var result = resolver.resolve(fullOperation, "testTool");
+        var result = givenResolver.resolve(givenFullOperation, "testTool");
 
-        // Then — POST defaults with idempotentHint overridden to true
+        // Then
         var expected = new McpSchema.ToolAnnotations(null, false, false, true, true, null);
         then(result).usingRecursiveComparison().isEqualTo(expected);
     }
@@ -69,15 +69,15 @@ class ToolAnnotationResolverTest {
     @Test
     void shouldOverrideReturnDirectWithVendorExtension() {
         // Given
-        var resolver = new ToolAnnotationResolver(Map.of());
-        var operation = new Operation();
-        operation.addExtension(Spec.MCP_ANNOTATIONS_EXTENSION, Map.of("returnDirect", true));
-        var fullOperation = givenFullOperation(PathItem.HttpMethod.GET, operation);
+        var givenResolver = new ToolAnnotationResolver(Map.of());
+        var givenOperation = new Operation();
+        givenOperation.addExtension(Spec.MCP_ANNOTATIONS_EXTENSION, Map.of("returnDirect", true));
+        var givenFullOperation = givenFullOperation(PathItem.HttpMethod.GET, givenOperation);
 
         // When
-        var result = resolver.resolve(fullOperation, "testTool");
+        var result = givenResolver.resolve(givenFullOperation, "testTool");
 
-        // Then — GET defaults with returnDirect overridden to true
+        // Then
         var expected = new McpSchema.ToolAnnotations(null, true, false, true, true, true);
         then(result).usingRecursiveComparison().isEqualTo(expected);
     }
@@ -85,18 +85,18 @@ class ToolAnnotationResolverTest {
     @Test
     void shouldIgnoreUnknownKeysInVendorExtension() {
         // Given
-        var resolver = new ToolAnnotationResolver(Map.of());
-        var operation = new Operation();
-        var extensionMap = new LinkedHashMap<String, Object>();
-        extensionMap.put("unknownKey", "value");
-        extensionMap.put("readOnlyHint", false);
-        operation.addExtension(Spec.MCP_ANNOTATIONS_EXTENSION, extensionMap);
-        var fullOperation = givenFullOperation(PathItem.HttpMethod.GET, operation);
+        var givenResolver = new ToolAnnotationResolver(Map.of());
+        var givenOperation = new Operation();
+        var givenExtensionMap = new LinkedHashMap<String, Object>();
+        givenExtensionMap.put("unknownKey", "value");
+        givenExtensionMap.put("readOnlyHint", false);
+        givenOperation.addExtension(Spec.MCP_ANNOTATIONS_EXTENSION, givenExtensionMap);
+        var givenFullOperation = givenFullOperation(PathItem.HttpMethod.GET, givenOperation);
 
         // When
-        var result = resolver.resolve(fullOperation, "testTool");
+        var result = givenResolver.resolve(givenFullOperation, "testTool");
 
-        // Then — GET defaults with readOnlyHint overridden to false, unknown key ignored
+        // Then
         var expected = new McpSchema.ToolAnnotations(null, false, false, true, true, null);
         then(result).usingRecursiveComparison().isEqualTo(expected);
     }
@@ -104,15 +104,15 @@ class ToolAnnotationResolverTest {
     @Test
     void shouldIgnoreNonMapVendorExtension() {
         // Given
-        var resolver = new ToolAnnotationResolver(Map.of());
-        var operation = new Operation();
-        operation.addExtension(Spec.MCP_ANNOTATIONS_EXTENSION, "not-a-map");
-        var fullOperation = givenFullOperation(PathItem.HttpMethod.GET, operation);
+        var givenResolver = new ToolAnnotationResolver(Map.of());
+        var givenOperation = new Operation();
+        givenOperation.addExtension(Spec.MCP_ANNOTATIONS_EXTENSION, "not-a-map");
+        var givenFullOperation = givenFullOperation(PathItem.HttpMethod.GET, givenOperation);
 
         // When
-        var result = resolver.resolve(fullOperation, "testTool");
+        var result = givenResolver.resolve(givenFullOperation, "testTool");
 
-        // Then — pure GET defaults (vendor extension ignored)
+        // Then
         var expected = new McpSchema.ToolAnnotations(null, true, false, true, true, null);
         then(result).usingRecursiveComparison().isEqualTo(expected);
     }
@@ -120,42 +120,33 @@ class ToolAnnotationResolverTest {
     @Test
     void shouldOverrideWithConfigProperties() {
         // Given
-        var configOverrides =
-                Map.of("testTool", new OpenApiMcpProperties.Tools.Annotations(null, true, null, null, null));
-        var resolver = new ToolAnnotationResolver(configOverrides);
-        var fullOperation = givenFullOperation(PathItem.HttpMethod.DELETE, new Operation());
-
-        // When
-        var result = resolver.resolve(fullOperation, "testTool");
-
-        // Then — DELETE defaults with destructiveHint overridden to true (from config)
-        // but wait — DELETE already has destructiveHint=true, so let's override it to false
-        var configOverrides2 =
+        var givenConfigOverrides =
                 Map.of("testTool", new OpenApiMcpProperties.Tools.Annotations(null, false, null, null, null));
-        var resolver2 = new ToolAnnotationResolver(configOverrides2);
+        var givenResolver = new ToolAnnotationResolver(givenConfigOverrides);
+        var givenFullOperation = givenFullOperation(PathItem.HttpMethod.DELETE, new Operation());
 
         // When
-        var result2 = resolver2.resolve(fullOperation, "testTool");
+        var result = givenResolver.resolve(givenFullOperation, "testTool");
 
-        // Then — DELETE defaults with destructiveHint overridden to false
+        // Then
         var expected = new McpSchema.ToolAnnotations(null, false, false, true, true, null);
-        then(result2).usingRecursiveComparison().isEqualTo(expected);
+        then(result).usingRecursiveComparison().isEqualTo(expected);
     }
 
     @Test
     void shouldApplyConfigOverrideOverVendorExtension() {
-        // Given — vendor extension sets idempotentHint=true, config sets it back to false
-        var configOverrides =
+        // Given
+        var givenConfigOverrides =
                 Map.of("testTool", new OpenApiMcpProperties.Tools.Annotations(null, null, false, null, null));
-        var resolver = new ToolAnnotationResolver(configOverrides);
-        var operation = new Operation();
-        operation.addExtension(Spec.MCP_ANNOTATIONS_EXTENSION, Map.of("idempotentHint", true));
-        var fullOperation = givenFullOperation(PathItem.HttpMethod.POST, operation);
+        var givenResolver = new ToolAnnotationResolver(givenConfigOverrides);
+        var givenOperation = new Operation();
+        givenOperation.addExtension(Spec.MCP_ANNOTATIONS_EXTENSION, Map.of("idempotentHint", true));
+        var givenFullOperation = givenFullOperation(PathItem.HttpMethod.POST, givenOperation);
 
         // When
-        var result = resolver.resolve(fullOperation, "testTool");
+        var result = givenResolver.resolve(givenFullOperation, "testTool");
 
-        // Then — POST defaults, vendor extension sets idempotentHint=true, config overrides to false
+        // Then
         var expected = new McpSchema.ToolAnnotations(null, false, false, false, true, null);
         then(result).usingRecursiveComparison().isEqualTo(expected);
     }
@@ -163,18 +154,16 @@ class ToolAnnotationResolverTest {
     @Test
     void shouldComposeAllThreeLayers() {
         // Given
-        // HTTP default for POST: readOnly=false, destructive=false, idempotent=false, openWorld=true
-        // Vendor extension: destructiveHint=true, returnDirect=true
-        // Config: openWorldHint=false
-        var configOverrides =
+        var givenConfigOverrides =
                 Map.of("myTool", new OpenApiMcpProperties.Tools.Annotations(null, null, null, false, null));
-        var resolver = new ToolAnnotationResolver(configOverrides);
-        var operation = new Operation();
-        operation.addExtension(Spec.MCP_ANNOTATIONS_EXTENSION, Map.of("destructiveHint", true, "returnDirect", true));
-        var fullOperation = givenFullOperation(PathItem.HttpMethod.POST, operation);
+        var givenResolver = new ToolAnnotationResolver(givenConfigOverrides);
+        var givenOperation = new Operation();
+        givenOperation.addExtension(
+                Spec.MCP_ANNOTATIONS_EXTENSION, Map.of("destructiveHint", true, "returnDirect", true));
+        var givenFullOperation = givenFullOperation(PathItem.HttpMethod.POST, givenOperation);
 
         // When
-        var result = resolver.resolve(fullOperation, "myTool");
+        var result = givenResolver.resolve(givenFullOperation, "myTool");
 
         // Then
         var expected = new McpSchema.ToolAnnotations(null, false, true, false, false, true);
@@ -184,13 +173,13 @@ class ToolAnnotationResolverTest {
     @Test
     void shouldReturnPureDefaultsWhenNoExtensionsOrConfig() {
         // Given
-        var resolver = new ToolAnnotationResolver(Map.of());
-        var fullOperation = givenFullOperation(PathItem.HttpMethod.PUT, new Operation());
+        var givenResolver = new ToolAnnotationResolver(Map.of());
+        var givenFullOperation = givenFullOperation(PathItem.HttpMethod.PUT, new Operation());
 
         // When
-        var result = resolver.resolve(fullOperation, "unknownTool");
+        var result = givenResolver.resolve(givenFullOperation, "unknownTool");
 
-        // Then — pure PUT defaults
+        // Then
         var expected = new McpSchema.ToolAnnotations(null, false, false, true, true, null);
         then(result).usingRecursiveComparison().isEqualTo(expected);
     }
@@ -198,15 +187,15 @@ class ToolAnnotationResolverTest {
     @Test
     void shouldNotOverrideWhenConfigToolNameDoesNotMatch() {
         // Given
-        var configOverrides =
+        var givenConfigOverrides =
                 Map.of("otherTool", new OpenApiMcpProperties.Tools.Annotations(true, true, true, false, true));
-        var resolver = new ToolAnnotationResolver(configOverrides);
-        var fullOperation = givenFullOperation(PathItem.HttpMethod.GET, new Operation());
+        var givenResolver = new ToolAnnotationResolver(givenConfigOverrides);
+        var givenFullOperation = givenFullOperation(PathItem.HttpMethod.GET, new Operation());
 
         // When
-        var result = resolver.resolve(fullOperation, "myTool");
+        var result = givenResolver.resolve(givenFullOperation, "myTool");
 
-        // Then — pure GET defaults, config for "otherTool" not applied
+        // Then
         var expected = new McpSchema.ToolAnnotations(null, true, false, true, true, null);
         then(result).usingRecursiveComparison().isEqualTo(expected);
     }
