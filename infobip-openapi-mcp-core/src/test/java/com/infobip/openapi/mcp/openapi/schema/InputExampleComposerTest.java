@@ -712,7 +712,8 @@ class InputExampleComposerTest {
                         null,
                         null,
                         null,
-                        mode),
+                        mode,
+                        null),
                 null));
     }
 

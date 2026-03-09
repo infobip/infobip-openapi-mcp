@@ -12,6 +12,7 @@ import com.infobip.openapi.mcp.infrastructure.metrics.MetricService;
 import com.infobip.openapi.mcp.openapi.schema.InputExampleComposer;
 import com.infobip.openapi.mcp.openapi.schema.InputSchemaComposer;
 import com.infobip.openapi.mcp.openapi.tool.RegisteredTool;
+import com.infobip.openapi.mcp.openapi.tool.ToolAnnotationResolver;
 import com.infobip.openapi.mcp.openapi.tool.ToolHandler;
 import com.infobip.openapi.mcp.openapi.tool.ToolRegistry;
 import com.infobip.openapi.mcp.openapi.tool.naming.OperationIdStrategy;
@@ -22,6 +23,7 @@ import io.modelcontextprotocol.server.McpSyncServer;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.parser.OpenAPIV3Parser;
 import java.net.URI;
+import java.util.Map;
 import java.util.Optional;
 import org.assertj.core.api.BDDAssertions;
 import org.junit.jupiter.api.BeforeEach;
@@ -52,7 +54,7 @@ class ToolLiveReloadTest {
             null,
             null,
             null,
-            new OpenApiMcpProperties.Tools(null, null, null, true, null, null),
+            new OpenApiMcpProperties.Tools(null, null, null, true, null, null, null),
             new OpenApiMcpProperties.LiveReload(true, "0 */1 * * * *", 1));
 
     @Mock
@@ -88,6 +90,7 @@ class ToolLiveReloadTest {
     private final InputSchemaComposer inputSchemaComposer =
             new InputSchemaComposer(new OpenApiMcpProperties.Tools.Schema(null, null));
     private final InputExampleComposer inputExampleComposer = new InputExampleComposer(PROPERTIES);
+    private final ToolAnnotationResolver toolAnnotationResolver = new ToolAnnotationResolver(Map.of());
 
     private ToolRegistry givenToolRegistry;
 
@@ -100,6 +103,7 @@ class ToolLiveReloadTest {
                 inputExampleComposer,
                 toolHandler,
                 mapperFactory,
+                toolAnnotationResolver,
                 PROPERTIES);
         given(metricService.startLiveReloadTimer()).willReturn(liveReloadTimer);
     }

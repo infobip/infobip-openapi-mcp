@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- MCP tool annotations (`readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`, `returnDirect`) are now automatically inferred from the HTTP method of each API operation and included in tool metadata. Sensible defaults are applied (e.g., GET tools are marked as read-only and idempotent, DELETE tools as destructive). Annotations can be overridden per-operation using the `x-mcp-annotations` vendor extension on the OpenAPI Operation object, or globally per tool name using `infobip.openapi.mcp.tools.annotations.<tool-name>.*` configuration properties. Override precedence is: HTTP method defaults < vendor extension < YAML properties.
+
 ## 0.1.9
 
 ### Added
