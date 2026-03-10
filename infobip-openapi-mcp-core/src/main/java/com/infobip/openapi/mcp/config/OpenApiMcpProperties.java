@@ -8,6 +8,7 @@ import jakarta.validation.constraints.Positive;
 import java.net.URI;
 import java.time.Duration;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -65,7 +66,7 @@ public record OpenApiMcpProperties(
             filters = new HashMap<>();
         }
         if (tools == null) {
-            tools = new Tools(null, null, null, null, null, null);
+            tools = new Tools(null, null, null, null, null, null, null);
         }
         if (liveReload == null) {
             liveReload = new LiveReload(null, null, null);
@@ -108,6 +109,9 @@ public record OpenApiMcpProperties(
      *                                          {@code ANNOTATED} — only examples with {@code x-mcp-example: true}
      *                                          on the OpenAPI {@code Example} Object are included, giving
      *                                          fine-grained control over what reaches MCP tool descriptions.
+     * @param annotations                       Per-tool annotation overrides. Keys are tool names; values override
+     *                                          the annotations inferred from HTTP method semantics and
+     *                                          {@code x-mcp-annotations} vendor extension.
      */
     public record Tools(
             @NestedConfigurationProperty @Valid Naming naming,
@@ -115,7 +119,8 @@ public record OpenApiMcpProperties(
             Boolean jsonDoubleSerializationMitigation,
             Boolean prependSummaryToDescription,
             Boolean mock,
-            ExamplesMode examplesMode) {
+            ExamplesMode examplesMode,
+            Map<String, Annotations> annotations) {
         public static final boolean DEFAULT_JSON_DOUBLE_SERIALIZATION_MITIGATION = true;
         public static final boolean DEFAULT_PREPEND_SUMMARY_TO_DESCRIPTION = true;
         public static final boolean DEFAULT_MOCK = false;
@@ -142,6 +147,9 @@ public record OpenApiMcpProperties(
             }
             if (examplesMode == null) {
                 examplesMode = DEFAULT_EXAMPLES_MODE;
+            }
+            if (annotations == null) {
+                annotations = new LinkedHashMap<>();
             }
         }
 
@@ -190,6 +198,23 @@ public record OpenApiMcpProperties(
                 }
             }
         }
+
+        /**
+         * MCP tool annotation overrides. Each field, when non-null, overrides the value inferred
+         * from the HTTP method semantics or the {@code x-mcp-annotations} vendor extension.
+         *
+         * @param readOnlyHint    whether the tool only reads data
+         * @param destructiveHint whether the tool may perform destructive updates
+         * @param idempotentHint  whether calling the tool repeatedly with the same arguments has no additional effect
+         * @param openWorldHint   whether the tool interacts with an external system
+         * @param returnDirect    whether the tool's result should be returned directly to the user
+         */
+        public record Annotations(
+                Boolean readOnlyHint,
+                Boolean destructiveHint,
+                Boolean idempotentHint,
+                Boolean openWorldHint,
+                Boolean returnDirect) {}
     }
 
     /**

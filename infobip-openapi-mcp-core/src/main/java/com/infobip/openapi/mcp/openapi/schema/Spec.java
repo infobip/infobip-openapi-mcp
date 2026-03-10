@@ -6,6 +6,7 @@ public class Spec {
     private Spec() {}
 
     static final String MCP_EXAMPLE_EXTENSION = "x-mcp-example";
+    public static final String MCP_ANNOTATIONS_EXTENSION = "x-mcp-annotations";
 
     static final Set<String> SUPPORTED_PARAMETER_TYPES = Set.of(
             DecomposedRequestData.ParametersByType.QUERY,

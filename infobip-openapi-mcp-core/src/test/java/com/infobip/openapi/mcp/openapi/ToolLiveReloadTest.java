@@ -12,6 +12,7 @@ import com.infobip.openapi.mcp.infrastructure.metrics.MetricService;
 import com.infobip.openapi.mcp.openapi.schema.InputExampleComposer;
 import com.infobip.openapi.mcp.openapi.schema.InputSchemaComposer;
 import com.infobip.openapi.mcp.openapi.tool.RegisteredTool;
+import com.infobip.openapi.mcp.openapi.tool.ToolAnnotationResolver;
 import com.infobip.openapi.mcp.openapi.tool.ToolHandler;
 import com.infobip.openapi.mcp.openapi.tool.ToolRegistry;
 import com.infobip.openapi.mcp.openapi.tool.naming.OperationIdStrategy;
@@ -19,9 +20,11 @@ import com.infobip.openapi.mcp.util.OpenApiMapperFactory;
 import com.infobip.openapi.mcp.util.ToolSpecBuilder;
 import io.modelcontextprotocol.server.McpServerFeatures;
 import io.modelcontextprotocol.server.McpSyncServer;
+import io.modelcontextprotocol.spec.McpSchema;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.parser.OpenAPIV3Parser;
 import java.net.URI;
+import java.util.Map;
 import java.util.Optional;
 import org.assertj.core.api.BDDAssertions;
 import org.junit.jupiter.api.BeforeEach;
@@ -43,6 +46,7 @@ class ToolLiveReloadTest {
     private static final String WITH_EDITED_DESCRIPTION_SPEC = "/openapi/live-reload/with-edited-description.json";
     private static final String WITH_EDITED_SCHEMA_SPEC = "/openapi/live-reload/with-edited-schema.json";
     private static final String MULTIPLE_TOOLS_SPEC = "/openapi/live-reload/multiple-tools.json";
+    private static final String WITH_EDITED_ANNOTATIONS_SPEC = "/openapi/live-reload/with-edited-annotations.json";
     private static final String MULTIPLE_TOOLS_EDITED_SPEC = "/openapi/live-reload/multiple-tools-edited.json";
 
     private static final OpenApiMcpProperties PROPERTIES = new OpenApiMcpProperties(
@@ -52,7 +56,7 @@ class ToolLiveReloadTest {
             null,
             null,
             null,
-            new OpenApiMcpProperties.Tools(null, null, null, true, null, null),
+            new OpenApiMcpProperties.Tools(null, null, null, true, null, null, null),
             new OpenApiMcpProperties.LiveReload(true, "0 */1 * * * *", 1));
 
     @Mock
@@ -88,6 +92,7 @@ class ToolLiveReloadTest {
     private final InputSchemaComposer inputSchemaComposer =
             new InputSchemaComposer(new OpenApiMcpProperties.Tools.Schema(null, null));
     private final InputExampleComposer inputExampleComposer = new InputExampleComposer(PROPERTIES);
+    private final ToolAnnotationResolver toolAnnotationResolver = new ToolAnnotationResolver(Map.of());
 
     private ToolRegistry givenToolRegistry;
 
@@ -100,6 +105,7 @@ class ToolLiveReloadTest {
                 inputExampleComposer,
                 toolHandler,
                 mapperFactory,
+                toolAnnotationResolver,
                 PROPERTIES);
         given(metricService.startLiveReloadTimer()).willReturn(liveReloadTimer);
     }
@@ -302,6 +308,34 @@ class ToolLiveReloadTest {
 
             var inputSchema = syncToolSpecCaptor.getValue().tool().inputSchema();
             BDDAssertions.then(inputSchema.properties()).containsKeys("limit", "offset");
+        }
+
+        @Test
+        void shouldDetectChangeWhenToolAnnotationsChange() throws InterruptedException {
+            // Given
+            var givenBaseOpenApi = loadOpenApi(BASE_SPEC);
+            var givenEditedOpenApi = loadOpenApi(WITH_EDITED_ANNOTATIONS_SPEC);
+
+            given(givenOpenApiRegistry.openApi())
+                    .willReturn(givenBaseOpenApi)
+                    .willReturn(givenBaseOpenApi)
+                    .willReturn(givenEditedOpenApi);
+
+            givenToolRegistry.getTools();
+            var givenOpenApiLiveReload = givenOpenApiLiveReload();
+            setupToolSpecBuilderForNewTools();
+
+            // When
+            givenOpenApiLiveReload.reloadOnSchedule();
+
+            // Then
+            then(givenOpenApiRegistry).should().reload();
+            then(givenMcpSyncServer).should().addTool(syncToolSpecCaptor.capture());
+            then(givenMcpSyncServer).should(never()).removeTool(any());
+
+            var capturedAnnotations = syncToolSpecCaptor.getValue().tool().annotations();
+            var expected = new McpSchema.ToolAnnotations(null, false, true, true, true, null);
+            BDDAssertions.then(capturedAnnotations).usingRecursiveComparison().isEqualTo(expected);
         }
 
         @Test
