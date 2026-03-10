@@ -1,0 +1,472 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Examples Test Fixture",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/examples/param-example/{userId}": {
+      "get": {
+        "operationId": "get-by-param-example",
+        "summary": "Tests example extraction from parameter.example (singular raw value)",
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "user-123"
+          },
+          {
+            "name": "includeDeleted",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            },
+            "example": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/examples/param-examples-map": {
+      "get": {
+        "operationId": "get-by-param-examples-map",
+        "summary": "Tests example extraction from parameter.examples map (first entry wins)",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "examples": {
+              "active-example": {
+                "summary": "Active user status",
+                "value": "active"
+              },
+              "inactive-example": {
+                "summary": "Inactive user status",
+                "value": "inactive"
+              }
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            },
+            "examples": {
+              "default-limit": {
+                "summary": "Default page size",
+                "value": 20
+              },
+              "large-limit": {
+                "summary": "Large page size",
+                "value": 100
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/examples/param-schema-example/{phoneNumber}": {
+      "get": {
+        "operationId": "get-by-param-schema-example",
+        "summary": "Tests example extraction from parameter.schema.example (fallback)",
+        "parameters": [
+          {
+            "name": "phoneNumber",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "example": "41793026727"
+            }
+          },
+          {
+            "name": "countryCode",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "example": "CH"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/examples/body-media-type-example": {
+      "post": {
+        "operationId": "post-body-media-type-example",
+        "summary": "Tests example extraction from mediaType.example (raw value on request body)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "to": {
+                    "type": "string"
+                  },
+                  "text": {
+                    "type": "string"
+                  }
+                }
+              },
+              "example": {
+                "to": "41793026727",
+                "text": "Hello from media type example"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/examples/body-media-type-examples-map": {
+      "post": {
+        "operationId": "post-body-media-type-examples-map",
+        "summary": "Tests example extraction from mediaType.examples map (all entries rendered)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "to": {
+                    "type": "string"
+                  },
+                  "text": {
+                    "type": "string"
+                  }
+                }
+              },
+              "examples": {
+                "sms-example": {
+                  "summary": "Standard SMS",
+                  "value": {
+                    "to": "41793026727",
+                    "text": "Hello from examples map"
+                  }
+                },
+                "flash-sms-example": {
+                  "summary": "Flash SMS",
+                  "description": "Sends a flash message displayed directly on the recipient screen.",
+                  "value": {
+                    "to": "41793026728",
+                    "text": "Flash message"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/examples/body-schema-example": {
+      "post": {
+        "operationId": "post-body-schema-example",
+        "summary": "Tests example extraction from mediaType.schema.example (fallback for request body)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "to": {
+                    "type": "string"
+                  },
+                  "text": {
+                    "type": "string"
+                  }
+                },
+                "example": {
+                  "to": "41793026727",
+                  "text": "Hello from schema example"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/examples/combined/{userId}": {
+      "post": {
+        "operationId": "post-combined-params-and-body",
+        "summary": "Tests combined params + body producing the wrapped _params/_body structure",
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "user-456"
+          },
+          {
+            "name": "notify",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            },
+            "example": true
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "to": {
+                    "type": "string"
+                  },
+                  "text": {
+                    "type": "string"
+                  }
+                }
+              },
+              "example": {
+                "to": "41793026727",
+                "text": "Hello combined"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/examples/combined-multi-body/{userId}": {
+      "post": {
+        "operationId": "post-combined-multi-body",
+        "summary": "Tests combined params with multiple body examples each producing a wrapped entry",
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "user-789"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "to": {
+                    "type": "string"
+                  },
+                  "text": {
+                    "type": "string"
+                  }
+                }
+              },
+              "examples": {
+                "sms": {
+                  "summary": "Standard SMS",
+                  "value": {
+                    "to": "41793026727",
+                    "text": "Hello multi"
+                  }
+                },
+                "flash": {
+                  "summary": "Flash SMS",
+                  "description": "A flash message displayed on screen.",
+                  "value": {
+                    "to": "41793026728",
+                    "text": "Flash multi"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/examples/body-examples-map-no-summary": {
+      "post": {
+        "operationId": "post-body-examples-map-no-summary",
+        "summary": "Tests that map keys are used as headings when example summary is absent",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "to": {
+                    "type": "string"
+                  },
+                  "text": {
+                    "type": "string"
+                  }
+                }
+              },
+              "examples": {
+                "sms-request": {
+                  "value": {
+                    "to": "41793026727",
+                    "text": "Hello from key fallback"
+                  }
+                },
+                "flash-request": {
+                  "description": "A flash message",
+                  "value": {
+                    "to": "41793026728",
+                    "text": "Flash from key fallback"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/examples/no-examples/{userId}": {
+      "get": {
+        "operationId": "get-no-examples",
+        "summary": "Tests that null is returned when no examples are present anywhere",
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["active", "inactive"]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/examples/body-component-ref": {
+      "post": {
+        "operationId": "post-body-component-ref",
+        "summary": "Tests that $ref examples in request body are resolved from components",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "to": {
+                    "type": "string"
+                  },
+                  "text": {
+                    "type": "string"
+                  }
+                }
+              },
+              "examples": {
+                "sms-ref": {
+                  "$ref": "#/components/examples/SmsBody"
+                },
+                "flash-ref": {
+                  "$ref": "#/components/examples/FlashBody"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "examples": {
+      "SmsBody": {
+        "summary": "Standard SMS",
+        "description": "A plain-text outbound SMS.",
+        "value": {
+          "to": "41793026727",
+          "text": "Hello from component ref"
+        }
+      },
+      "FlashBody": {
+        "summary": "Flash SMS",
+        "value": {
+          "to": "41793026728",
+          "text": "Flash from component ref"
+        }
+      }
+    }
+  }
+}

@@ -1,5 +1,6 @@
 package com.infobip.openapi.mcp.openapi.schema;
 
+import static com.infobip.openapi.mcp.openapi.schema.Spec.SUPPORTED_PARAMETER_TYPES;
 import static java.lang.Boolean.TRUE;
 
 import com.infobip.openapi.mcp.config.OpenApiMcpProperties;
@@ -48,9 +49,6 @@ import org.slf4j.LoggerFactory;
 public class InputSchemaComposer {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(InputSchemaComposer.class);
-
-    private static final Set<String> SUPPORTED_PARAMETER_TYPES =
-            Set.of(ParametersByType.QUERY, ParametersByType.PATH, ParametersByType.HEADER, ParametersByType.COOKIE);
 
     private final String parametersKey;
     private final String requestBodyKey;

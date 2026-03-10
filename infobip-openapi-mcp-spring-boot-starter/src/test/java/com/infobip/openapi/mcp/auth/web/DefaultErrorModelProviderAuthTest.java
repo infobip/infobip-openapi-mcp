@@ -347,7 +347,9 @@ class DefaultErrorModelProviderAuthTest extends AuthenticationTestBase {
                         + "http://localhost:"
                         + getStaticWireMockServer().port()
                         + "/.well-known/oauth-protected-resource\""
-                        + ", scope=\"write:resource1 read:resource1\"");
+                        + ", scope=\"")
+                .contains("read:resource1")
+                .contains("write:resource1");
 
         // Should return JSON format from DefaultErrorModelProvider, not XML
         String expectedJson = """

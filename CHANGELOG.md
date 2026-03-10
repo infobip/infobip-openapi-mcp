@@ -11,6 +11,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Remove explicit jaxb dependency, it is a compile dependency inside of swagger-parser
 
+## 0.1.9
+
+### Added
+
+- Tool descriptions can now include request examples rendered as Markdown JSON code blocks, helping LLMs understand how to call the tool. When a request body defines multiple named examples (via the `examples` map), all variants are rendered — each with an optional heading derived from the example's `summary` and an optional description paragraph. The feature is controlled by `infobip.openapi.mcp.tools.examples-mode`, which accepts three values: `SKIP` (default, no examples), `ALL` (all examples from the spec), or `ANNOTATED` (only examples annotated with `x-mcp-example: true` on the OpenAPI `Example` Object — ideal for selectively surfacing the most relevant examples without cluttering tool descriptions).
+
+## 0.1.8
+
+### Added
+
+- Configuration for working with Claude Code on the project.
+
+### Changed
+
+- Upgraded versions of dependencies (notably: Spring AI from `1.1.0` to `1.1.2`, and Jackson from `2.19.4` to `2.21.1`)
+
+## 0.1.7
+
+### Changed
+
+- Live reload now also refreshes the scopes.
+
 ## 0.1.6
 
 ### Changed

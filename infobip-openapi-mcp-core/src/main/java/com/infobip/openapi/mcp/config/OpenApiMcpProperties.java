@@ -1,5 +1,6 @@
 package com.infobip.openapi.mcp.config;
 
+import com.infobip.openapi.mcp.openapi.schema.Spec.ExamplesMode;
 import com.infobip.openapi.mcp.openapi.tool.naming.NamingStrategyType;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
@@ -40,7 +41,7 @@ public record OpenApiMcpProperties(
         String userAgent,
         Map<String, Boolean> filters,
         @NestedConfigurationProperty @Valid Tools tools,
-        @NestedConfigurationProperty @Valid LiveReload liveReload) {
+        @NestedConfigurationProperty @Valid OpenApiMcpProperties.LiveReload liveReload) {
 
     public static final String PREFIX = "infobip.openapi.mcp";
     public static final Duration DEFAULT_CONNECT_TIMEOUT = Duration.ofSeconds(5);
@@ -64,7 +65,7 @@ public record OpenApiMcpProperties(
             filters = new HashMap<>();
         }
         if (tools == null) {
-            tools = new Tools(null, null, null, null, null);
+            tools = new Tools(null, null, null, null, null, null);
         }
         if (liveReload == null) {
             liveReload = new LiveReload(null, null, null);
@@ -100,16 +101,25 @@ public record OpenApiMcpProperties(
      * @param mock                              Whether to run MCP server in mock mode, where it avoids calling API
      *                                          during tool calls and instead returns results based on examples
      *                                          provided in OpenAPI specification. Default is false.
+     * @param examplesMode                      Controls which request examples from the OpenAPI specification
+     *                                          are appended as a Markdown JSON code block to the tool description.
+     *                                          {@code SKIP} — no examples are appended (default).
+     *                                          {@code ALL} — all examples from the spec are included.
+     *                                          {@code ANNOTATED} — only examples with {@code x-mcp-example: true}
+     *                                          on the OpenAPI {@code Example} Object are included, giving
+     *                                          fine-grained control over what reaches MCP tool descriptions.
      */
     public record Tools(
             @NestedConfigurationProperty @Valid Naming naming,
             @NestedConfigurationProperty @Valid Schema schema,
             Boolean jsonDoubleSerializationMitigation,
             Boolean prependSummaryToDescription,
-            Boolean mock) {
+            Boolean mock,
+            ExamplesMode examplesMode) {
         public static final boolean DEFAULT_JSON_DOUBLE_SERIALIZATION_MITIGATION = true;
         public static final boolean DEFAULT_PREPEND_SUMMARY_TO_DESCRIPTION = true;
         public static final boolean DEFAULT_MOCK = false;
+        public static final ExamplesMode DEFAULT_EXAMPLES_MODE = ExamplesMode.SKIP;
 
         /**
          * Constructor with defaults for optional properties.
@@ -129,6 +139,9 @@ public record OpenApiMcpProperties(
             }
             if (mock == null) {
                 mock = DEFAULT_MOCK;
+            }
+            if (examplesMode == null) {
+                examplesMode = DEFAULT_EXAMPLES_MODE;
             }
         }
 

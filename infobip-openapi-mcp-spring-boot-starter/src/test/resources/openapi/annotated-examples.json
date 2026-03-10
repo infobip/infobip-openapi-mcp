@@ -1,0 +1,191 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Annotated Examples Test Fixture",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/annotated/body-annotated-only": {
+      "post": {
+        "operationId": "post-body-annotated-only",
+        "summary": "Only the annotated body example is appended in ANNOTATED mode",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "to": {
+                    "type": "string"
+                  },
+                  "text": {
+                    "type": "string"
+                  }
+                }
+              },
+              "examples": {
+                "annotated-sms": {
+                  "summary": "Annotated SMS",
+                  "value": {
+                    "to": "41793026727",
+                    "text": "Hello annotated"
+                  },
+                  "x-mcp-example": true
+                },
+                "unannotated-sms": {
+                  "summary": "Unannotated SMS",
+                  "value": {
+                    "to": "41793026728",
+                    "text": "Hello unannotated"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/annotated/param-annotated-only": {
+      "get": {
+        "operationId": "get-param-annotated-only",
+        "summary": "Only the annotated parameter example is appended in ANNOTATED mode",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "examples": {
+              "annotated-status": {
+                "summary": "Annotated status",
+                "value": "active",
+                "x-mcp-example": true
+              },
+              "unannotated-status": {
+                "summary": "Unannotated status",
+                "value": "inactive"
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/annotated/inline-body-ignored/{userId}": {
+      "post": {
+        "operationId": "post-inline-body-ignored",
+        "summary": "Inline body example is not appended in ANNOTATED mode",
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "user-123"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "to": {
+                    "type": "string"
+                  },
+                  "text": {
+                    "type": "string"
+                  }
+                },
+                "example": {
+                  "to": "41793026727",
+                  "text": "Hello schema example"
+                }
+              },
+              "example": {
+                "to": "41793026727",
+                "text": "Hello inline"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/annotated/body-component-ref": {
+      "post": {
+        "operationId": "post-body-component-ref-annotated",
+        "summary": "Only the annotated $ref body example is appended in ANNOTATED mode",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "to": {
+                    "type": "string"
+                  },
+                  "text": {
+                    "type": "string"
+                  }
+                }
+              },
+              "examples": {
+                "annotated-ref": {
+                  "$ref": "#/components/examples/AnnotatedSms"
+                },
+                "unannotated-ref": {
+                  "$ref": "#/components/examples/UnannotatedSms"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "examples": {
+      "AnnotatedSms": {
+        "summary": "Annotated component SMS",
+        "value": {
+          "to": "41793026727",
+          "text": "Hello from annotated component ref"
+        },
+        "x-mcp-example": true
+      },
+      "UnannotatedSms": {
+        "summary": "Unannotated component SMS",
+        "value": {
+          "to": "41793026728",
+          "text": "Hello from unannotated component ref"
+        }
+      }
+    }
+  }
+}

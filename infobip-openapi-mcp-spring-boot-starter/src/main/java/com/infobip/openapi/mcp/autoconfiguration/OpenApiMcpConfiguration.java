@@ -4,6 +4,7 @@ import static com.infobip.openapi.mcp.autoconfiguration.Qualifiers.TOOL_HANDLER_
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.infobip.openapi.mcp.McpRequestContextFactory;
+import com.infobip.openapi.mcp.auth.scope.ScopeDiscoveryService;
 import com.infobip.openapi.mcp.config.ApiBaseUrlConfig;
 import com.infobip.openapi.mcp.config.ApiBaseUrlProvider;
 import com.infobip.openapi.mcp.config.OpenApiMcpProperties;
@@ -19,6 +20,7 @@ import com.infobip.openapi.mcp.openapi.filter.DiscriminatorFlattener;
 import com.infobip.openapi.mcp.openapi.filter.OpenApiFilter;
 import com.infobip.openapi.mcp.openapi.filter.OpenApiFilterChain;
 import com.infobip.openapi.mcp.openapi.filter.PatternPropertyRemover;
+import com.infobip.openapi.mcp.openapi.schema.InputExampleComposer;
 import com.infobip.openapi.mcp.openapi.schema.InputSchemaComposer;
 import com.infobip.openapi.mcp.openapi.tool.*;
 import com.infobip.openapi.mcp.openapi.tool.naming.NamingStrategy;
@@ -83,6 +85,11 @@ class OpenApiMcpConfiguration {
     @Bean
     public InputSchemaComposer inputSchemaComposer(OpenApiMcpProperties properties) {
         return new InputSchemaComposer(properties.tools().schema());
+    }
+
+    @Bean
+    public InputExampleComposer inputExampleComposer(OpenApiMcpProperties properties) {
+        return new InputExampleComposer(properties);
     }
 
     @Bean
@@ -170,11 +177,18 @@ class OpenApiMcpConfiguration {
             OpenApiRegistry openApiRegistry,
             NamingStrategy namingStrategy,
             InputSchemaComposer inputSchemaComposer,
+            InputExampleComposer inputExampleComposer,
             ToolHandler toolHandler,
             OpenApiMapperFactory openApiMapperFactory,
             OpenApiMcpProperties properties) {
         return new ToolRegistry(
-                openApiRegistry, namingStrategy, inputSchemaComposer, toolHandler, openApiMapperFactory, properties);
+                openApiRegistry,
+                namingStrategy,
+                inputSchemaComposer,
+                inputExampleComposer,
+                toolHandler,
+                openApiMapperFactory,
+                properties);
     }
 
     @Bean
@@ -303,17 +317,19 @@ class OpenApiMcpConfiguration {
 
     @Bean
     @ConditionalOnProperty(prefix = OpenApiMcpProperties.LiveReload.PREFIX, name = "enabled", havingValue = "true")
-    public OpenApiLiveReload openApiLiveReload(
+    public ToolLiveReload openApiLiveReload(
             Optional<McpSyncServer> mcpSyncServer,
             Optional<McpStatelessSyncServer> mcpStatelessSyncServer,
+            Optional<ScopeDiscoveryService> scopeDiscoveryService,
             OpenApiRegistry openApiRegistry,
             ToolRegistry toolRegistry,
             ToolSpecBuilder toolSpecBuilder,
             OpenApiMcpProperties properties,
             MetricService metricService) {
-        return new OpenApiLiveReload(
+        return new ToolLiveReload(
                 mcpSyncServer,
                 mcpStatelessSyncServer,
+                scopeDiscoveryService,
                 openApiRegistry,
                 toolRegistry,
                 toolSpecBuilder,
