@@ -9,8 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Fix tests
+- Improve test reliability
  
+### Removed
+
+- Remove explicit jaxb dependency, it is a compile dependency inside of swagger-parser
+
 ## 0.1.9
 
 ### Added
