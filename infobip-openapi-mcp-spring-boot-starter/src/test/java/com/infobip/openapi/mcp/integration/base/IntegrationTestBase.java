@@ -66,9 +66,11 @@ abstract class IntegrationTestBase extends AuthenticationTestBase {
         if (this.mcpSyncServer != null) {
             this.mcpSyncServer.closeGracefully();
             this.mcpSyncClient.close();
+            this.mcpSyncClient = null;
         }
         if (this.mcpStatelessSyncServer != null) {
             this.mcpStatelessSyncServer.close();
+            this.mcpStatelessSyncServer = null;
         }
         this.mcpSyncClient = null;
     }
@@ -99,22 +101,28 @@ abstract class IntegrationTestBase extends AuthenticationTestBase {
     }
 
     protected void withInitializedMcpClient(Consumer<McpSyncClient> consumer) {
-        if (mcpSyncClient == null) {
-            mcpSyncClient = givenMcpClientWithAuthHeader("");
-        }
-        try {
-            for (int i = 0; i < 3; i++) {
-                try (var client = mcpSyncClient) {
-                    client.initialize();
-                    consumer.accept(client);
-                    client.closeGracefully();
-                    break;
-                } catch (Exception e) {
-                    Thread.sleep(TimeUnit.SECONDS.toMillis(1));
-                    mcpSyncClient = givenMcpClientWithAuthHeader("");
+        var MAX_ATTEMPTS = 3;
+        for (int i = 0; i < MAX_ATTEMPTS; i++) {
+            try {
+                mcpSyncClient.initialize();
+                break;
+            } catch (Exception e) {
+                mcpSyncClient.close();
+                if (i == MAX_ATTEMPTS - 1) {
+                    throw new RuntimeException("Failed to initialize MCP client after " + MAX_ATTEMPTS + " attempts", e);
                 }
+                try {
+                    Thread.sleep(TimeUnit.SECONDS.toMillis(2));
+                } catch (InterruptedException ignored) {}
+                mcpSyncClient = givenMcpClientWithAuthHeader("");
             }
-        } catch (NullPointerException | InterruptedException ignored) {
+        }
+
+        consumer.accept(mcpSyncClient);
+        try {
+            mcpSyncClient.closeGracefully();
+            mcpSyncClient.close();
+        } catch (Exception ignored) {
         }
     }
 

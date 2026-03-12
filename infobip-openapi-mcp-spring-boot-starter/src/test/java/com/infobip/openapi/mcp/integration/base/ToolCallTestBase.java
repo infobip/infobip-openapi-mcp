@@ -39,7 +39,7 @@ public abstract class ToolCallTestBase extends IntegrationTestBase {
             givenOpenAPISpecification("/openapi/base.json");
             getStaticWireMockServer()
                     .stubFor(get(urlEqualTo("/test"))
-                            .willReturn(aResponse().withStatus(200).withFixedDelay(2500)));
+                            .willReturn(aResponse().withStatus(200).withFixedDelay(3500)));
 
             // When
             var thrown = catchThrowable(() -> givenClient.callTool(McpSchema.CallToolRequest.builder()
