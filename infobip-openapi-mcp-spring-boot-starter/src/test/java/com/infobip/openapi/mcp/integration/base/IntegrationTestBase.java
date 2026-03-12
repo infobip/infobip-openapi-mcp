@@ -109,11 +109,13 @@ abstract class IntegrationTestBase extends AuthenticationTestBase {
             } catch (Exception e) {
                 mcpSyncClient.close();
                 if (i == MAX_ATTEMPTS - 1) {
-                    throw new RuntimeException("Failed to initialize MCP client after " + MAX_ATTEMPTS + " attempts", e);
+                    throw new RuntimeException(
+                            "Failed to initialize MCP client after " + MAX_ATTEMPTS + " attempts", e);
                 }
                 try {
                     Thread.sleep(TimeUnit.SECONDS.toMillis(2));
-                } catch (InterruptedException ignored) {}
+                } catch (InterruptedException ignored) {
+                }
                 mcpSyncClient = givenMcpClientWithAuthHeader("");
             }
         }
