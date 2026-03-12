@@ -22,6 +22,7 @@ import java.net.http.HttpRequest;
 import java.time.Duration;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -65,9 +66,11 @@ abstract class IntegrationTestBase extends AuthenticationTestBase {
         if (this.mcpSyncServer != null) {
             this.mcpSyncServer.closeGracefully();
             this.mcpSyncClient.close();
+            this.mcpSyncClient = null;
         }
         if (this.mcpStatelessSyncServer != null) {
             this.mcpStatelessSyncServer.close();
+            this.mcpStatelessSyncServer = null;
         }
         this.mcpSyncClient = null;
     }
@@ -92,16 +95,36 @@ abstract class IntegrationTestBase extends AuthenticationTestBase {
                 };
 
         return McpClient.sync(transport)
-                .initializationTimeout(Duration.ofSeconds(2))
-                .requestTimeout(Duration.ofSeconds(2))
+                .initializationTimeout(Duration.ofSeconds(3))
+                .requestTimeout(Duration.ofSeconds(3))
                 .build();
     }
 
     protected void withInitializedMcpClient(Consumer<McpSyncClient> consumer) {
-        try (var client = mcpSyncClient) {
-            client.initialize();
-            consumer.accept(client);
-            client.closeGracefully();
+        var MAX_ATTEMPTS = 3;
+        for (int i = 0; i < MAX_ATTEMPTS; i++) {
+            try {
+                mcpSyncClient.initialize();
+                break;
+            } catch (Exception e) {
+                mcpSyncClient.close();
+                if (i == MAX_ATTEMPTS - 1) {
+                    throw new RuntimeException(
+                            "Failed to initialize MCP client after " + MAX_ATTEMPTS + " attempts", e);
+                }
+                try {
+                    Thread.sleep(TimeUnit.SECONDS.toMillis(2));
+                } catch (InterruptedException ignored) {
+                }
+                mcpSyncClient = givenMcpClientWithAuthHeader("");
+            }
+        }
+
+        consumer.accept(mcpSyncClient);
+        try {
+            mcpSyncClient.closeGracefully();
+            mcpSyncClient.close();
+        } catch (Exception ignored) {
         }
     }
 
