@@ -188,7 +188,6 @@ public class ToolAnnotationResolver {
         private Boolean destructiveHint = null;
         private Boolean idempotentHint = null;
         private Boolean openWorldHint = Boolean.TRUE;
-        private Boolean returnDirect = null;
 
         public static ToolAnnotationsBuilder builder() {
             return new ToolAnnotationsBuilder();
@@ -223,14 +222,9 @@ public class ToolAnnotationResolver {
             return this;
         }
 
-        public ToolAnnotationsBuilder returnDirect(Boolean returnDirect) {
-            this.returnDirect = returnDirect;
-            return this;
-        }
-
         public McpSchema.ToolAnnotations build() {
             return new McpSchema.ToolAnnotations(
-                    title, readOnlyHint, destructiveHint, idempotentHint, openWorldHint, returnDirect);
+                    title, readOnlyHint, destructiveHint, idempotentHint, openWorldHint, null);
         }
     }
 }
