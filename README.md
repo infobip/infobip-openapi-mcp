@@ -494,4 +494,4 @@ This project is licensed under the [MIT License](LICENSE).
 
 [14]: https://semver.org/ "Semantic Versioning 2.0 specification"
 
-[15]: https://modelcontextprotocol.io/specification/2025-11-25/server/tools#annotations "Tool Annotations in MCP specification"
+[15]: https://modelcontextprotocol.io/specification/2025-11-25/schema#toolannotations "Tool Annotations in MCP specification"
