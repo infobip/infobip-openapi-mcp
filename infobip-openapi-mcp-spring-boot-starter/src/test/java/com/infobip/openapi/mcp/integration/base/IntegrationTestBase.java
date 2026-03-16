@@ -120,11 +120,11 @@ abstract class IntegrationTestBase extends AuthenticationTestBase {
             }
         }
 
-        consumer.accept(mcpSyncClient);
         try {
+            consumer.accept(mcpSyncClient);
+        } finally {
             mcpSyncClient.closeGracefully();
             mcpSyncClient.close();
-        } catch (Exception ignored) {
         }
     }
 
