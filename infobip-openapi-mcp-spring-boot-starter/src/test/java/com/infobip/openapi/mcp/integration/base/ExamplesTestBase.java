@@ -24,10 +24,10 @@ public abstract class ExamplesTestBase extends IntegrationTestBase {
 
     @Test
     void shouldAppendExampleFromParameterExampleField() {
-        withInitializedMcpClient(client -> {
-            // Given
-            givenOpenAPISpecification(FIXTURE);
+        // Given
+        givenOpenAPISpecification(FIXTURE);
 
+        withInitializedMcpClient(client -> {
             // When
             McpSchema.Tool tool = findTool(client, "get_by_param_example");
 
@@ -48,10 +48,10 @@ public abstract class ExamplesTestBase extends IntegrationTestBase {
 
     @Test
     void shouldAppendExampleFromParameterExamplesMap() {
-        withInitializedMcpClient(client -> {
-            // Given
-            givenOpenAPISpecification(FIXTURE);
+        // Given
+        givenOpenAPISpecification(FIXTURE);
 
+        withInitializedMcpClient(client -> {
             // When
             McpSchema.Tool tool = findTool(client, "get_by_param_examples_map");
 
@@ -72,10 +72,10 @@ public abstract class ExamplesTestBase extends IntegrationTestBase {
 
     @Test
     void shouldAppendExampleFromParameterSchemaExampleFallback() {
-        withInitializedMcpClient(client -> {
-            // Given
-            givenOpenAPISpecification(FIXTURE);
+        // Given
+        givenOpenAPISpecification(FIXTURE);
 
+        withInitializedMcpClient(client -> {
             // When
             McpSchema.Tool tool = findTool(client, "get_by_param_schema_example");
 
@@ -96,10 +96,10 @@ public abstract class ExamplesTestBase extends IntegrationTestBase {
 
     @Test
     void shouldAppendExampleFromBodyMediaTypeExampleField() {
-        withInitializedMcpClient(client -> {
-            // Given
-            givenOpenAPISpecification(FIXTURE);
+        // Given
+        givenOpenAPISpecification(FIXTURE);
 
+        withInitializedMcpClient(client -> {
             // When
             McpSchema.Tool tool = findTool(client, "post_body_media_type_example");
 
@@ -120,10 +120,10 @@ public abstract class ExamplesTestBase extends IntegrationTestBase {
 
     @Test
     void shouldAppendAllEntriesFromBodyMediaTypeExamplesMap() {
-        withInitializedMcpClient(client -> {
-            // Given
-            givenOpenAPISpecification(FIXTURE);
+        // Given
+        givenOpenAPISpecification(FIXTURE);
 
+        withInitializedMcpClient(client -> {
             // When
             McpSchema.Tool tool = findTool(client, "post_body_media_type_examples_map");
 
@@ -157,10 +157,10 @@ public abstract class ExamplesTestBase extends IntegrationTestBase {
 
     @Test
     void shouldAppendExampleFromBodySchemaExampleFallback() {
-        withInitializedMcpClient(client -> {
-            // Given
-            givenOpenAPISpecification(FIXTURE);
+        // Given
+        givenOpenAPISpecification(FIXTURE);
 
+        withInitializedMcpClient(client -> {
             // When
             McpSchema.Tool tool = findTool(client, "post_body_schema_example");
 
@@ -181,10 +181,10 @@ public abstract class ExamplesTestBase extends IntegrationTestBase {
 
     @Test
     void shouldAppendCombinedExampleWithParamsAndBodyWrapperKeys() {
-        withInitializedMcpClient(client -> {
-            // Given
-            givenOpenAPISpecification(FIXTURE);
+        // Given
+        givenOpenAPISpecification(FIXTURE);
 
+        withInitializedMcpClient(client -> {
             // When
             McpSchema.Tool tool = findTool(client, "post_combined_params_and_body");
 
@@ -211,10 +211,10 @@ public abstract class ExamplesTestBase extends IntegrationTestBase {
 
     @Test
     void shouldProduceOneWrappedEntryPerBodyExampleWhenBothParamsAndMultipleBodyExamples() {
-        withInitializedMcpClient(client -> {
-            // Given
-            givenOpenAPISpecification(FIXTURE);
+        // Given
+        givenOpenAPISpecification(FIXTURE);
 
+        withInitializedMcpClient(client -> {
             // When
             McpSchema.Tool tool = findTool(client, "post_combined_multi_body");
 
@@ -258,10 +258,10 @@ public abstract class ExamplesTestBase extends IntegrationTestBase {
 
     @Test
     void shouldUseMapKeyAsHeadingWhenExampleSummaryIsAbsent() {
-        withInitializedMcpClient(client -> {
-            // Given
-            givenOpenAPISpecification(FIXTURE);
+        // Given
+        givenOpenAPISpecification(FIXTURE);
 
+        withInitializedMcpClient(client -> {
             // When
             McpSchema.Tool tool = findTool(client, "post_body_examples_map_no_summary");
 
@@ -295,10 +295,10 @@ public abstract class ExamplesTestBase extends IntegrationTestBase {
 
     @Test
     void shouldResolveAndAppendExamplesDefinedAsComponentRefs() {
-        withInitializedMcpClient(client -> {
-            // Given
-            givenOpenAPISpecification(FIXTURE);
+        // Given
+        givenOpenAPISpecification(FIXTURE);
 
+        withInitializedMcpClient(client -> {
             // When
             McpSchema.Tool tool = findTool(client, "post_body_component_ref");
 
@@ -332,10 +332,10 @@ public abstract class ExamplesTestBase extends IntegrationTestBase {
 
     @Test
     void shouldNotAppendExampleBlockWhenNoExamplesPresent() {
-        withInitializedMcpClient(client -> {
-            // Given
-            givenOpenAPISpecification(FIXTURE);
+        // Given
+        givenOpenAPISpecification(FIXTURE);
 
+        withInitializedMcpClient(client -> {
             // When
             McpSchema.Tool tool = findTool(client, "get_no_examples");
 
@@ -346,10 +346,10 @@ public abstract class ExamplesTestBase extends IntegrationTestBase {
 
     @Test
     void shouldLoadAllElevenToolsFromFixture() {
-        withInitializedMcpClient(client -> {
-            // Given
-            givenOpenAPISpecification(FIXTURE);
+        // Given
+        givenOpenAPISpecification(FIXTURE);
 
+        withInitializedMcpClient(client -> {
             // When
             var tools = client.listTools().tools();
 
