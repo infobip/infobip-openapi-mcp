@@ -48,6 +48,7 @@ public class ToolRegistry {
     private final InputExampleComposer inputExampleComposer;
     private final ToolHandler toolHandler;
     private final OpenApiMapperFactory openApiMapperFactory;
+    private final ToolAnnotationResolver toolAnnotationResolver;
     private final ObjectMapper jsonSchemaMapper = new ObjectMapper();
     private final ObjectMapper prettyPrintMapper = new ObjectMapper().enable(SerializationFeature.INDENT_OUTPUT);
     private final OpenApiMcpProperties properties;
@@ -61,6 +62,7 @@ public class ToolRegistry {
             InputExampleComposer inputExampleComposer,
             ToolHandler toolHandler,
             OpenApiMapperFactory openApiMapperFactory,
+            ToolAnnotationResolver toolAnnotationResolver,
             OpenApiMcpProperties properties) {
         this.openApiRegistry = openApiRegistry;
         this.namingStrategy = namingStrategy;
@@ -68,6 +70,7 @@ public class ToolRegistry {
         this.inputExampleComposer = inputExampleComposer;
         this.toolHandler = toolHandler;
         this.openApiMapperFactory = openApiMapperFactory;
+        this.toolAnnotationResolver = toolAnnotationResolver;
         this.properties = properties;
     }
 
@@ -103,6 +106,7 @@ public class ToolRegistry {
                             .title(resolveTitle(fullOperation, toolName))
                             .description(buildDescription(fullOperation))
                             .inputSchema(resolveJsonSchema(fullOperation))
+                            .annotations(toolAnnotationResolver.resolve(fullOperation, toolName))
                             .build();
 
                     return new RegisteredTool(

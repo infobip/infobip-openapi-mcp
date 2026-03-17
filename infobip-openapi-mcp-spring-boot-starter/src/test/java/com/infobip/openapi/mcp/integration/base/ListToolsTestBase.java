@@ -74,6 +74,67 @@ public abstract class ListToolsTestBase extends IntegrationTestBase {
                             "options_test3");
             then(actualPatchTool).isNotNull();
             then(actualPatchTool.description()).isEqualTo("test description");
+
+            // Verify annotations based on HTTP method semantics
+            var actualGetTool = findTool(tools, "get_test1");
+            then(actualGetTool.annotations())
+                    .usingRecursiveComparison()
+                    .isEqualTo(new McpSchema.ToolAnnotations(null, true, false, true, true, null));
+
+            var actualPostTool = findTool(tools, "post_test1");
+            then(actualPostTool.annotations())
+                    .usingRecursiveComparison()
+                    .isEqualTo(new McpSchema.ToolAnnotations(null, false, false, false, true, null));
+
+            var actualPutTool = findTool(tools, "put_test1");
+            then(actualPutTool.annotations())
+                    .usingRecursiveComparison()
+                    .isEqualTo(new McpSchema.ToolAnnotations(null, false, false, true, true, null));
+
+            var actualDeleteTool = findTool(tools, "delete_test1");
+            then(actualDeleteTool.annotations())
+                    .usingRecursiveComparison()
+                    .isEqualTo(new McpSchema.ToolAnnotations(null, false, true, true, true, null));
+
+            var actualHeadTool = findTool(tools, "head_test2");
+            then(actualHeadTool.annotations())
+                    .usingRecursiveComparison()
+                    .isEqualTo(new McpSchema.ToolAnnotations(null, true, false, true, true, null));
+
+            then(actualPatchTool.annotations())
+                    .usingRecursiveComparison()
+                    .isEqualTo(new McpSchema.ToolAnnotations(null, false, false, false, true, null));
+
+            var actualOptionsTool = findTool(tools, "options_test3");
+            then(actualOptionsTool.annotations())
+                    .usingRecursiveComparison()
+                    .isEqualTo(new McpSchema.ToolAnnotations(null, true, false, true, true, null));
+        });
+    }
+
+    private McpSchema.Tool findTool(java.util.List<McpSchema.Tool> tools, String name) {
+        return tools.stream()
+                .filter(tool -> tool.name().equals(name))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("Tool not found: " + name));
+    }
+
+    @Test
+    void shouldOverrideAnnotationsViaVendorExtension() {
+        withInitializedMcpClient(givenClient -> {
+            // Given
+            givenOpenAPISpecification("/openapi/annotations-override.json");
+
+            // When
+            var tools = givenClient.listTools().tools();
+
+            // Then — POST defaults with vendor extension overrides
+            then(tools).hasSize(1);
+            var postTool = tools.getFirst();
+            then(postTool.name()).isEqualTo("post_test");
+            then(postTool.annotations())
+                    .usingRecursiveComparison()
+                    .isEqualTo(new McpSchema.ToolAnnotations(null, false, false, true, true, null));
         });
     }
 

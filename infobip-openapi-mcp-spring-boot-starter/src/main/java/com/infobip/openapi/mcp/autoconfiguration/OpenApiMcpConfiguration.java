@@ -173,6 +173,11 @@ class OpenApiMcpConfiguration {
     }
 
     @Bean
+    public ToolAnnotationResolver toolAnnotationResolver(OpenApiMcpProperties properties) {
+        return new ToolAnnotationResolver(properties.tools().annotations());
+    }
+
+    @Bean
     public ToolRegistry toolRegistry(
             OpenApiRegistry openApiRegistry,
             NamingStrategy namingStrategy,
@@ -180,6 +185,7 @@ class OpenApiMcpConfiguration {
             InputExampleComposer inputExampleComposer,
             ToolHandler toolHandler,
             OpenApiMapperFactory openApiMapperFactory,
+            ToolAnnotationResolver toolAnnotationResolver,
             OpenApiMcpProperties properties) {
         return new ToolRegistry(
                 openApiRegistry,
@@ -188,6 +194,7 @@ class OpenApiMcpConfiguration {
                 inputExampleComposer,
                 toolHandler,
                 openApiMapperFactory,
+                toolAnnotationResolver,
                 properties);
     }
 

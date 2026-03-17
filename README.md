@@ -204,6 +204,48 @@ mirroring the tool's input schema structure. The behavior is controlled by the
 > specification are large or numerous, `ANNOTATED` mode is the recommended approach — it lets you selectively expose
 > only the examples that are most useful for the LLM, without needing OpenAPI overlays or custom filters.
 
+### Tool annotations
+
+MCP tools support [annotations][15] that describe their behavior to MCP clients. The framework automatically infers
+annotations from the HTTP method of each API operation:
+
+| HTTP Method        | `readOnlyHint` | `destructiveHint` | `idempotentHint` | `openWorldHint` |
+|--------------------|----------------|--------------------|-------------------|-----------------|
+| GET, HEAD, OPTIONS | `true`         | `false`            | `true`            | `true`          |
+| PUT                | `false`        | `false`            | `true`            | `true`          |
+| POST               | `false`        | `false`            | `false`           | `true`          |
+| DELETE             | `false`        | `true`             | `true`            | `true`          |
+| PATCH              | `false`        | `false`            | `false`           | `true`          |
+
+`openWorldHint` is always `true` because every tool calls an external HTTP API.
+
+Annotations can be overridden per-operation using the `x-mcp-annotations` [vendor extension][7] on the OpenAPI
+Operation object:
+
+```yaml
+paths:
+  /messages:
+    post:
+      operationId: sendMessage
+      x-mcp-annotations:
+        idempotentHint: true
+```
+
+They can also be overridden globally per tool name using externalized configuration properties:
+
+```yaml
+infobip:
+  openapi:
+    mcp:
+      tools:
+        annotations:
+          sendMessage:
+            idempotent-hint: true
+```
+
+Override precedence (lowest to highest): HTTP method defaults, `x-mcp-annotations` vendor extension, YAML configuration
+properties. Each layer only overrides fields it explicitly sets; unset fields fall through from the previous layer.
+
 ### Authentication
 
 MCP defines OAuth as preferred authentication method. The framework aims to make this as easy to implement as possible.
@@ -370,6 +412,10 @@ infobip:
 | `infobip.openapi.mcp.tools.prepend-summary-to-description`                         | Whether to prepend the operation summary as a markdown title to the description.                                                                                                                                                                                                                                                                                                                                                                             | `true`                         | 
 | `infobip.openapi.mcp.tools.mock`                                                   | Whether to run MCP server in mock mode, where it avoids calling API during tool calls and instead returns results based on examples provided in OpenAPI specification. Default is false.                                                                                                                                                                                                                                                                     | `false`                        |
 | `infobip.openapi.mcp.tools.examples-mode`                         | Accepts `SKIP`, `ALL`, or `ANNOTATED`. `SKIP` — no examples appended. `ALL` — all examples from the OpenAPI spec are included. `ANNOTATED` — only examples with `x-mcp-example: true` on the OpenAPI Example Object are included, giving fine-grained control over what reaches MCP tool descriptions. | `SKIP`                         |
+| `infobip.openapi.mcp.tools.annotations.<tool-name>.read-only-hint` | Override `readOnlyHint` annotation for a specific tool.                                                                                                                                                                                                                                                  | Inferred from HTTP method      |
+| `infobip.openapi.mcp.tools.annotations.<tool-name>.destructive-hint` | Override `destructiveHint` annotation for a specific tool.                                                                                                                                                                                                                                             | Inferred from HTTP method      |
+| `infobip.openapi.mcp.tools.annotations.<tool-name>.idempotent-hint` | Override `idempotentHint` annotation for a specific tool.                                                                                                                                                                                                                                              | Inferred from HTTP method      |
+| `infobip.openapi.mcp.tools.annotations.<tool-name>.open-world-hint` | Override `openWorldHint` annotation for a specific tool.                                                                                                                                                                                                                                               | `true`                         |
 | `infobip.openapi.mcp.live-reload.enabled`                                          | Whether tool reload is enabled. When enabled, the framework periodically fetches the OpenAPI specification and updates registered MCP tools if changes are detected. Requires `@EnableScheduling` on your application.                                                                                                                                                                                                                                       | `false`                        |
 | `infobip.openapi.mcp.live-reload.cron-expression`                                  | Cron expression for scheduling OpenAPI specification reload attempts. Uses Spring's cron format (6 fields: second, minute, hour, day-of-month, month, day-of-week). Requires `@EnableScheduling` on your application.                                                                                                                                                                                                                                        | `0 */10 * * * *`               |
 | `infobip.openapi.mcp.live-reload.max-retries`                                      | Maximum number of reload attempts per scheduled execution. The loop terminates early on the first successful reload. Retries only occur on failure, using exponential backoff.                                                                                                                                                                                                                                                                               | `3`                            |
@@ -444,3 +490,5 @@ This project is licensed under the [MIT License](LICENSE).
 [13]: https://modelcontextprotocol.io/specification/2025-11-25/basic/authorization#authorization-server-discovery "Authorization Server Discovery on MCP documentation"
 
 [14]: https://semver.org/ "Semantic Versioning 2.0 specification"
+
+[15]: https://modelcontextprotocol.io/specification/2025-11-25/schema#toolannotations "Tool Annotations in MCP specification"

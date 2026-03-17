@@ -48,6 +48,7 @@ class ToolRegistryTest {
     private final InputSchemaComposer inputSchemaComposer =
             new InputSchemaComposer(new OpenApiMcpProperties.Tools.Schema(null, null));
     private InputExampleComposer inputExampleComposer = new InputExampleComposer(OpenApiMcpProperties.withDefaults());
+    private final ToolAnnotationResolver toolAnnotationResolver = new ToolAnnotationResolver(Map.of());
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final OpenAPIV3Parser parser = new OpenAPIV3Parser();
     private final OpenApiMapperFactory mapperFactory = new OpenApiMapperFactory();
@@ -65,7 +66,7 @@ class ToolRegistryTest {
                 null,
                 null,
                 null,
-                new OpenApiMcpProperties.Tools(null, null, null, true, null, null),
+                new OpenApiMcpProperties.Tools(null, null, null, true, null, null, null),
                 null);
         toolRegistry = new ToolRegistry(
                 openApiRegistry,
@@ -74,6 +75,7 @@ class ToolRegistryTest {
                 inputExampleComposer,
                 toolHandler,
                 mapperFactory,
+                toolAnnotationResolver,
                 properties);
     }
 
@@ -906,7 +908,7 @@ class ToolRegistryTest {
                 null,
                 null,
                 null,
-                new OpenApiMcpProperties.Tools(null, null, null, false, null, null),
+                new OpenApiMcpProperties.Tools(null, null, null, false, null, null, null),
                 null);
         toolRegistry = new ToolRegistry(
                 openApiRegistry,
@@ -915,6 +917,7 @@ class ToolRegistryTest {
                 inputExampleComposer,
                 toolHandler,
                 mapperFactory,
+                toolAnnotationResolver,
                 properties);
 
         var openApi = parseOpenAPI("""
@@ -957,7 +960,7 @@ class ToolRegistryTest {
                 null,
                 null,
                 null,
-                new OpenApiMcpProperties.Tools(null, null, null, false, null, null),
+                new OpenApiMcpProperties.Tools(null, null, null, false, null, null, null),
                 null);
         toolRegistry = new ToolRegistry(
                 openApiRegistry,
@@ -966,6 +969,7 @@ class ToolRegistryTest {
                 inputExampleComposer,
                 toolHandler,
                 mapperFactory,
+                toolAnnotationResolver,
                 properties);
 
         var openApi = parseOpenAPI("""
@@ -1295,7 +1299,7 @@ class ToolRegistryTest {
                 null,
                 null,
                 null,
-                new OpenApiMcpProperties.Tools(null, null, null, true, null, ExamplesMode.ALL),
+                new OpenApiMcpProperties.Tools(null, null, null, true, null, ExamplesMode.ALL, null),
                 null);
         inputExampleComposer = new InputExampleComposer(properties);
         toolRegistry = new ToolRegistry(
@@ -1305,6 +1309,7 @@ class ToolRegistryTest {
                 inputExampleComposer,
                 toolHandler,
                 mapperFactory,
+                toolAnnotationResolver,
                 properties);
 
         var openApi = parseOpenAPI("""
@@ -1357,7 +1362,7 @@ class ToolRegistryTest {
                 null,
                 null,
                 null,
-                new OpenApiMcpProperties.Tools(null, null, null, true, null, ExamplesMode.SKIP),
+                new OpenApiMcpProperties.Tools(null, null, null, true, null, ExamplesMode.SKIP, null),
                 null);
         inputExampleComposer = new InputExampleComposer(properties);
         toolRegistry = new ToolRegistry(
@@ -1367,6 +1372,7 @@ class ToolRegistryTest {
                 inputExampleComposer,
                 toolHandler,
                 mapperFactory,
+                toolAnnotationResolver,
                 properties);
 
         var openApi = parseOpenAPI("""
@@ -1452,7 +1458,7 @@ class ToolRegistryTest {
                 null,
                 null,
                 null,
-                new OpenApiMcpProperties.Tools(null, null, null, true, null, ExamplesMode.ALL),
+                new OpenApiMcpProperties.Tools(null, null, null, true, null, ExamplesMode.ALL, null),
                 null);
         inputExampleComposer = new InputExampleComposer(properties);
         toolRegistry = new ToolRegistry(
@@ -1462,6 +1468,7 @@ class ToolRegistryTest {
                 inputExampleComposer,
                 toolHandler,
                 mapperFactory,
+                toolAnnotationResolver,
                 properties);
         var openApi = parseOpenAPI("""
             {
@@ -1511,6 +1518,7 @@ class ToolRegistryTest {
                 mockExampleComposer,
                 toolHandler,
                 mapperFactory,
+                toolAnnotationResolver,
                 properties);
 
         var openApi = parseOpenAPI("""
@@ -1553,7 +1561,7 @@ class ToolRegistryTest {
                 null,
                 null,
                 null,
-                new OpenApiMcpProperties.Tools(null, null, null, true, null, ExamplesMode.ALL),
+                new OpenApiMcpProperties.Tools(null, null, null, true, null, ExamplesMode.ALL, null),
                 null);
         inputExampleComposer = new InputExampleComposer(properties);
         toolRegistry = new ToolRegistry(
@@ -1563,6 +1571,7 @@ class ToolRegistryTest {
                 inputExampleComposer,
                 toolHandler,
                 mapperFactory,
+                toolAnnotationResolver,
                 properties);
 
         var openApi = parseOpenAPI("""
@@ -1626,7 +1635,7 @@ class ToolRegistryTest {
                 null,
                 null,
                 null,
-                new OpenApiMcpProperties.Tools(null, null, null, true, null, ExamplesMode.ANNOTATED),
+                new OpenApiMcpProperties.Tools(null, null, null, true, null, ExamplesMode.ANNOTATED, null),
                 null);
         inputExampleComposer = new InputExampleComposer(properties);
         toolRegistry = new ToolRegistry(
@@ -1636,6 +1645,7 @@ class ToolRegistryTest {
                 inputExampleComposer,
                 toolHandler,
                 mapperFactory,
+                toolAnnotationResolver,
                 properties);
 
         var openApi = parseOpenAPI("""

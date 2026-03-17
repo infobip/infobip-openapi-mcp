@@ -79,8 +79,7 @@ The framework follows this startup flow:
 2. `OpenApiFilterChain` applies `OpenApiFilter` beans (e.g., `DiscriminatorFlattener`, `PatternPropertyRemover`) to
    transform the spec
 3. `ToolRegistry` converts each API operation into a `RegisteredTool` using `InputSchemaComposer`,
-   `InputExampleComposer`,
-   and the configured `NamingStrategy`
+   `InputExampleComposer`, `ToolAnnotationResolver`, and the configured `NamingStrategy`
 4. Tools are registered with the Spring AI MCP server (SSE, Streamable HTTP, Stateless HTTP, or stdio transport)
 
 **Runtime tool call flow:**
@@ -119,6 +118,10 @@ descriptions.
 
 `DiscriminatorFlattener` resolves OpenAPI discriminator patterns into JSON Schema–compatible `oneOf`/`allOf` structures
 since MCP does not support OpenAPI discriminators natively.
+
+`ToolAnnotationResolver` infers MCP tool annotations (`readOnlyHint`, `destructiveHint`, `idempotentHint`,
+`openWorldHint`) from HTTP method semantics, then merges overrides from `x-mcp-annotations` vendor
+extension on the Operation and from YAML config properties (`infobip.openapi.mcp.tools.annotations.<tool-name>.*`).
 
 ## Code Style
 
