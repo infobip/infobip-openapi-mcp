@@ -207,14 +207,9 @@ public record OpenApiMcpProperties(
          * @param destructiveHint whether the tool may perform destructive updates
          * @param idempotentHint  whether calling the tool repeatedly with the same arguments has no additional effect
          * @param openWorldHint   whether the tool interacts with an external system
-         * @param returnDirect    whether the tool's result should be returned directly to the user
          */
         public record Annotations(
-                Boolean readOnlyHint,
-                Boolean destructiveHint,
-                Boolean idempotentHint,
-                Boolean openWorldHint,
-                Boolean returnDirect) {}
+                Boolean readOnlyHint, Boolean destructiveHint, Boolean idempotentHint, Boolean openWorldHint) {}
     }
 
     /**

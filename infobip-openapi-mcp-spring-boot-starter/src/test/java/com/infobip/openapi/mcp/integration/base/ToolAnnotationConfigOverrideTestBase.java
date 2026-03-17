@@ -21,7 +21,7 @@ public abstract class ToolAnnotationConfigOverrideTestBase extends IntegrationTe
             then(tools.getFirst().name()).isEqualTo("get_test");
             then(tools.getFirst().annotations())
                     .usingRecursiveComparison()
-                    .isEqualTo(new McpSchema.ToolAnnotations(null, false, true, true, true, true));
+                    .isEqualTo(new McpSchema.ToolAnnotations(null, false, true, true, true, null));
         });
     }
 }

@@ -134,7 +134,7 @@ public abstract class ListToolsTestBase extends IntegrationTestBase {
             then(postTool.name()).isEqualTo("post_test");
             then(postTool.annotations())
                     .usingRecursiveComparison()
-                    .isEqualTo(new McpSchema.ToolAnnotations(null, false, false, true, true, true));
+                    .isEqualTo(new McpSchema.ToolAnnotations(null, false, false, true, true, null));
         });
     }
 

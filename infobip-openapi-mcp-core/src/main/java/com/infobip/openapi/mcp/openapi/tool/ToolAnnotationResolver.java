@@ -125,8 +125,7 @@ public class ToolAnnotationResolver {
                     toBooleanOrNull(map.get("readOnlyHint")),
                     toBooleanOrNull(map.get("destructiveHint")),
                     toBooleanOrNull(map.get("idempotentHint")),
-                    toBooleanOrNull(map.get("openWorldHint")),
-                    toBooleanOrNull(map.get("returnDirect")));
+                    toBooleanOrNull(map.get("openWorldHint")));
         }
         return base;
     }
@@ -142,8 +141,7 @@ public class ToolAnnotationResolver {
                 override.readOnlyHint(),
                 override.destructiveHint(),
                 override.idempotentHint(),
-                override.openWorldHint(),
-                override.returnDirect());
+                override.openWorldHint());
     }
 
     private McpSchema.ToolAnnotations merge(
@@ -151,9 +149,8 @@ public class ToolAnnotationResolver {
             @Nullable Boolean readOnlyHint,
             @Nullable Boolean destructiveHint,
             @Nullable Boolean idempotentHint,
-            @Nullable Boolean openWorldHint,
-            @Nullable Boolean returnDirect) {
-        if (isAllNull(readOnlyHint, destructiveHint, idempotentHint, openWorldHint, returnDirect)) {
+            @Nullable Boolean openWorldHint) {
+        if (isAllNull(readOnlyHint, destructiveHint, idempotentHint, openWorldHint)) {
             return base;
         }
         return new McpSchema.ToolAnnotations(
@@ -162,7 +159,7 @@ public class ToolAnnotationResolver {
                 destructiveHint != null ? destructiveHint : base.destructiveHint(),
                 idempotentHint != null ? idempotentHint : base.idempotentHint(),
                 openWorldHint != null ? openWorldHint : base.openWorldHint(),
-                returnDirect != null ? returnDirect : base.returnDirect());
+                null);
     }
 
     @Nullable

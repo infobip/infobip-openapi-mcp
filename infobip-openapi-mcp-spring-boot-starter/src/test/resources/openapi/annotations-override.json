@@ -9,8 +9,7 @@
       "post": {
         "operationId": "post-test",
         "x-mcp-annotations": {
-          "idempotentHint": true,
-          "returnDirect": true
+          "idempotentHint": true
         },
         "responses": {
           "200": {

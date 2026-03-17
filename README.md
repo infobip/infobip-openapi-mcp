@@ -217,7 +217,7 @@ annotations from the HTTP method of each API operation:
 | DELETE             | `false`        | `true`             | `true`            | `true`          |
 | PATCH              | `false`        | `false`            | `false`           | `true`          |
 
-`openWorldHint` is always `true` because every tool calls an external HTTP API. `returnDirect` is not inferred.
+`openWorldHint` is always `true` because every tool calls an external HTTP API.
 
 Annotations can be overridden per-operation using the `x-mcp-annotations` [vendor extension][7] on the OpenAPI
 Operation object:
@@ -229,7 +229,6 @@ paths:
       operationId: sendMessage
       x-mcp-annotations:
         idempotentHint: true
-        returnDirect: true
 ```
 
 They can also be overridden globally per tool name using externalized configuration properties:
@@ -242,7 +241,6 @@ infobip:
         annotations:
           sendMessage:
             idempotent-hint: true
-            return-direct: true
 ```
 
 Override precedence (lowest to highest): HTTP method defaults, `x-mcp-annotations` vendor extension, YAML configuration
@@ -418,7 +416,6 @@ infobip:
 | `infobip.openapi.mcp.tools.annotations.<tool-name>.destructive-hint` | Override `destructiveHint` annotation for a specific tool.                                                                                                                                                                                                                                             | Inferred from HTTP method      |
 | `infobip.openapi.mcp.tools.annotations.<tool-name>.idempotent-hint` | Override `idempotentHint` annotation for a specific tool.                                                                                                                                                                                                                                              | Inferred from HTTP method      |
 | `infobip.openapi.mcp.tools.annotations.<tool-name>.open-world-hint` | Override `openWorldHint` annotation for a specific tool.                                                                                                                                                                                                                                               | `true`                         |
-| `infobip.openapi.mcp.tools.annotations.<tool-name>.return-direct`   | Override `returnDirect` annotation for a specific tool.                                                                                                                                                                                                                                                | `-`                            |
 | `infobip.openapi.mcp.live-reload.enabled`                                          | Whether tool reload is enabled. When enabled, the framework periodically fetches the OpenAPI specification and updates registered MCP tools if changes are detected. Requires `@EnableScheduling` on your application.                                                                                                                                                                                                                                       | `false`                        |
 | `infobip.openapi.mcp.live-reload.cron-expression`                                  | Cron expression for scheduling OpenAPI specification reload attempts. Uses Spring's cron format (6 fields: second, minute, hour, day-of-month, month, day-of-week). Requires `@EnableScheduling` on your application.                                                                                                                                                                                                                                        | `0 */10 * * * *`               |
 | `infobip.openapi.mcp.live-reload.max-retries`                                      | Maximum number of reload attempts per scheduled execution. The loop terminates early on the first successful reload. Retries only occur on failure, using exponential backoff.                                                                                                                                                                                                                                                                               | `3`                            |

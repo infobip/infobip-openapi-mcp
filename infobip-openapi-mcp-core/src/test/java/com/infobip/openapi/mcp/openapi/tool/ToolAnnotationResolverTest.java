@@ -67,22 +67,6 @@ class ToolAnnotationResolverTest {
     }
 
     @Test
-    void shouldOverrideReturnDirectWithVendorExtension() {
-        // Given
-        var givenResolver = new ToolAnnotationResolver(Map.of());
-        var givenOperation = new Operation();
-        givenOperation.addExtension(Spec.MCP_ANNOTATIONS_EXTENSION, Map.of("returnDirect", true));
-        var givenFullOperation = givenFullOperation(PathItem.HttpMethod.GET, givenOperation);
-
-        // When
-        var result = givenResolver.resolve(givenFullOperation, "testTool");
-
-        // Then
-        var expected = new McpSchema.ToolAnnotations(null, true, false, true, true, true);
-        then(result).usingRecursiveComparison().isEqualTo(expected);
-    }
-
-    @Test
     void shouldIgnoreUnknownKeysInVendorExtension() {
         // Given
         var givenResolver = new ToolAnnotationResolver(Map.of());
@@ -121,7 +105,7 @@ class ToolAnnotationResolverTest {
     void shouldOverrideWithConfigProperties() {
         // Given
         var givenConfigOverrides =
-                Map.of("testTool", new OpenApiMcpProperties.Tools.Annotations(null, false, null, null, null));
+                Map.of("testTool", new OpenApiMcpProperties.Tools.Annotations(null, false, null, null));
         var givenResolver = new ToolAnnotationResolver(givenConfigOverrides);
         var givenFullOperation = givenFullOperation(PathItem.HttpMethod.DELETE, new Operation());
 
@@ -137,7 +121,7 @@ class ToolAnnotationResolverTest {
     void shouldApplyConfigOverrideOverVendorExtension() {
         // Given
         var givenConfigOverrides =
-                Map.of("testTool", new OpenApiMcpProperties.Tools.Annotations(null, null, false, null, null));
+                Map.of("testTool", new OpenApiMcpProperties.Tools.Annotations(null, null, false, null));
         var givenResolver = new ToolAnnotationResolver(givenConfigOverrides);
         var givenOperation = new Operation();
         givenOperation.addExtension(Spec.MCP_ANNOTATIONS_EXTENSION, Map.of("idempotentHint", true));
@@ -155,18 +139,17 @@ class ToolAnnotationResolverTest {
     void shouldComposeAllThreeLayers() {
         // Given
         var givenConfigOverrides =
-                Map.of("myTool", new OpenApiMcpProperties.Tools.Annotations(null, null, null, false, null));
+                Map.of("myTool", new OpenApiMcpProperties.Tools.Annotations(null, null, null, false));
         var givenResolver = new ToolAnnotationResolver(givenConfigOverrides);
         var givenOperation = new Operation();
-        givenOperation.addExtension(
-                Spec.MCP_ANNOTATIONS_EXTENSION, Map.of("destructiveHint", true, "returnDirect", true));
+        givenOperation.addExtension(Spec.MCP_ANNOTATIONS_EXTENSION, Map.of("destructiveHint", true));
         var givenFullOperation = givenFullOperation(PathItem.HttpMethod.POST, givenOperation);
 
         // When
         var result = givenResolver.resolve(givenFullOperation, "myTool");
 
         // Then
-        var expected = new McpSchema.ToolAnnotations(null, false, true, false, false, true);
+        var expected = new McpSchema.ToolAnnotations(null, false, true, false, false, null);
         then(result).usingRecursiveComparison().isEqualTo(expected);
     }
 
@@ -188,7 +171,7 @@ class ToolAnnotationResolverTest {
     void shouldNotOverrideWhenConfigToolNameDoesNotMatch() {
         // Given
         var givenConfigOverrides =
-                Map.of("otherTool", new OpenApiMcpProperties.Tools.Annotations(true, true, true, false, true));
+                Map.of("otherTool", new OpenApiMcpProperties.Tools.Annotations(true, true, true, false));
         var givenResolver = new ToolAnnotationResolver(givenConfigOverrides);
         var givenFullOperation = givenFullOperation(PathItem.HttpMethod.GET, new Operation());
 

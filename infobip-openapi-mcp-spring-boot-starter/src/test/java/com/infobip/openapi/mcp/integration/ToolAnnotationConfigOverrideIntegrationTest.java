@@ -14,7 +14,6 @@ public class ToolAnnotationConfigOverrideIntegrationTest {
                 "spring.ai.mcp.server.protocol = streamable",
                 "infobip.openapi.mcp.tools.annotations.get_test.readOnlyHint = false",
                 "infobip.openapi.mcp.tools.annotations.get_test.destructiveHint = true",
-                "infobip.openapi.mcp.tools.annotations.get_test.returnDirect = true",
             })
     class StreamableHttpTest extends ToolAnnotationConfigOverrideTestBase {}
 
@@ -25,7 +24,6 @@ public class ToolAnnotationConfigOverrideIntegrationTest {
                 "spring.ai.mcp.server.protocol = sse",
                 "infobip.openapi.mcp.tools.annotations.get_test.readOnlyHint = false",
                 "infobip.openapi.mcp.tools.annotations.get_test.destructiveHint = true",
-                "infobip.openapi.mcp.tools.annotations.get_test.returnDirect = true",
             })
     class SseTest extends ToolAnnotationConfigOverrideTestBase {}
 
@@ -36,7 +34,6 @@ public class ToolAnnotationConfigOverrideIntegrationTest {
                 "spring.ai.mcp.server.protocol = stateless",
                 "infobip.openapi.mcp.tools.annotations.get_test.readOnlyHint = false",
                 "infobip.openapi.mcp.tools.annotations.get_test.destructiveHint = true",
-                "infobip.openapi.mcp.tools.annotations.get_test.returnDirect = true",
             })
     class StatelessTest extends ToolAnnotationConfigOverrideTestBase {}
 }

@@ -120,7 +120,7 @@ descriptions.
 since MCP does not support OpenAPI discriminators natively.
 
 `ToolAnnotationResolver` infers MCP tool annotations (`readOnlyHint`, `destructiveHint`, `idempotentHint`,
-`openWorldHint`, `returnDirect`) from HTTP method semantics, then merges overrides from `x-mcp-annotations` vendor
+`openWorldHint`) from HTTP method semantics, then merges overrides from `x-mcp-annotations` vendor
 extension on the Operation and from YAML config properties (`infobip.openapi.mcp.tools.annotations.<tool-name>.*`).
 
 ## Code Style
