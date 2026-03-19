@@ -11,6 +11,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Reverted the changes that removed the jaxb dependency in 0.1.10 release.
 
+### Dependency Updates
+
+- Upgraded Spring AI to version 1.1.3.
+- Upgraded workflow dependencies to the latest versions using Node.js 24.
+
 ## 0.1.10
 
 ### Added
