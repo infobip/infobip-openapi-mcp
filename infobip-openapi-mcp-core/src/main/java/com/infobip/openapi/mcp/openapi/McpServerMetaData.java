@@ -13,7 +13,7 @@ public class McpServerMetaData {
     private final String version;
 
     @Nullable
-    private final String instructions;
+    private String instructions;
 
     public McpServerMetaData(PropertyResolver environment, OpenApiRegistry registry) {
         var apiInfo =
@@ -42,6 +42,15 @@ public class McpServerMetaData {
 
     public @Nullable String getInstructions() {
         return instructions;
+    }
+
+    public void reload(PropertyResolver environment, OpenApiRegistry registry) {
+        var apiInfo =
+                Optional.ofNullable(registry).map(OpenApiRegistry::openApi).map(OpenAPI::getInfo);
+
+        instructions = extractEnvProp(environment, "instructions")
+                .or(() -> apiInfo.map(Info::getDescription).or(() -> apiInfo.map(Info::getSummary)))
+                .orElse(null);
     }
 
     private Optional<String> extractEnvProp(PropertyResolver environment, String propName) {

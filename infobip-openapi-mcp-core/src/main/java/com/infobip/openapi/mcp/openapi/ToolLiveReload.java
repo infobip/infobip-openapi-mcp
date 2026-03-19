@@ -17,6 +17,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.core.env.PropertyResolver;
 import org.springframework.scheduling.annotation.Scheduled;
 
 /**
@@ -97,6 +98,8 @@ public class ToolLiveReload {
     private final ToolSpecBuilder toolSpecBuilder;
     private final OpenApiMcpProperties.LiveReload liveReloadConfig;
     private final MetricService metricService;
+    private final McpServerMetaData mcpServerMetaData;
+    private final PropertyResolver propertyResolver;
 
     private final AtomicBoolean refreshInProgress = new AtomicBoolean(false);
 
@@ -108,7 +111,9 @@ public class ToolLiveReload {
             ToolRegistry toolRegistry,
             ToolSpecBuilder toolSpecBuilder,
             OpenApiMcpProperties properties,
-            MetricService metricService) {
+            MetricService metricService,
+            McpServerMetaData mcpServerMetaData,
+            PropertyResolver propertyResolver) {
         this.mcpSyncServer = mcpSyncServer;
         this.mcpStatelessSyncServer = mcpStatelessSyncServer;
         this.scopeDiscoveryService = scopeDiscoveryService;
@@ -117,6 +122,8 @@ public class ToolLiveReload {
         this.toolSpecBuilder = toolSpecBuilder;
         this.liveReloadConfig = properties.liveReload();
         this.metricService = metricService;
+        this.mcpServerMetaData = mcpServerMetaData;
+        this.propertyResolver = propertyResolver;
     }
 
     @Scheduled(cron = "${infobip.openapi.mcp.live-reload.cron-expression:0 */10 * * * *}")
@@ -182,6 +189,9 @@ public class ToolLiveReload {
         if (currentOpenApiVersion.equals(newOpenApiVersion)) {
             return false;
         }
+
+        // Reload metadata
+        mcpServerMetaData.reload(propertyResolver, openApiRegistry);
 
         // Reload scopes - always discover as tools can stay the same but the scopes can change
         scopeDiscoveryService.ifPresent(ScopeDiscoveryService::discover);
