@@ -51,8 +51,9 @@ public class McpServerMetaData {
     }
 
     public void reload() {
-        var apiInfo =
-                Optional.ofNullable(openApiRegistry).map(OpenApiRegistry::openApi).map(OpenAPI::getInfo);
+        var apiInfo = Optional.ofNullable(openApiRegistry)
+                .map(OpenApiRegistry::openApi)
+                .map(OpenAPI::getInfo);
 
         instructions = extractEnvProp(propertyResolver, "instructions")
                 .or(() -> apiInfo.map(Info::getDescription).or(() -> apiInfo.map(Info::getSummary)))
