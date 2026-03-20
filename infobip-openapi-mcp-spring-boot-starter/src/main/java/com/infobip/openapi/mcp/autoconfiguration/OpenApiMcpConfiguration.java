@@ -333,8 +333,7 @@ class OpenApiMcpConfiguration {
             ToolSpecBuilder toolSpecBuilder,
             OpenApiMcpProperties properties,
             MetricService metricService,
-            McpServerMetaData mcpServerMetaData,
-            Environment environment) {
+            McpServerMetaData mcpServerMetaData) {
         return new ToolLiveReload(
                 mcpSyncServer,
                 mcpStatelessSyncServer,
@@ -344,8 +343,7 @@ class OpenApiMcpConfiguration {
                 toolSpecBuilder,
                 properties,
                 metricService,
-                mcpServerMetaData,
-                environment);
+                mcpServerMetaData);
     }
 
     /**

@@ -9,6 +9,9 @@ import org.springframework.core.env.PropertyResolver;
 
 public class McpServerMetaData {
 
+    private final PropertyResolver propertyResolver;
+    private final OpenApiRegistry openApiRegistry;
+
     private final String name;
     private final String version;
 
@@ -16,6 +19,9 @@ public class McpServerMetaData {
     private String instructions;
 
     public McpServerMetaData(PropertyResolver environment, OpenApiRegistry registry) {
+        this.propertyResolver = environment;
+        this.openApiRegistry = registry;
+
         var apiInfo =
                 Optional.ofNullable(registry).map(OpenApiRegistry::openApi).map(OpenAPI::getInfo);
 
@@ -44,11 +50,11 @@ public class McpServerMetaData {
         return instructions;
     }
 
-    public void reload(PropertyResolver environment, OpenApiRegistry registry) {
+    public void reload() {
         var apiInfo =
-                Optional.ofNullable(registry).map(OpenApiRegistry::openApi).map(OpenAPI::getInfo);
+                Optional.ofNullable(openApiRegistry).map(OpenApiRegistry::openApi).map(OpenAPI::getInfo);
 
-        instructions = extractEnvProp(environment, "instructions")
+        instructions = extractEnvProp(propertyResolver, "instructions")
                 .or(() -> apiInfo.map(Info::getDescription).or(() -> apiInfo.map(Info::getSummary)))
                 .orElse(null);
     }

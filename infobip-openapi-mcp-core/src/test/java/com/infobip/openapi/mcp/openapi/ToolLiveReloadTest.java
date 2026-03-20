@@ -517,7 +517,7 @@ class ToolLiveReloadTest {
 
             // Then
             then(givenOpenApiRegistry).should().reload();
-            then(mcpServerMetaData).should().reload(propertyResolver, givenOpenApiRegistry);
+            then(mcpServerMetaData).should().reload();
         }
     }
 
@@ -613,8 +613,7 @@ class ToolLiveReloadTest {
                 toolSpecBuilder,
                 PROPERTIES,
                 metricService,
-                mcpServerMetaData,
-                propertyResolver);
+                mcpServerMetaData);
     }
 
     private OpenAPI loadOpenApi(String resourcePath) {
