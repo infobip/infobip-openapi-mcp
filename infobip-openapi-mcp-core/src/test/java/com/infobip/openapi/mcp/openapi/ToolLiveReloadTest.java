@@ -35,6 +35,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.core.env.PropertyResolver;
 
 @ExtendWith(MockitoExtension.class)
 class ToolLiveReloadTest {
@@ -79,6 +80,12 @@ class ToolLiveReloadTest {
 
     @Mock
     private MetricService.LiveReloadTimer liveReloadTimer;
+
+    @Mock
+    private McpServerMetaData mcpServerMetaData;
+
+    @Mock
+    private PropertyResolver propertyResolver;
 
     @Captor
     private ArgumentCaptor<McpServerFeatures.SyncToolSpecification> syncToolSpecCaptor;
@@ -488,6 +495,33 @@ class ToolLiveReloadTest {
     }
 
     @Nested
+    class MetaDataReload {
+
+        @Test
+        void shouldReloadMetaDataWhenOpenApiIsRefreshed() throws InterruptedException {
+            // Given
+            var givenBaseOpenApi = loadOpenApi(BASE_SPEC);
+            var givenEditedOpenApi = loadOpenApi(WITH_ADDED_TOOL_SPEC);
+
+            given(givenOpenApiRegistry.openApi())
+                    .willReturn(givenBaseOpenApi)
+                    .willReturn(givenBaseOpenApi)
+                    .willReturn(givenEditedOpenApi);
+
+            givenToolRegistry.getTools();
+            var givenOpenApiLiveReload = givenOpenApiLiveReload();
+            setupToolSpecBuilderForNewTools();
+
+            // When
+            givenOpenApiLiveReload.reloadOnSchedule();
+
+            // Then
+            then(givenOpenApiRegistry).should().reload();
+            then(mcpServerMetaData).should().reload();
+        }
+    }
+
+    @Nested
     class ScopeReload {
 
         @Test
@@ -578,7 +612,8 @@ class ToolLiveReloadTest {
                 givenToolRegistry,
                 toolSpecBuilder,
                 PROPERTIES,
-                metricService);
+                metricService,
+                mcpServerMetaData);
     }
 
     private OpenAPI loadOpenApi(String resourcePath) {

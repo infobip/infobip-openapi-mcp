@@ -97,6 +97,7 @@ public class ToolLiveReload {
     private final ToolSpecBuilder toolSpecBuilder;
     private final OpenApiMcpProperties.LiveReload liveReloadConfig;
     private final MetricService metricService;
+    private final McpServerMetaData mcpServerMetaData;
 
     private final AtomicBoolean refreshInProgress = new AtomicBoolean(false);
 
@@ -108,7 +109,8 @@ public class ToolLiveReload {
             ToolRegistry toolRegistry,
             ToolSpecBuilder toolSpecBuilder,
             OpenApiMcpProperties properties,
-            MetricService metricService) {
+            MetricService metricService,
+            McpServerMetaData mcpServerMetaData) {
         this.mcpSyncServer = mcpSyncServer;
         this.mcpStatelessSyncServer = mcpStatelessSyncServer;
         this.scopeDiscoveryService = scopeDiscoveryService;
@@ -117,6 +119,7 @@ public class ToolLiveReload {
         this.toolSpecBuilder = toolSpecBuilder;
         this.liveReloadConfig = properties.liveReload();
         this.metricService = metricService;
+        this.mcpServerMetaData = mcpServerMetaData;
     }
 
     @Scheduled(cron = "${infobip.openapi.mcp.live-reload.cron-expression:0 */10 * * * *}")
@@ -182,6 +185,9 @@ public class ToolLiveReload {
         if (currentOpenApiVersion.equals(newOpenApiVersion)) {
             return false;
         }
+
+        // Reload metadata
+        mcpServerMetaData.reload();
 
         // Reload scopes - always discover as tools can stay the same but the scopes can change
         scopeDiscoveryService.ifPresent(ScopeDiscoveryService::discover);
