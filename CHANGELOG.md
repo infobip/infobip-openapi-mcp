@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## 0.1.12
+
 ### Changed
 
 - Live reload now refreshes the MCP server description (instructions) from the updated OpenAPI spec.
