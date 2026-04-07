@@ -9,6 +9,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.http.Fault;
 import com.infobip.openapi.mcp.McpRequestContext;
+import com.infobip.openapi.mcp.auth.HttpServletRequestAuthorizationExtractor;
 import com.infobip.openapi.mcp.config.OpenApiMcpProperties;
 import com.infobip.openapi.mcp.enricher.ApiRequestEnricherChain;
 import com.infobip.openapi.mcp.error.DefaultErrorModelProvider;
@@ -79,10 +80,21 @@ class JsonDoubleSerializationIntegrationTest {
 
         // Create handlers with mitigation enabled and disabled
         var emptyEnricherChain = new ApiRequestEnricherChain(List.of());
+        var authorizationExtractor = new HttpServletRequestAuthorizationExtractor();
         toolHandlerWithMitigationEnabled = new ToolHandler(
-                restClient, errorModelWriter, propertiesWithMitigationEnabled, emptyEnricherChain, metricService);
+                restClient,
+                errorModelWriter,
+                propertiesWithMitigationEnabled,
+                emptyEnricherChain,
+                metricService,
+                authorizationExtractor);
         toolHandlerWithMitigationDisabled = new ToolHandler(
-                restClient, errorModelWriter, propertiesWithMitigationDisabled, emptyEnricherChain, metricService);
+                restClient,
+                errorModelWriter,
+                propertiesWithMitigationDisabled,
+                emptyEnricherChain,
+                metricService,
+                authorizationExtractor);
     }
 
     @AfterEach

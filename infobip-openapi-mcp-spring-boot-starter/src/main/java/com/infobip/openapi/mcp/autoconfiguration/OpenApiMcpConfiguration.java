@@ -4,6 +4,8 @@ import static com.infobip.openapi.mcp.autoconfiguration.Qualifiers.TOOL_HANDLER_
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.infobip.openapi.mcp.McpRequestContextFactory;
+import com.infobip.openapi.mcp.auth.AuthorizationExtractor;
+import com.infobip.openapi.mcp.auth.HttpServletRequestAuthorizationExtractor;
 import com.infobip.openapi.mcp.auth.scope.ScopeDiscoveryService;
 import com.infobip.openapi.mcp.config.ApiBaseUrlConfig;
 import com.infobip.openapi.mcp.config.ApiBaseUrlProvider;
@@ -146,6 +148,12 @@ class OpenApiMcpConfiguration {
     }
 
     @Bean
+    @ConditionalOnMissingBean
+    public AuthorizationExtractor authorizationExtractor() {
+        return new HttpServletRequestAuthorizationExtractor();
+    }
+
+    @Bean
     @ConditionalOnBean(MeterRegistry.class)
     public MetricService micrometerMetricService(MeterRegistry meterRegistry, NamingStrategy namingStrategy) {
         return new MicrometerMetricService(meterRegistry, namingStrategy);
@@ -168,8 +176,10 @@ class OpenApiMcpConfiguration {
             ErrorModelWriter errorModelWriter,
             OpenApiMcpProperties properties,
             ApiRequestEnricherChain enricherChain,
-            MetricService metricService) {
-        return new ToolHandler(restClient, errorModelWriter, properties, enricherChain, metricService);
+            MetricService metricService,
+            AuthorizationExtractor authorizationExtractor) {
+        return new ToolHandler(
+                restClient, errorModelWriter, properties, enricherChain, metricService, authorizationExtractor);
     }
 
     @Bean

@@ -298,6 +298,28 @@ that sets the `User-Agent` header to the value defined in externalized configura
 > API
 > call from being made.
 
+### AuthorizationExtractor
+
+The framework uses `com.infobip.openapi.mcp.auth.AuthorizationExtractor` to obtain the credential
+value used for authenticating incoming requests and forwarding authorization to the downstream API.
+The default implementation reads the `Authorization` header from the incoming HTTP request.
+
+You can replace this bean to supply credentials from any source:
+
+```java
+@Bean
+public AuthorizationExtractor authorizationExtractor() {
+    return context -> Optional.of(myVaultClient.getApiKey())
+            .filter(key -> !key.isBlank())
+            .map(key -> "Bearer " + key);
+}
+```
+
+> [!NOTE]
+> If the extractor throws an unchecked exception, the framework catches it and fails closed:
+> `InitialAuthenticationFilter` returns HTTP 401, and `ToolHandler` returns an error tool result
+> with an authentication error. Both log the exception at ERROR level.
+
 ### ToolCallFilter
 
 You can implement and register beans of type `com.infobip.openapi.mcp.openapi.tool.ToolCallFilter` to customize the tool

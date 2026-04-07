@@ -90,11 +90,12 @@ HTTP call via `ToolHandler`) → optional `JsonDoubleSerializationCorrector` ret
 
 | Interface            | Purpose                                                                                                                  |
 |----------------------|--------------------------------------------------------------------------------------------------------------------------|
-| `OpenApiFilter`      | Transform the OpenAPI spec before tool metadata is built; disable via `infobip.openapi.mcp.filters.[filter-name]: false` |
-| `ApiRequestEnricher` | Modify HTTP requests to the downstream API (headers, metadata); failures are swallowed                                   |
-| `ToolCallFilter`     | Intercept tool calls; can abort the chain unlike enrichers                                                               |
-| `NamingStrategy`     | Custom tool name generation; replace the default bean                                                                    |
-| `ErrorModelProvider` | Custom error response format returned to MCP clients                                                                     |
+| `OpenApiFilter`           | Transform the OpenAPI spec before tool metadata is built; disable via `infobip.openapi.mcp.filters.[filter-name]: false` |
+| `ApiRequestEnricher`      | Modify HTTP requests to the downstream API (headers, metadata); failures are swallowed                                   |
+| `ToolCallFilter`          | Intercept tool calls; can abort the chain unlike enrichers                                                               |
+| `NamingStrategy`          | Custom tool name generation; replace the default bean                                                                    |
+| `ErrorModelProvider`      | Custom error response format returned to MCP clients                                                                     |
+| `AuthorizationExtractor`  | Supply credentials from any source (HTTP header, vault, env, etc.); replace the default bean                             |
 
 Important: filters, enrichers, strategies and providers can be implemented by application code, which is outside the
 framework. You will not see those implementations in this project's source code. This is the supported way to extend and
