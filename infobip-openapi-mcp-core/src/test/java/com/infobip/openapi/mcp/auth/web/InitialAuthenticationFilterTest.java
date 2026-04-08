@@ -8,6 +8,7 @@ import static org.mockito.Mockito.verify;
 import com.infobip.openapi.mcp.McpRequestContext;
 import com.infobip.openapi.mcp.McpRequestContextFactory;
 import com.infobip.openapi.mcp.auth.AuthProperties;
+import com.infobip.openapi.mcp.auth.CredentialProvider;
 import com.infobip.openapi.mcp.enricher.ApiRequestEnricherChain;
 import com.infobip.openapi.mcp.error.ErrorModelWriter;
 import jakarta.servlet.FilterChain;
@@ -59,9 +60,7 @@ class InitialAuthenticationFilterTest {
                 contextFactory,
                 Optional.empty(),
                 Optional.empty(),
-                context2 -> {
-                    throw new RuntimeException("credential source unavailable");
-                });
+                credentialProviderThatThrows());
 
         // When
         filter.doFilter(request, response, filterChain);
@@ -69,5 +68,11 @@ class InitialAuthenticationFilterTest {
         // Then
         then(response.getStatus()).isEqualTo(HttpStatus.UNAUTHORIZED.value());
         verify(filterChain, never()).doFilter(request, response);
+    }
+
+    private CredentialProvider credentialProviderThatThrows() {
+        return context -> {
+            throw new RuntimeException("credential source unavailable");
+        };
     }
 }
