@@ -3,7 +3,7 @@ package com.infobip.openapi.mcp.auth.web;
 import com.infobip.openapi.mcp.McpRequestContext;
 import com.infobip.openapi.mcp.McpRequestContextFactory;
 import com.infobip.openapi.mcp.auth.AuthProperties;
-import com.infobip.openapi.mcp.auth.AuthorizationExtractor;
+import com.infobip.openapi.mcp.auth.CredentialProvider;
 import com.infobip.openapi.mcp.auth.scope.JwtScopeService;
 import com.infobip.openapi.mcp.auth.scope.WwwAuthenticateProvider;
 import com.infobip.openapi.mcp.enricher.ApiRequestEnricherChain;
@@ -36,7 +36,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
  *
  * <h3>Authorization Handling:</h3>
  * <p>
- * Credentials are sourced from the injected {@link com.infobip.openapi.mcp.auth.AuthorizationExtractor},
+ * Credentials are sourced from the injected {@link com.infobip.openapi.mcp.auth.CredentialProvider},
  * which is <b>intentionally not an enricher</b>. This design decision ensures:
  * </p>
  * <ul>
@@ -79,7 +79,7 @@ public class InitialAuthenticationFilter extends OncePerRequestFilter {
     private final McpRequestContextFactory contextFactory;
     private final Optional<WwwAuthenticateProvider> wwwAuthenticateProvider;
     private final Optional<JwtScopeService> jwtScopeService;
-    private final AuthorizationExtractor authorizationExtractor;
+    private final CredentialProvider credentialProvider;
 
     public InitialAuthenticationFilter(
             RestClient restClient,
@@ -89,7 +89,7 @@ public class InitialAuthenticationFilter extends OncePerRequestFilter {
             McpRequestContextFactory contextFactory,
             Optional<WwwAuthenticateProvider> wwwAuthenticateProvider,
             Optional<JwtScopeService> jwtScopeService,
-            AuthorizationExtractor authorizationExtractor) {
+            CredentialProvider credentialProvider) {
         this.authProperties = authProperties;
         this.restClient = restClient;
         this.errorModelWriter = errorModelWriter;
@@ -97,7 +97,7 @@ public class InitialAuthenticationFilter extends OncePerRequestFilter {
         this.contextFactory = contextFactory;
         this.wwwAuthenticateProvider = wwwAuthenticateProvider;
         this.jwtScopeService = jwtScopeService;
-        this.authorizationExtractor = authorizationExtractor;
+        this.credentialProvider = credentialProvider;
     }
 
     @Override
@@ -106,7 +106,7 @@ public class InitialAuthenticationFilter extends OncePerRequestFilter {
         var context = contextFactory.forServletFilter(request);
         String authHeader;
         try {
-            var optionalAuthHeader = authorizationExtractor.extract(context);
+            var optionalAuthHeader = credentialProvider.provide(context);
             if (optionalAuthHeader.isEmpty()) {
                 writeWwwAuthenticateResponse(request, response, HttpStatus.UNAUTHORIZED);
                 return;

@@ -8,7 +8,7 @@ import static org.mockito.Mockito.lenient;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.infobip.openapi.mcp.McpRequestContext;
-import com.infobip.openapi.mcp.auth.HttpServletRequestAuthorizationExtractor;
+import com.infobip.openapi.mcp.auth.HttpServletRequestCredentialProvider;
 import com.infobip.openapi.mcp.config.OpenApiMcpProperties;
 import com.infobip.openapi.mcp.enricher.ApiRequestEnricherChain;
 import com.infobip.openapi.mcp.enricher.XForwardedForEnricher;
@@ -91,7 +91,7 @@ class ToolHandlerTest {
                 properties,
                 enricherChain,
                 metricService,
-                new HttpServletRequestAuthorizationExtractor());
+                new HttpServletRequestCredentialProvider());
     }
 
     @AfterEach
@@ -654,7 +654,7 @@ class ToolHandlerTest {
                     propertiesDisabled,
                     emptyEnricherChain,
                     metricService,
-                    new HttpServletRequestAuthorizationExtractor());
+                    new HttpServletRequestCredentialProvider());
 
             // When
             var result = toolHandlerWithBadPort.handleToolCall(fullOperation, decomposedSchema, createTestContext());
@@ -665,7 +665,7 @@ class ToolHandlerTest {
         }
 
         @Test
-        void shouldReturnErrorWhenAuthorizationExtractorThrows() {
+        void shouldReturnErrorWhenCredentialProviderThrows() {
             // Given
             var fullOperation = new FullOperation("/users", PathItem.HttpMethod.GET, new Operation(), new OpenAPI());
             var decomposedSchema = DecomposedRequestData.empty();

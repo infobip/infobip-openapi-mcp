@@ -1,7 +1,7 @@
 package com.infobip.openapi.mcp.openapi.tool;
 
 import com.infobip.openapi.mcp.McpRequestContext;
-import com.infobip.openapi.mcp.auth.AuthorizationExtractor;
+import com.infobip.openapi.mcp.auth.CredentialProvider;
 import com.infobip.openapi.mcp.config.OpenApiMcpProperties;
 import com.infobip.openapi.mcp.enricher.ApiRequestEnricherChain;
 import com.infobip.openapi.mcp.error.ErrorModelWriter;
@@ -27,7 +27,7 @@ import org.springframework.web.util.UriBuilder;
  * This class is responsible for:
  * <ul>
  *   <li>Mapping MCP tool arguments to OpenAPI operation parameters</li>
- *   <li><b>Forwarding credentials via {@link com.infobip.openapi.mcp.auth.AuthorizationExtractor}</b> (not via enrichers)</li>
+ *   <li><b>Forwarding credentials via {@link com.infobip.openapi.mcp.auth.CredentialProvider}</b> (not via enrichers)</li>
  *   <li>Applying enrichers for observability headers (X-Forwarded-For, X-Forwarded-Host, User-Agent, etc.)</li>
  *   <li>Executing HTTP requests to downstream APIs</li>
  *   <li>Converting responses to MCP tool results</li>
@@ -37,7 +37,7 @@ import org.springframework.web.util.UriBuilder;
  *
  * <h3>Authorization Handling:</h3>
  * <p>
- * Credentials are sourced from the injected {@link com.infobip.openapi.mcp.auth.AuthorizationExtractor},
+ * Credentials are sourced from the injected {@link com.infobip.openapi.mcp.auth.CredentialProvider},
  * which is <b>intentionally not an enricher</b>. This design decision ensures:
  * </p>
  * <ul>
@@ -64,7 +64,7 @@ public class ToolHandler {
     private final OpenApiMcpProperties properties;
     private final ApiRequestEnricherChain enricherChain;
     private final MetricService metricService;
-    private final AuthorizationExtractor authorizationExtractor;
+    private final CredentialProvider credentialProvider;
 
     public ToolHandler(
             RestClient restClient,
@@ -72,13 +72,13 @@ public class ToolHandler {
             OpenApiMcpProperties properties,
             ApiRequestEnricherChain enricherChain,
             MetricService metricService,
-            AuthorizationExtractor authorizationExtractor) {
+            CredentialProvider credentialProvider) {
         this.restClient = restClient;
         this.errorModelWriter = errorModelWriter;
         this.properties = properties;
         this.enricherChain = enricherChain;
         this.metricService = metricService;
-        this.authorizationExtractor = authorizationExtractor;
+        this.credentialProvider = credentialProvider;
         this.serializationCorrector = new JsonDoubleSerializationCorrector();
     }
 
@@ -93,7 +93,7 @@ public class ToolHandler {
             FullOperation fullOperation, DecomposedRequestData decomposedRequestData, McpRequestContext context) {
         Optional<String> credential;
         try {
-            credential = authorizationExtractor.extract(context);
+            credential = credentialProvider.provide(context);
         } catch (RuntimeException exception) {
             LOGGER.error("Failed to extract authorization credential: {}", exception.getMessage(), exception);
             return new McpSchema.CallToolResult(errorModelWriter.writeErrorModelAsJson(HttpStatus.UNAUTHORIZED), true);

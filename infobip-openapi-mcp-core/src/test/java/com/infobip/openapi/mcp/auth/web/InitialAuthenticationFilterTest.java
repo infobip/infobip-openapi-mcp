@@ -41,7 +41,7 @@ class InitialAuthenticationFilterTest {
     private FilterChain filterChain;
 
     @Test
-    void shouldReturn401WhenAuthorizationExtractorThrows() throws Exception {
+    void shouldReturn401WhenCredentialProviderThrows() throws Exception {
         // Given
         var request = new MockHttpServletRequest();
         var response = new MockHttpServletResponse();

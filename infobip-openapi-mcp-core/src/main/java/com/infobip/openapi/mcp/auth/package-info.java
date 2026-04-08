@@ -7,11 +7,11 @@
  *
  * <h2>Credential Sourcing</h2>
  * <p>
- * The {@link com.infobip.openapi.mcp.auth.AuthorizationExtractor} interface abstracts how the
- * {@code Authorization} header value is obtained from an {@link com.infobip.openapi.mcp.McpRequestContext}.
- * The default implementation reads the header directly from the incoming HTTP request. Library
- * consumers can replace this bean to supply credentials from any source — HTTP headers, token
- * vaults, secrets managers, and so on.
+ * The {@link com.infobip.openapi.mcp.auth.CredentialProvider} interface abstracts how the
+ * credential value is obtained from an {@link com.infobip.openapi.mcp.McpRequestContext}.
+ * The default implementation reads the {@code Authorization} header directly from the incoming
+ * HTTP request. Library consumers can replace this bean to supply credentials from any source —
+ * HTTP headers, token vaults, secrets managers, and so on.
  * </p>
  */
 @NullMarked

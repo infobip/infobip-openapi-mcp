@@ -1,3 +1,4 @@
+
 package com.infobip.openapi.mcp.auth;
 
 import static org.assertj.core.api.BDDAssertions.then;
@@ -13,10 +14,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpHeaders;
 
 @ExtendWith(MockitoExtension.class)
-class HttpServletRequestAuthorizationExtractorTest {
+class HttpServletRequestCredentialProviderTest {
 
     @InjectMocks
-    private HttpServletRequestAuthorizationExtractor extractor;
+    private HttpServletRequestCredentialProvider provider;
 
     @Mock
     private HttpServletRequest httpServletRequest;
@@ -27,7 +28,7 @@ class HttpServletRequestAuthorizationExtractorTest {
         var context = new McpRequestContext();
 
         // When
-        var result = extractor.extract(context);
+        var result = provider.provide(context);
 
         // Then
         then(result).isEmpty();
@@ -40,7 +41,7 @@ class HttpServletRequestAuthorizationExtractorTest {
         var context = new McpRequestContext(httpServletRequest);
 
         // When
-        var result = extractor.extract(context);
+        var result = provider.provide(context);
 
         // Then
         then(result).isEmpty();
@@ -53,7 +54,7 @@ class HttpServletRequestAuthorizationExtractorTest {
         var context = new McpRequestContext(httpServletRequest);
 
         // When
-        var result = extractor.extract(context);
+        var result = provider.provide(context);
 
         // Then
         then(result).isEmpty();
@@ -67,7 +68,7 @@ class HttpServletRequestAuthorizationExtractorTest {
         var context = new McpRequestContext(httpServletRequest);
 
         // When
-        var result = extractor.extract(context);
+        var result = provider.provide(context);
 
         // Then
         then(result).contains(givenAuthHeader);

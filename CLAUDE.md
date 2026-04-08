@@ -95,7 +95,7 @@ HTTP call via `ToolHandler`) → optional `JsonDoubleSerializationCorrector` ret
 | `ToolCallFilter`          | Intercept tool calls; can abort the chain unlike enrichers                                                               |
 | `NamingStrategy`          | Custom tool name generation; replace the default bean                                                                    |
 | `ErrorModelProvider`      | Custom error response format returned to MCP clients                                                                     |
-| `AuthorizationExtractor`  | Supply credentials from any source (HTTP header, vault, env, etc.); replace the default bean                             |
+| `CredentialProvider`      | Supply credentials from any source (HTTP header, vault, env, etc.); replace the default bean                             |
 
 Important: filters, enrichers, strategies and providers can be implemented by application code, which is outside the
 framework. You will not see those implementations in this project's source code. This is the supported way to extend and
