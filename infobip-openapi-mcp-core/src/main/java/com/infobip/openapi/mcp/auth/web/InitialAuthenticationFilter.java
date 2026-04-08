@@ -113,7 +113,7 @@ public class InitialAuthenticationFilter extends OncePerRequestFilter {
             }
             authHeader = optionalAuthHeader.get();
         } catch (RuntimeException exception) {
-            LOGGER.error("Failed to extract authorization credential: {}", exception.getMessage(), exception);
+            LOGGER.error("Failed to provide credential: {}", exception.getMessage(), exception);
             writeWwwAuthenticateResponse(request, response, HttpStatus.UNAUTHORIZED);
             return;
         }

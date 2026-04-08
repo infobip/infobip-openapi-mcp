@@ -95,7 +95,7 @@ public class ToolHandler {
         try {
             credential = credentialProvider.provide(context);
         } catch (RuntimeException exception) {
-            LOGGER.error("Failed to extract authorization credential: {}", exception.getMessage(), exception);
+            LOGGER.error("Failed to provide credential: {}", exception.getMessage(), exception);
             return new McpSchema.CallToolResult(errorModelWriter.writeErrorModelAsJson(HttpStatus.UNAUTHORIZED), true);
         }
 

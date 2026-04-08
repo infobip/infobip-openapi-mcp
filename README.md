@@ -318,7 +318,7 @@ public CredentialProvider credentialProvider() {
 > [!NOTE]
 > If the provider throws an unchecked exception, the framework catches it and fails closed:
 > `InitialAuthenticationFilter` returns HTTP 401, and `ToolHandler` returns an error tool result
-> with an authentication error. Both log the exception at ERROR level.
+> with an authentication error.
 
 ### ToolCallFilter
 

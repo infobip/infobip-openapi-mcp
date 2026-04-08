@@ -1,4 +1,3 @@
-
 package com.infobip.openapi.mcp.auth;
 
 import static org.assertj.core.api.BDDAssertions.then;
