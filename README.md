@@ -77,14 +77,14 @@ You can install it in your Java project with maven:
 <dependency>
     <groupId>com.infobip.openapi.mcp</groupId>
     <artifactId>infobip-openapi-mcp-spring-boot-starter</artifactId>
-    <version>0.1.12</version>
+    <version>0.1.13</version>
 </dependency>
 ```
 
 or gradle:
 
 ```groovy
-implementation("com.infobip.openapi.mcp:infobip-openapi-mcp-spring-boot-starter:0.1.12")
+implementation("com.infobip.openapi.mcp:infobip-openapi-mcp-spring-boot-starter:0.1.13")
 ```
 
 ## Usage
