@@ -8,6 +8,7 @@ import static org.mockito.Mockito.lenient;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.infobip.openapi.mcp.McpRequestContext;
+import com.infobip.openapi.mcp.auth.HttpServletRequestCredentialProvider;
 import com.infobip.openapi.mcp.config.OpenApiMcpProperties;
 import com.infobip.openapi.mcp.enricher.ApiRequestEnricherChain;
 import com.infobip.openapi.mcp.enricher.XForwardedForEnricher;
@@ -43,6 +44,9 @@ class ToolHandlerTest {
     // Expected error responses as constants
     private static final String EXPECTED_BAD_GATEWAY_ERROR_JSON =
             "{\"error\":\"Bad Gateway\",\"description\":\"The server received an invalid response from an upstream server.\"}";
+
+    private static final String EXPECTED_UNAUTHORIZED_ERROR_JSON =
+            "{\"error\":\"Unauthorized\",\"description\":\"Authentication required. Please provide valid credentials.\"}";
 
     @Mock
     private OpenApiMcpProperties properties;
@@ -81,7 +85,13 @@ class ToolHandlerTest {
         var xffEnricher = new XForwardedForEnricher(xffCalculator);
         var enricherChain = new ApiRequestEnricherChain(List.of(xffEnricher));
 
-        toolHandler = new ToolHandler(restClient, errorModelWriter, properties, enricherChain, metricService);
+        toolHandler = new ToolHandler(
+                restClient,
+                errorModelWriter,
+                properties,
+                enricherChain,
+                metricService,
+                new HttpServletRequestCredentialProvider());
     }
 
     @AfterEach
@@ -639,13 +649,43 @@ class ToolHandlerTest {
 
             var emptyEnricherChain = new ApiRequestEnricherChain(List.of());
             var toolHandlerWithBadPort = new ToolHandler(
-                    restClientWithBadPort, errorModelWriter, propertiesDisabled, emptyEnricherChain, metricService);
+                    restClientWithBadPort,
+                    errorModelWriter,
+                    propertiesDisabled,
+                    emptyEnricherChain,
+                    metricService,
+                    new HttpServletRequestCredentialProvider());
 
             // When
             var result = toolHandlerWithBadPort.handleToolCall(fullOperation, decomposedSchema, createTestContext());
 
             // Then
             then(extractTextContent(result.content())).isEqualTo(EXPECTED_BAD_GATEWAY_ERROR_JSON);
+            then(result.isError()).isTrue();
+        }
+
+        @Test
+        void shouldReturnErrorWhenCredentialProviderThrows() {
+            // Given
+            var fullOperation = new FullOperation("/users", PathItem.HttpMethod.GET, new Operation(), new OpenAPI());
+            var decomposedSchema = DecomposedRequestData.empty();
+
+            var toolHandlerWithThrowingExtractor = new ToolHandler(
+                    RestClient.create("http://localhost:" + wireMockServer.port()),
+                    errorModelWriter,
+                    properties,
+                    new ApiRequestEnricherChain(List.of()),
+                    metricService,
+                    context -> {
+                        throw new RuntimeException("credential source unavailable");
+                    });
+
+            // When
+            var result = toolHandlerWithThrowingExtractor.handleToolCall(
+                    fullOperation, decomposedSchema, createTestContext());
+
+            // Then
+            then(extractTextContent(result.content())).isEqualTo(EXPECTED_UNAUTHORIZED_ERROR_JSON);
             then(result.isError()).isTrue();
         }
     }

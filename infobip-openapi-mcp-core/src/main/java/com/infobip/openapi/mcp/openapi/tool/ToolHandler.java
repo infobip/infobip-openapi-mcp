@@ -1,6 +1,7 @@
 package com.infobip.openapi.mcp.openapi.tool;
 
 import com.infobip.openapi.mcp.McpRequestContext;
+import com.infobip.openapi.mcp.auth.CredentialProvider;
 import com.infobip.openapi.mcp.config.OpenApiMcpProperties;
 import com.infobip.openapi.mcp.enricher.ApiRequestEnricherChain;
 import com.infobip.openapi.mcp.error.ErrorModelWriter;
@@ -26,7 +27,7 @@ import org.springframework.web.util.UriBuilder;
  * This class is responsible for:
  * <ul>
  *   <li>Mapping MCP tool arguments to OpenAPI operation parameters</li>
- *   <li><b>Explicitly forwarding Authorization header</b> (not via enrichers)</li>
+ *   <li><b>Forwarding credentials via {@link com.infobip.openapi.mcp.auth.CredentialProvider}</b> (not via enrichers)</li>
  *   <li>Applying enrichers for observability headers (X-Forwarded-For, X-Forwarded-Host, User-Agent, etc.)</li>
  *   <li>Executing HTTP requests to downstream APIs</li>
  *   <li>Converting responses to MCP tool results</li>
@@ -36,14 +37,13 @@ import org.springframework.web.util.UriBuilder;
  *
  * <h3>Authorization Handling:</h3>
  * <p>
- * Authorization header forwarding is <b>intentionally explicit</b> in this class
- * rather than delegated to enrichers. This design decision ensures:
+ * Credentials are sourced from the injected {@link com.infobip.openapi.mcp.auth.CredentialProvider},
+ * which is <b>intentionally not an enricher</b>. This design decision ensures:
  * </p>
  * <ul>
  *   <li>Security logic is obvious and easy to audit</li>
- *   <li>Auth failures are immediate and clear</li>
- *   <li>No silent degradation of security</li>
- *   <li>Easy to understand for security reviews</li>
+ *   <li>Auth failures are immediate and clear — no silent degradation</li>
+ *   <li>Consumers can supply credentials from any source by replacing the default bean</li>
  * </ul>
  *
  * @see ApiRequestEnricherChain
@@ -64,18 +64,21 @@ public class ToolHandler {
     private final OpenApiMcpProperties properties;
     private final ApiRequestEnricherChain enricherChain;
     private final MetricService metricService;
+    private final CredentialProvider credentialProvider;
 
     public ToolHandler(
             RestClient restClient,
             ErrorModelWriter errorModelWriter,
             OpenApiMcpProperties properties,
             ApiRequestEnricherChain enricherChain,
-            MetricService metricService) {
+            MetricService metricService,
+            CredentialProvider credentialProvider) {
         this.restClient = restClient;
         this.errorModelWriter = errorModelWriter;
         this.properties = properties;
         this.enricherChain = enricherChain;
         this.metricService = metricService;
+        this.credentialProvider = credentialProvider;
         this.serializationCorrector = new JsonDoubleSerializationCorrector();
     }
 
@@ -88,13 +91,21 @@ public class ToolHandler {
      */
     public McpSchema.CallToolResult handleToolCall(
             FullOperation fullOperation, DecomposedRequestData decomposedRequestData, McpRequestContext context) {
+        Optional<String> credential;
+        try {
+            credential = credentialProvider.provide(context);
+        } catch (RuntimeException exception) {
+            LOGGER.error("Failed to provide credential: {}", exception.getMessage(), exception);
+            return new McpSchema.CallToolResult(errorModelWriter.writeErrorModelAsJson(HttpStatus.UNAUTHORIZED), true);
+        }
+
         metricService.recordToolCall(fullOperation);
 
         var httpCallTimer = metricService.startTimer();
         var toolCallTimer = metricService.startTimer();
 
         try {
-            var response = executeHttpRequest(fullOperation, decomposedRequestData, context);
+            var response = executeHttpRequest(fullOperation, decomposedRequestData, context, credential);
             httpCallTimer.timeApiCall(fullOperation, response.getStatusCode());
             metricService.recordApiCall(fullOperation, response.getStatusCode());
 
@@ -111,7 +122,8 @@ public class ToolHandler {
                 var httpCallRetryTimer = metricService.startTimer();
 
                 try {
-                    var retryResponse = executeHttpRequest(fullOperation, correctedRequestData.get(), context);
+                    var retryResponse =
+                            executeHttpRequest(fullOperation, correctedRequestData.get(), context, credential);
                     httpCallRetryTimer.timeApiCall(fullOperation, retryResponse.getStatusCode());
                     metricService.recordApiCall(fullOperation, retryResponse.getStatusCode());
 
@@ -217,11 +229,15 @@ public class ToolHandler {
      * @param fullOperation         the OpenAPI operation to execute
      * @param decomposedRequestData the request parameters and body
      * @param context               the MCP request context containing HTTP request and session info
+     * @param credential            the resolved credential to forward; empty means no Authorization header is set
      * @return the response from the downstream API
      * @throws HttpStatusCodeException if the API returns an error status
      */
     private org.springframework.http.ResponseEntity<String> executeHttpRequest(
-            FullOperation fullOperation, DecomposedRequestData decomposedRequestData, McpRequestContext context) {
+            FullOperation fullOperation,
+            DecomposedRequestData decomposedRequestData,
+            McpRequestContext context,
+            Optional<String> credential) {
         var spec = restClient
                 .method(HttpMethod.valueOf(fullOperation.method().name()))
                 .uri(uriBuilder -> {
@@ -249,16 +265,10 @@ public class ToolHandler {
                 .cookie()
                 .forEach((cookie, cookieValue) -> addCookieParameter(spec, cookie, cookieValue));
 
-        // Authorization is explicitly handled here (not via enrichers) because it's a critical security concern
-        // that must be obvious and not abstracted away in enrichers.
-        var request = context.httpServletRequest();
-        if (request != null) {
-            var authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
-            if (authHeader != null && !authHeader.isBlank()) {
-                spec.header(HttpHeaders.AUTHORIZATION, authHeader);
-                LOGGER.debug("Forwarded Authorization header to downstream API");
-            }
-        }
+        credential.ifPresent(authHeader -> {
+            spec.header(HttpHeaders.AUTHORIZATION, authHeader);
+            LOGGER.debug("Forwarded Authorization header to downstream API");
+        });
 
         var enrichedSpec = enricherChain.enrich(spec, context);
 

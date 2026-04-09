@@ -4,6 +4,7 @@ import static com.infobip.openapi.mcp.autoconfiguration.Qualifiers.AUTHORIZATION
 
 import com.infobip.openapi.mcp.McpRequestContextFactory;
 import com.infobip.openapi.mcp.auth.AuthProperties;
+import com.infobip.openapi.mcp.auth.CredentialProvider;
 import com.infobip.openapi.mcp.auth.scope.JwtScopeService;
 import com.infobip.openapi.mcp.auth.scope.WwwAuthenticateProvider;
 import com.infobip.openapi.mcp.auth.web.InitialAuthenticationFilter;
@@ -58,7 +59,8 @@ class AuthConfiguration {
             ApiRequestEnricherChain enricherChain,
             McpRequestContextFactory contextFactory,
             Optional<WwwAuthenticateProvider> wwwAuthenticateProvider,
-            Optional<JwtScopeService> jwtScopeService) {
+            Optional<JwtScopeService> jwtScopeService,
+            CredentialProvider credentialProvider) {
         var filter = new InitialAuthenticationFilter(
                 restClient,
                 authProperties,
@@ -66,7 +68,8 @@ class AuthConfiguration {
                 enricherChain,
                 contextFactory,
                 wwwAuthenticateProvider,
-                jwtScopeService);
+                jwtScopeService,
+                credentialProvider);
 
         var registration = new FilterRegistrationBean<>(filter);
         registration.setUrlPatterns(

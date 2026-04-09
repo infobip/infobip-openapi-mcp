@@ -298,6 +298,28 @@ that sets the `User-Agent` header to the value defined in externalized configura
 > API
 > call from being made.
 
+### CredentialProvider
+
+The framework uses `com.infobip.openapi.mcp.auth.CredentialProvider` to obtain the credential
+value used for authenticating incoming requests and forwarding authorization to the downstream API.
+The default implementation reads the `Authorization` header from the incoming HTTP request.
+
+You can replace this bean to supply credentials from any source:
+
+```java
+@Bean
+public CredentialProvider credentialProvider() {
+    return context -> Optional.of(myVaultClient.getApiKey())
+            .filter(key -> !key.isBlank())
+            .map(key -> "Bearer " + key);
+}
+```
+
+> [!NOTE]
+> If the provider throws an unchecked exception, the framework catches it and fails closed:
+> `InitialAuthenticationFilter` returns HTTP 401, and `ToolHandler` returns an error tool result
+> with an authentication error.
+
 ### ToolCallFilter
 
 You can implement and register beans of type `com.infobip.openapi.mcp.openapi.tool.ToolCallFilter` to customize the tool

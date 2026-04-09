@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Bumped dependencies: Jackson 2.21.2, Spring AI 1.1.4, Spring Boot 3.5.13.
+
+### Added
+
+- New `CredentialProvider` extension point that controls how credentials are sourced for
+  outgoing API requests and authentication validation. The default implementation reads the
+  `Authorization` header from the incoming HTTP request. Library consumers can replace this bean
+  to supply credentials from any source — token vaults, secrets managers, environment variables,
+  and so on.
+
 ## 0.1.12
 
 ### Changed

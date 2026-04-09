@@ -3,6 +3,7 @@ package com.infobip.openapi.mcp.auth.web;
 import com.infobip.openapi.mcp.McpRequestContext;
 import com.infobip.openapi.mcp.McpRequestContextFactory;
 import com.infobip.openapi.mcp.auth.AuthProperties;
+import com.infobip.openapi.mcp.auth.CredentialProvider;
 import com.infobip.openapi.mcp.auth.scope.JwtScopeService;
 import com.infobip.openapi.mcp.auth.scope.WwwAuthenticateProvider;
 import com.infobip.openapi.mcp.enricher.ApiRequestEnricherChain;
@@ -35,13 +36,14 @@ import org.springframework.web.filter.OncePerRequestFilter;
  *
  * <h3>Authorization Handling:</h3>
  * <p>
- * Authorization header forwarding is <b>intentionally explicit</b> in this filter
- * rather than delegated to enrichers. This design decision ensures:
+ * Credentials are sourced from the injected {@link com.infobip.openapi.mcp.auth.CredentialProvider},
+ * which is <b>intentionally not an enricher</b>. This design decision ensures:
  * </p>
  * <ul>
  *   <li>Security logic is obvious and easy to audit</li>
  *   <li>Auth is the subject of validation, not just metadata</li>
- *   <li>Auth failures are immediate and clear</li>
+ *   <li>Auth failures are immediate and clear — no silent degradation</li>
+ *   <li>Consumers can supply credentials from any source by replacing the default bean</li>
  * </ul>
  *
  * <h3>Enrichers Applied:</h3>
@@ -77,6 +79,7 @@ public class InitialAuthenticationFilter extends OncePerRequestFilter {
     private final McpRequestContextFactory contextFactory;
     private final Optional<WwwAuthenticateProvider> wwwAuthenticateProvider;
     private final Optional<JwtScopeService> jwtScopeService;
+    private final CredentialProvider credentialProvider;
 
     public InitialAuthenticationFilter(
             RestClient restClient,
@@ -85,7 +88,8 @@ public class InitialAuthenticationFilter extends OncePerRequestFilter {
             ApiRequestEnricherChain enricherChain,
             McpRequestContextFactory contextFactory,
             Optional<WwwAuthenticateProvider> wwwAuthenticateProvider,
-            Optional<JwtScopeService> jwtScopeService) {
+            Optional<JwtScopeService> jwtScopeService,
+            CredentialProvider credentialProvider) {
         this.authProperties = authProperties;
         this.restClient = restClient;
         this.errorModelWriter = errorModelWriter;
@@ -93,13 +97,23 @@ public class InitialAuthenticationFilter extends OncePerRequestFilter {
         this.contextFactory = contextFactory;
         this.wwwAuthenticateProvider = wwwAuthenticateProvider;
         this.jwtScopeService = jwtScopeService;
+        this.credentialProvider = credentialProvider;
     }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
-        var authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
-        if (authHeader == null) {
+        var context = contextFactory.forServletFilter(request);
+        String authHeader;
+        try {
+            var optionalAuthHeader = credentialProvider.provide(context);
+            if (optionalAuthHeader.isEmpty()) {
+                writeWwwAuthenticateResponse(request, response, HttpStatus.UNAUTHORIZED);
+                return;
+            }
+            authHeader = optionalAuthHeader.get();
+        } catch (RuntimeException exception) {
+            LOGGER.error("Failed to provide credential: {}", exception.getMessage(), exception);
             writeWwwAuthenticateResponse(request, response, HttpStatus.UNAUTHORIZED);
             return;
         }
@@ -113,7 +127,6 @@ public class InitialAuthenticationFilter extends OncePerRequestFilter {
         }
 
         try {
-            var context = contextFactory.forServletFilter(request);
             var externalResponse = makeExternalAuthorizationRequest(authHeader, context);
 
             if (externalResponse.getStatusCode().is2xxSuccessful()) {
