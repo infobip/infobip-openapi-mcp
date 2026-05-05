@@ -177,3 +177,15 @@ The `examples/` directory contains two standalone Spring Boot applications that 
 - `open-meteo-mcp/` — Real MCP server calling the Open-Meteo weather API
 
 These are not part of the main Maven build (not listed as modules in the root `pom.xml`).
+
+## Version Alignment
+
+The `README.md` references dependency versions in several places (installation snippets, dependencies table). These
+**must** stay aligned with the actual versions in `pom.xml`:
+
+- **Framework version** in maven/gradle installation snippets must match the latest released version (the version
+  set by the `maven-release-plugin`).
+- **Dependencies table** (`Spring Framework`, `Spring Boot`, `Spring AI`, `MCP Java SDK`) must match the minor version
+  series (`X.Y.x`) of the versions declared in the root `pom.xml` properties or resolved from the dependency tree.
+
+After changing dependency versions in `pom.xml`, check and update `README.md` accordingly.

@@ -470,7 +470,7 @@ The framework requires java versions 21 or newer and is compatible with followin
 | Spring Framework | 6.2.x   |
 | Spring Boot      | 3.5.x   |
 | Spring AI        | 1.1.x   |
-| MCP Java SDK     | 0.16.x  |
+| MCP Java SDK     | 0.17.x  |
 
 For the complete list of dependencies you can consult the `pom.xml` files.
 
