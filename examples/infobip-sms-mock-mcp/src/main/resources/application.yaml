@@ -4,7 +4,7 @@ infobip:
       # With auth disabled in mock mode API Base URL is not needed:
       api-base-url: https://example.com
       # OpenAPI specification describing Infobip's SMS API:
-      open-api-url: https://api.infobip.com/platform/1/openapi/mcp/sms
+      open-api-url: https://api.infobip.com/platform/1/openapi/sms
       # Running MCP server in mock mode. Tool calls will not
       # result in API calls. Server will return example
       # responses from the OpenAPI specification instead.
