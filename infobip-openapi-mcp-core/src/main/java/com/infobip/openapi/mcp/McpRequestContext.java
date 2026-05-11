@@ -6,6 +6,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
+import java.util.function.BiConsumer;
+
 /**
  * Context object that encapsulates request-level information for MCP operations.
  * <p>
@@ -30,12 +32,23 @@ public record McpRequestContext(
         @Nullable String sessionId,
         McpSchema.@Nullable Implementation clientInfo,
         @Nullable String toolName,
-        @Nullable FullOperation openApiOperation) {
+        @Nullable FullOperation openApiOperation,
+        BiConsumer<Double, @Nullable String> progressNotificationCallback) {
     public McpRequestContext() {
-        this(null, null, null, null, null);
+        this(null, null, null, null, null, (p, m) -> {
+        });
     }
 
     public McpRequestContext(HttpServletRequest httpServletRequest) {
-        this(httpServletRequest, null, null, null, null);
+        this(httpServletRequest, null, null, null, null, (p, m) -> {
+        });
+    }
+
+    public void notifyOfProgress(double updatedProgressValue) {
+        notifyOfProgress(updatedProgressValue, null);
+    }
+
+    public void notifyOfProgress(double updatedProgressValue, @Nullable String updatesProgressMessage) {
+        progressNotificationCallback.accept(updatedProgressValue, updatesProgressMessage);
     }
 }

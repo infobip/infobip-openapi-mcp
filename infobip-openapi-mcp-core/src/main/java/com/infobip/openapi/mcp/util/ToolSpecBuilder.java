@@ -24,7 +24,7 @@ public class ToolSpecBuilder {
                 .tool(registeredTool.tool())
                 .callHandler((mcpSyncServerExchange, callToolRequest) -> {
                     var context = contextFactory.forStatefulTransport(
-                            mcpSyncServerExchange, callToolRequest.name(), registeredTool.fullOperation());
+                            mcpSyncServerExchange, callToolRequest, registeredTool.fullOperation());
                     return chainFactory.get().doFilter(context, callToolRequest);
                 })
                 .build();
@@ -37,7 +37,7 @@ public class ToolSpecBuilder {
                 .tool(registeredTool.tool())
                 .callHandler((mcpTransportContext, callToolRequest) -> {
                     var context = contextFactory.forStatelessTransport(
-                            mcpTransportContext, callToolRequest.name(), registeredTool.fullOperation());
+                            mcpTransportContext, callToolRequest, registeredTool.fullOperation());
                     return chainFactory.get().doFilter(context, callToolRequest);
                 })
                 .build();

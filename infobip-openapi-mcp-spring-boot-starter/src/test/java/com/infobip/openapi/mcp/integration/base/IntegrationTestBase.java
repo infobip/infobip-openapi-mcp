@@ -169,7 +169,7 @@ abstract class IntegrationTestBase extends AuthenticationTestBase {
                         .tool(tool.tool())
                         .callHandler((mcpSyncServerExchange, callToolRequest) -> {
                             var context = contextFactory.forStatefulTransport(
-                                    mcpSyncServerExchange, callToolRequest.name(), givenFullOperation());
+                                    mcpSyncServerExchange, callToolRequest, givenFullOperation());
                             return chainFactory.get().doFilter(context, callToolRequest);
                         })
                         .build());
@@ -178,7 +178,7 @@ abstract class IntegrationTestBase extends AuthenticationTestBase {
                         .tool(tool.tool())
                         .callHandler((mcpTransportContext, callToolRequest) -> {
                             var context = contextFactory.forStatelessTransport(
-                                    mcpTransportContext, callToolRequest.name(), givenFullOperation());
+                                    mcpTransportContext, callToolRequest, givenFullOperation());
                             return chainFactory.get().doFilter(context, callToolRequest);
                         })
                         .build());

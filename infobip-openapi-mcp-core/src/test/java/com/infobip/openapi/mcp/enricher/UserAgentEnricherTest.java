@@ -114,6 +114,7 @@ class UserAgentEnricherTest {
                 "https://example.com/api",
                 null,
                 null,
+                null,
                 userAgent,
                 null,
                 null,

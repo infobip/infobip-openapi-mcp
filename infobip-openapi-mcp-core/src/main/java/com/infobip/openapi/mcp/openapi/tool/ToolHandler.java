@@ -8,7 +8,6 @@ import com.infobip.openapi.mcp.error.ErrorModelWriter;
 import com.infobip.openapi.mcp.infrastructure.metrics.MetricService;
 import com.infobip.openapi.mcp.openapi.schema.DecomposedRequestData;
 import io.modelcontextprotocol.spec.McpSchema;
-import java.util.Optional;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
@@ -20,6 +19,8 @@ import org.springframework.http.MediaType;
 import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.util.UriBuilder;
+
+import java.util.Optional;
 
 /**
  * Handles the execution of tool calls by calling the downstream HTTP APIs as defined in the OpenAPI specification.
@@ -276,7 +277,48 @@ public class ToolHandler {
         enrichedSpec.headers(
                 headers -> headers.addIfAbsent(HttpHeaders.ACCEPT, PREFERRED_ACCEPT_MEDIA_TYPE.toString()));
 
-        return enrichedSpec.retrieve().toEntity(String.class);
+        var progressNotifThread = Thread.ofVirtual()
+                .start(() -> {
+                    var updateCount = 0L;
+                    while (true) {
+                        try {
+                            Thread.sleep(properties.progressNotificationInterval().toMillis());
+                            context.notifyOfProgress(updateCount++);
+                        } catch (InterruptedException e) {
+                            // This is regular flow that happens when the main tool handler thread
+                            // interrupts the progress notif thread before writing the tool call
+                            // result back to MCP client.
+                            return;
+                        } catch (Throwable throwable) {
+                            LOGGER.warn(
+                                    "Failed to send progress notification because: {} \n" +
+                                            "No further progress notifications will be sent.",
+                                    throwable.getMessage(),
+                                    throwable
+                            );
+                            return;
+                        }
+                    }
+                });
+
+        try {
+            var result = enrichedSpec.retrieve().toEntity(String.class);
+            progressNotifThread.interrupt();
+            try {
+                progressNotifThread.join();
+            } catch (InterruptedException joinInterruptedException) {
+                throw new RuntimeException(joinInterruptedException);
+            }
+            return result;
+        } catch (RuntimeException apiCallFail) {
+            progressNotifThread.interrupt();
+            try {
+                progressNotifThread.join();
+            } catch (InterruptedException ignored) {
+                Thread.currentThread().interrupt();
+            }
+            throw apiCallFail;
+        }
     }
 
     /**

@@ -706,6 +706,7 @@ class InputExampleComposerTest {
                 null,
                 null,
                 null,
+                null,
                 new OpenApiMcpProperties.Tools(
                         null,
                         new OpenApiMcpProperties.Tools.Schema(parametersKey, requestBodyKey),

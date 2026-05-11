@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Sending progress notifications for MCP tools backed by HTTP API calls with high response latency. This feature works
+only for stateful MCP servers, and only when MCP client requests it by sending `_meta.progressToken` parameter in tool
+call. You can customize the interval in which notifications are sent with
+`infobip.openapi.mcp.progress-notification-interval` configuration property.
+
 ## 0.1.13
 
 ### Changed

@@ -5,32 +5,38 @@ import com.infobip.openapi.mcp.openapi.tool.naming.NamingStrategyType;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.boot.context.properties.NestedConfigurationProperty;
+import org.springframework.validation.annotation.Validated;
+
 import java.net.URI;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
-import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.boot.context.properties.NestedConfigurationProperty;
-import org.springframework.validation.annotation.Validated;
 
 /**
  * Configuration properties for OpenAPI MCP Server.
  *
- * @param openApiUrl     URL to the OpenAPI specification. This should point to a valid OpenAPI document (e.g., JSON or YAML).
- * @param apiBaseUrl     Base URL for the API. Supports three formats:
- *                       - String URL: Use the provided URL directly (e.g., "https://api.example.com")
- *                       - Integer: Use the i-th server from OpenAPI servers array, 0-indexed (e.g., "0", "1")
- *                       - Empty/null: Use the first server from OpenAPI servers array (default behavior)
- * @param connectTimeout Connection timeout for HTTP requests to the downstream API. The default is set to 5 seconds.
- * @param readTimeout    Read timeout for HTTP requests to the downstream API. The default is set to 5 seconds.
- * @param userAgent      User agent string for HTTP requests to the downstream API. If not specified, no User-Agent header will be set.
- * @param filters        Filters to apply to the OpenAPI specification. This can be used to include or exclude specific operations or tags.
- *                       The keys are the filter names, and the values are booleans indicating whether to include (true) or exclude (false).
- *                       By default, all filters are enabled.
- * @param tools          Tool configuration.
- * @param liveReload     Live reload configuration for automatic OpenAPI spec refresh.
+ * @param openApiUrl                   URL to the OpenAPI specification. This should point to a valid OpenAPI document (e.g., JSON or YAML).
+ * @param apiBaseUrl                   Base URL for the API. Supports three formats:
+ *                                     - String URL: Use the provided URL directly (e.g., "https://api.example.com")
+ *                                     - Integer: Use the i-th server from OpenAPI servers array, 0-indexed (e.g., "0", "1")
+ *                                     - Empty/null: Use the first server from OpenAPI servers array (default behavior)
+ * @param connectTimeout               Connection timeout for HTTP requests to the downstream API. The default is set to 5 seconds.
+ * @param readTimeout                  Read timeout for HTTP requests to the downstream API. The default is set to 5 seconds.
+ * @param progressNotificationInterval Interval at which notifications/progress messages will be sent to MCP clients that
+ *                                     request progress notifications. Progress is reported while HTTP API call is ongoing.
+ *                                     This mechanism can be used to prevent MCP client timeouts for tools backed by APIs
+ *                                     with high response latency. This value should be less than readTimeout, otherwise no
+ *                                     notification will be sent.
+ * @param userAgent                    User agent string for HTTP requests to the downstream API. If not specified, no User-Agent header will be set.
+ * @param filters                      Filters to apply to the OpenAPI specification. This can be used to include or exclude specific operations or tags.
+ *                                     The keys are the filter names, and the values are booleans indicating whether to include (true) or exclude (false).
+ *                                     By default, all filters are enabled.
+ * @param tools                        Tool configuration.
+ * @param liveReload                   Live reload configuration for automatic OpenAPI spec refresh.
  */
 @Validated
 @ConfigurationProperties(prefix = OpenApiMcpProperties.PREFIX)
@@ -39,6 +45,7 @@ public record OpenApiMcpProperties(
         String apiBaseUrl,
         Duration connectTimeout,
         Duration readTimeout,
+        Duration progressNotificationInterval,
         String userAgent,
         Map<String, Boolean> filters,
         @NestedConfigurationProperty @Valid Tools tools,
@@ -47,6 +54,7 @@ public record OpenApiMcpProperties(
     public static final String PREFIX = "infobip.openapi.mcp";
     public static final Duration DEFAULT_CONNECT_TIMEOUT = Duration.ofSeconds(5);
     public static final Duration DEFAULT_READ_TIMEOUT = Duration.ofSeconds(5);
+    public static final Duration DEFAULT_PROGRESS_NOTIFICATION_INTERVAL = Duration.ofSeconds(1);
     public static final String DEFAULT_USER_AGENT = "openapi-mcp";
 
     /**
@@ -58,6 +66,9 @@ public record OpenApiMcpProperties(
         }
         if (readTimeout == null) {
             readTimeout = DEFAULT_READ_TIMEOUT;
+        }
+        if (progressNotificationInterval == null) {
+            progressNotificationInterval = DEFAULT_PROGRESS_NOTIFICATION_INTERVAL;
         }
         if (userAgent == null) {
             userAgent = DEFAULT_USER_AGENT;
@@ -79,7 +90,7 @@ public record OpenApiMcpProperties(
      * @return a new OpenApiMcpProperties instance with defaults
      */
     public static OpenApiMcpProperties withDefaults() {
-        return new OpenApiMcpProperties(null, null, null, null, null, null, null, null);
+        return new OpenApiMcpProperties(null, null, null, null, null, null, null, null, null);
     }
 
     /**
@@ -209,7 +220,8 @@ public record OpenApiMcpProperties(
          * @param openWorldHint   whether the tool interacts with an external system
          */
         public record Annotations(
-                Boolean readOnlyHint, Boolean destructiveHint, Boolean idempotentHint, Boolean openWorldHint) {}
+                Boolean readOnlyHint, Boolean destructiveHint, Boolean idempotentHint, Boolean openWorldHint) {
+        }
     }
 
     /**

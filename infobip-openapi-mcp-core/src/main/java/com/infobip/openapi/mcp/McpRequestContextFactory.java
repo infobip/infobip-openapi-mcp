@@ -3,11 +3,14 @@ package com.infobip.openapi.mcp;
 import com.infobip.openapi.mcp.openapi.tool.FullOperation;
 import io.modelcontextprotocol.common.McpTransportContext;
 import io.modelcontextprotocol.server.McpSyncServerExchange;
+import io.modelcontextprotocol.spec.McpSchema;
 import jakarta.servlet.http.HttpServletRequest;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
+
+import java.util.function.BiConsumer;
 
 /**
  * Factory for creating {@link McpRequestContext} instances
@@ -41,17 +44,17 @@ public class McpRequestContextFactory {
      * </p>
      *
      * @param exchange      the MCP server exchange containing session information
-     * @param toolName      the name of the MCP tool being invoked, or null if not in tool invocation context
+     * @param toolRequest   the name of the MCP tool being invoked, or null if not in tool invocation context
      * @param fullOperation the set of information from OpenAPI specification that
      *                      defines the API endpoint backing this tool
      * @return a new context instance with stateful transport metadata and tool name
      */
     public McpRequestContext forStatefulTransport(
-            McpSyncServerExchange exchange, @Nullable String toolName, FullOperation fullOperation) {
+            McpSyncServerExchange exchange, McpSchema.CallToolRequest toolRequest, FullOperation fullOperation) {
         var httpServletRequest = getCurrentHttpServletRequest();
         var sessionId = exchange.sessionId();
         var clientInfo = exchange.getClientInfo();
-        return new McpRequestContext(httpServletRequest, sessionId, clientInfo, toolName, fullOperation);
+        return new McpRequestContext(httpServletRequest, sessionId, clientInfo, toolRequest.name(), fullOperation, notificationCallback(exchange, toolRequest));
     }
 
     /**
@@ -62,16 +65,16 @@ public class McpRequestContextFactory {
      * </p>
      *
      * @param transportContext the MCP transport context (may be null, currently unused)
-     * @param toolName         the name of the MCP tool being invoked, or null if not in tool invocation context
+     * @param toolRequest      the name of the MCP tool being invoked, or null if not in tool invocation context
      * @param fullOperation    the set of information from OpenAPI specification that
      *                         defines the API endpoint backing this tool
      * @return a new context instance without session metadata but with tool name
      */
     public McpRequestContext forStatelessTransport(
-            @Nullable McpTransportContext transportContext, @Nullable String toolName, FullOperation fullOperation) {
+            @Nullable McpTransportContext transportContext, McpSchema.CallToolRequest toolRequest, FullOperation fullOperation) {
         var httpServletRequest = getCurrentHttpServletRequest();
         // Stateless transport doesn't have session or client info (yet)
-        return new McpRequestContext(httpServletRequest, null, null, toolName, fullOperation);
+        return new McpRequestContext(httpServletRequest, null, null, toolRequest.name(), fullOperation, (p, m) -> {});
     }
 
     /**
@@ -110,5 +113,19 @@ public class McpRequestContextFactory {
             return null;
         }
         return null;
+    }
+
+    private BiConsumer<Double, String> notificationCallback(
+            McpSyncServerExchange exchange,
+            McpSchema.CallToolRequest toolRequest
+    ) {
+        var progressToken = toolRequest.progressToken();
+        return progressToken == null
+                ? (p, m) -> {
+        }
+                : (progress, message) -> exchange.progressNotification(new McpSchema.ProgressNotification(
+                progressToken, progress, null, message, null
+
+        ));
     }
 }
