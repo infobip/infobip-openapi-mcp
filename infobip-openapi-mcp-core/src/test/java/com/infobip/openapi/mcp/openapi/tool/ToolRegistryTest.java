@@ -67,6 +67,7 @@ class ToolRegistryTest {
                 null,
                 null,
                 null,
+                null,
                 new OpenApiMcpProperties.Tools(null, null, null, true, null, null, null),
                 null);
         toolRegistry = new ToolRegistry(
@@ -910,6 +911,7 @@ class ToolRegistryTest {
                 null,
                 null,
                 null,
+                null,
                 new OpenApiMcpProperties.Tools(null, null, null, false, null, null, null),
                 null);
         toolRegistry = new ToolRegistry(
@@ -956,6 +958,7 @@ class ToolRegistryTest {
     void shouldUseSummaryAsDescriptionWhenFeatureDisabledAndOnlySummaryPresent() {
         // Given
         properties = new OpenApiMcpProperties(
+                null,
                 null,
                 null,
                 null,
@@ -1303,6 +1306,7 @@ class ToolRegistryTest {
                 null,
                 null,
                 null,
+                null,
                 new OpenApiMcpProperties.Tools(null, null, null, true, null, ExamplesMode.ALL, null),
                 null);
         inputExampleComposer = new InputExampleComposer(properties);
@@ -1360,6 +1364,7 @@ class ToolRegistryTest {
     void shouldNotAppendExampleBlockWhenFeatureDisabled() {
         // Given
         properties = new OpenApiMcpProperties(
+                null,
                 null,
                 null,
                 null,
@@ -1457,6 +1462,7 @@ class ToolRegistryTest {
     void shouldReturnExampleBlockAsDescriptionWhenNoSummaryOrDescription() {
         // Given
         properties = new OpenApiMcpProperties(
+                null,
                 null,
                 null,
                 null,
@@ -1568,6 +1574,7 @@ class ToolRegistryTest {
                 null,
                 null,
                 null,
+                null,
                 new OpenApiMcpProperties.Tools(null, null, null, true, null, ExamplesMode.ALL, null),
                 null);
         inputExampleComposer = new InputExampleComposer(properties);
@@ -1636,6 +1643,7 @@ class ToolRegistryTest {
     void shouldAppendOnlyAnnotatedExamplesWhenModeIsAnnotated() {
         // Given
         properties = new OpenApiMcpProperties(
+                null,
                 null,
                 null,
                 null,

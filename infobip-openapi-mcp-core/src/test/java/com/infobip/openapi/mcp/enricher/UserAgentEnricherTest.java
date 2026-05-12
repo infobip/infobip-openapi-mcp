@@ -115,6 +115,7 @@ class UserAgentEnricherTest {
                 null,
                 null,
                 null,
+                null,
                 userAgent,
                 null,
                 null,

@@ -58,6 +58,7 @@ class ToolLiveReloadTest {
             null,
             null,
             null,
+            null,
             new OpenApiMcpProperties.Tools(null, null, null, true, null, null, null),
             new OpenApiMcpProperties.LiveReload(true, "0 */1 * * * *", 1));
 

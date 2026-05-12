@@ -3,10 +3,9 @@ package com.infobip.openapi.mcp;
 import com.infobip.openapi.mcp.openapi.tool.FullOperation;
 import io.modelcontextprotocol.spec.McpSchema;
 import jakarta.servlet.http.HttpServletRequest;
+import java.util.function.BiConsumer;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
-
-import java.util.function.BiConsumer;
 
 /**
  * Context object that encapsulates request-level information for MCP operations.
@@ -35,13 +34,11 @@ public record McpRequestContext(
         @Nullable FullOperation openApiOperation,
         BiConsumer<Double, @Nullable String> progressNotificationCallback) {
     public McpRequestContext() {
-        this(null, null, null, null, null, (p, m) -> {
-        });
+        this(null, null, null, null, null, (p, m) -> {});
     }
 
     public McpRequestContext(HttpServletRequest httpServletRequest) {
-        this(httpServletRequest, null, null, null, null, (p, m) -> {
-        });
+        this(httpServletRequest, null, null, null, null, (p, m) -> {});
     }
 
     public void notifyOfProgress(double updatedProgressValue) {
