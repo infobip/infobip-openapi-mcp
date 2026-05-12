@@ -577,6 +577,61 @@ class McpRequestContextFactoryTest {
         }
     }
 
+    @Test
+    void shouldNotSupportProgressNotificationsWhenNoProgressTokenProvided() {
+        // given
+        given(exchange.sessionId()).willReturn("session-123");
+        given(exchange.getClientInfo()).willReturn(null);
+
+        try (MockedStatic<RequestContextHolder> mockedHolder = mockStatic(RequestContextHolder.class)) {
+            mockedHolder
+                    .when(RequestContextHolder::currentRequestAttributes)
+                    .thenThrow(new IllegalStateException("No request context available"));
+
+            // when
+            var context = factory.forStatefulTransport(exchange, callToolRequest, givenOperation());
+
+            // then
+            then(context.supportsProgressNotifications()).isFalse();
+        }
+    }
+
+    @Test
+    void shouldSupportProgressNotificationsWhenProgressTokenProvided() {
+        // given
+        given(callToolRequest.progressToken()).willReturn("token-abc");
+        given(exchange.sessionId()).willReturn("session-123");
+        given(exchange.getClientInfo()).willReturn(null);
+
+        try (MockedStatic<RequestContextHolder> mockedHolder = mockStatic(RequestContextHolder.class)) {
+            mockedHolder
+                    .when(RequestContextHolder::currentRequestAttributes)
+                    .thenThrow(new IllegalStateException("No request context available"));
+
+            // when
+            var context = factory.forStatefulTransport(exchange, callToolRequest, givenOperation());
+
+            // then
+            then(context.supportsProgressNotifications()).isTrue();
+        }
+    }
+
+    @Test
+    void shouldNotSupportProgressNotificationsForStatelessTransport() {
+        // given
+        try (MockedStatic<RequestContextHolder> mockedHolder = mockStatic(RequestContextHolder.class)) {
+            mockedHolder
+                    .when(RequestContextHolder::currentRequestAttributes)
+                    .thenThrow(new IllegalStateException("No request context available"));
+
+            // when
+            var context = factory.forStatelessTransport(null, callToolRequest, givenOperation());
+
+            // then
+            then(context.supportsProgressNotifications()).isFalse();
+        }
+    }
+
     private FullOperation givenOperation() {
         return new FullOperation("/", PathItem.HttpMethod.GET, new Operation(), new OpenAPI());
     }

@@ -81,7 +81,7 @@ public class McpRequestContextFactory {
             FullOperation fullOperation) {
         var httpServletRequest = getCurrentHttpServletRequest();
         // Stateless transport doesn't have session or client info (yet)
-        return new McpRequestContext(httpServletRequest, null, null, toolRequest.name(), fullOperation, (p, m) -> {});
+        return new McpRequestContext(httpServletRequest, null, null, toolRequest.name(), fullOperation, null);
     }
 
     /**
@@ -122,11 +122,11 @@ public class McpRequestContextFactory {
         return null;
     }
 
-    private BiConsumer<Double, String> notificationCallback(
+    private @Nullable BiConsumer<Double, String> notificationCallback(
             McpSyncServerExchange exchange, McpSchema.CallToolRequest toolRequest) {
         var progressToken = toolRequest.progressToken();
         return progressToken == null
-                ? (p, m) -> {}
+                ? null
                 : (progress, message) -> exchange.progressNotification(
                         new McpSchema.ProgressNotification(progressToken, progress, null, message, null));
     }

@@ -511,6 +511,30 @@ class ToolHandlerTest {
     }
 
     @Nested
+    class ProgressNotifications {
+
+        @Test
+        void shouldCompleteNormallyWhenProgressEnabledButClientDidNotRequestProgress() {
+            // given
+            lenient().when(properties.progressNotificationsEnabled()).thenReturn(true);
+            var fullOperation = new FullOperation("/users", PathItem.HttpMethod.GET, new Operation(), new OpenAPI());
+            var decomposedSchema = DecomposedRequestData.empty();
+            var responseBody = "{\"users\":[]}";
+
+            wireMockServer.stubFor(get(urlPathEqualTo("/users"))
+                    .withHeader("Accept", equalTo("application/json"))
+                    .willReturn(aResponse().withStatus(200).withBody(responseBody)));
+
+            // when — context has no progressToken, so no thread should be spawned
+            var result = toolHandler.handleToolCall(fullOperation, decomposedSchema, createTestContext());
+
+            // then
+            then(extractTextContent(result.content())).isEqualTo(responseBody);
+            then(result.isError()).isFalse();
+        }
+    }
+
+    @Nested
     class ErrorHandling {
 
         @Test

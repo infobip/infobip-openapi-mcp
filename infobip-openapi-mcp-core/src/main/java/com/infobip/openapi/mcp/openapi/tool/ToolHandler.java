@@ -276,7 +276,7 @@ public class ToolHandler {
         enrichedSpec.headers(
                 headers -> headers.addIfAbsent(HttpHeaders.ACCEPT, PREFERRED_ACCEPT_MEDIA_TYPE.toString()));
 
-        if (!properties.progressNotificationsEnabled()) {
+        if (!properties.progressNotificationsEnabled() || !context.supportsProgressNotifications()) {
             return enrichedSpec.retrieve().toEntity(String.class);
         }
 

@@ -32,20 +32,50 @@ public record McpRequestContext(
         McpSchema.@Nullable Implementation clientInfo,
         @Nullable String toolName,
         @Nullable FullOperation openApiOperation,
-        BiConsumer<Double, @Nullable String> progressNotificationCallback) {
+        @Nullable BiConsumer<Double, @Nullable String> progressNotificationCallback) {
     public McpRequestContext() {
-        this(null, null, null, null, null, (p, m) -> {});
+        this(null, null, null, null, null, null);
     }
 
     public McpRequestContext(HttpServletRequest httpServletRequest) {
-        this(httpServletRequest, null, null, null, null, (p, m) -> {});
+        this(httpServletRequest, null, null, null, null, null);
     }
 
+    /**
+     * Returns {@code true} if the MCP client included a {@code progressToken} in the request,
+     * meaning it wants to receive {@code notifications/progress} messages for this operation.
+     * <p>
+     * The framework uses this to decide whether to spawn a progress notification thread.
+     * Callers should check this before invoking {@link #notifyOfProgress} in a loop, so that
+     * no work is done when no client is listening.
+     * </p>
+     */
+    public boolean supportsProgressNotifications() {
+        return progressNotificationCallback != null;
+    }
+
+    /**
+     * Sends a progress notification to the MCP client with no accompanying message.
+     *
+     * @param updatedProgressValue the new progress value; must be greater than the previously sent value
+     * @see #notifyOfProgress(double, String)
+     */
     public void notifyOfProgress(double updatedProgressValue) {
         notifyOfProgress(updatedProgressValue, null);
     }
 
+    /**
+     * Sends a progress notification to the MCP client.
+     * <p>
+     * Has no effect when {@link #supportsProgressNotifications()} returns {@code false}.
+     * </p>
+     *
+     * @param updatedProgressValue    the new progress value; must be greater than the previously sent value
+     * @param updatesProgressMessage  optional human-readable status message, or {@code null} to omit it
+     */
     public void notifyOfProgress(double updatedProgressValue, @Nullable String updatesProgressMessage) {
-        progressNotificationCallback.accept(updatedProgressValue, updatesProgressMessage);
+        if (supportsProgressNotifications()) {
+            progressNotificationCallback.accept(updatedProgressValue, updatesProgressMessage);
+        }
     }
 }
