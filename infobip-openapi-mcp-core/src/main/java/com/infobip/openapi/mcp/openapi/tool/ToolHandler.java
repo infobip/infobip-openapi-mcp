@@ -7,6 +7,7 @@ import com.infobip.openapi.mcp.enricher.ApiRequestEnricherChain;
 import com.infobip.openapi.mcp.error.ErrorModelWriter;
 import com.infobip.openapi.mcp.infrastructure.metrics.MetricService;
 import com.infobip.openapi.mcp.openapi.schema.DecomposedRequestData;
+import com.infobip.openapi.mcp.progress.ProgressUpdateProvider;
 import io.modelcontextprotocol.spec.McpSchema;
 import java.util.Optional;
 import org.jspecify.annotations.NullMarked;
@@ -65,6 +66,7 @@ public class ToolHandler {
     private final ApiRequestEnricherChain enricherChain;
     private final MetricService metricService;
     private final CredentialProvider credentialProvider;
+    private final ProgressUpdateProvider progressUpdateProvider;
 
     public ToolHandler(
             RestClient restClient,
@@ -72,13 +74,15 @@ public class ToolHandler {
             OpenApiMcpProperties properties,
             ApiRequestEnricherChain enricherChain,
             MetricService metricService,
-            CredentialProvider credentialProvider) {
+            CredentialProvider credentialProvider,
+            ProgressUpdateProvider progressUpdateProvider) {
         this.restClient = restClient;
         this.errorModelWriter = errorModelWriter;
         this.properties = properties;
         this.enricherChain = enricherChain;
         this.metricService = metricService;
         this.credentialProvider = credentialProvider;
+        this.progressUpdateProvider = progressUpdateProvider;
         this.serializationCorrector = new JsonDoubleSerializationCorrector();
     }
 
@@ -280,12 +284,14 @@ public class ToolHandler {
             return enrichedSpec.retrieve().toEntity(String.class);
         }
 
+        var total = progressUpdateProvider.total(context);
         var progressNotifThread = Thread.ofVirtual().start(() -> {
-            var updateCount = 0L;
+            var tick = 0L;
             while (true) {
                 try {
                     Thread.sleep(properties.progressNotificationsInterval().toMillis());
-                    context.notifyOfProgress(updateCount++);
+                    var update = progressUpdateProvider.next(tick++, context);
+                    context.notifyOfProgress(update.progress(), total, update.message());
                 } catch (InterruptedException e) {
                     // This is regular flow that happens when the main tool handler thread
                     // interrupts the progress notif thread before writing the tool call

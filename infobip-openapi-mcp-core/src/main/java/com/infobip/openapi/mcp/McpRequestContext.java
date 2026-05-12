@@ -3,7 +3,6 @@ package com.infobip.openapi.mcp;
 import com.infobip.openapi.mcp.openapi.tool.FullOperation;
 import io.modelcontextprotocol.spec.McpSchema;
 import jakarta.servlet.http.HttpServletRequest;
-import java.util.function.BiConsumer;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
@@ -32,7 +31,7 @@ public record McpRequestContext(
         McpSchema.@Nullable Implementation clientInfo,
         @Nullable String toolName,
         @Nullable FullOperation openApiOperation,
-        @Nullable BiConsumer<Double, @Nullable String> progressNotificationCallback) {
+        @Nullable ProgressNotificationCallback progressNotificationCallback) {
     public McpRequestContext() {
         this(null, null, null, null, null, null);
     }
@@ -55,13 +54,24 @@ public record McpRequestContext(
     }
 
     /**
-     * Sends a progress notification to the MCP client with no accompanying message.
+     * Sends a progress notification to the MCP client with no total and no message.
      *
-     * @param updatedProgressValue the new progress value; must be greater than the previously sent value
-     * @see #notifyOfProgress(double, String)
+     * @param progress the new progress value; must be greater than the previously sent value
+     * @see #notifyOfProgress(double, Double, String)
      */
-    public void notifyOfProgress(double updatedProgressValue) {
-        notifyOfProgress(updatedProgressValue, null);
+    public void notifyOfProgress(double progress) {
+        notifyOfProgress(progress, null, null);
+    }
+
+    /**
+     * Sends a progress notification to the MCP client with no total.
+     *
+     * @param progress the new progress value; must be greater than the previously sent value
+     * @param message  optional human-readable status message, or {@code null} to omit it
+     * @see #notifyOfProgress(double, Double, String)
+     */
+    public void notifyOfProgress(double progress, @Nullable String message) {
+        notifyOfProgress(progress, null, message);
     }
 
     /**
@@ -70,12 +80,14 @@ public record McpRequestContext(
      * Has no effect when {@link #supportsProgressNotifications()} returns {@code false}.
      * </p>
      *
-     * @param updatedProgressValue    the new progress value; must be greater than the previously sent value
-     * @param updatesProgressMessage  optional human-readable status message, or {@code null} to omit it
+     * @param progress the new progress value; must be greater than the previously sent value
+     * @param total    the expected total value at completion, or {@code null} if unknown;
+     *                 should remain constant across all notifications for a single tool call
+     * @param message  optional human-readable status message, or {@code null} to omit it
      */
-    public void notifyOfProgress(double updatedProgressValue, @Nullable String updatesProgressMessage) {
+    public void notifyOfProgress(double progress, @Nullable Double total, @Nullable String message) {
         if (supportsProgressNotifications()) {
-            progressNotificationCallback.accept(updatedProgressValue, updatesProgressMessage);
+            progressNotificationCallback.send(progress, total, message);
         }
     }
 }

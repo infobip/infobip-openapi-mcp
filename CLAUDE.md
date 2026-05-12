@@ -58,6 +58,10 @@ sdk use java <identifier>
   behind it. It is fine to mention configuration properties needed to enable or customize a feature, or java interfaces
   that users can implement such as `OpenApiFilter` or `ApiRequestEnricher`. Avoid class names, method names, test names,
   and other implementation details.
+  **Before adding a new sub-section** (`### Changed`, `### Fixed`, etc.) to `[Unreleased]`, ask: has any part of the
+  thing being documented ever appeared in a released version? If not, it all belongs under `### Added` — update or
+  extend the existing bullet rather than creating a new sub-section. The `Changed`/`Fixed`/`Removed` categories are
+  meaningful only relative to a released version, not between commits on an unreleased branch.
 - If you added or changed an external configuration property, add or update its row in the properties table in
   `README.md`.
 - Check and update `CLAUDE.md` to reflect the new state of the project.

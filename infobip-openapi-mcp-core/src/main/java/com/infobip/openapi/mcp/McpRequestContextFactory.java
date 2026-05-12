@@ -5,7 +5,6 @@ import io.modelcontextprotocol.common.McpTransportContext;
 import io.modelcontextprotocol.server.McpSyncServerExchange;
 import io.modelcontextprotocol.spec.McpSchema;
 import jakarta.servlet.http.HttpServletRequest;
-import java.util.function.BiConsumer;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import org.springframework.web.context.request.RequestContextHolder;
@@ -122,12 +121,12 @@ public class McpRequestContextFactory {
         return null;
     }
 
-    private @Nullable BiConsumer<Double, String> notificationCallback(
+    private @Nullable ProgressNotificationCallback notificationCallback(
             McpSyncServerExchange exchange, McpSchema.CallToolRequest toolRequest) {
         var progressToken = toolRequest.progressToken();
         return progressToken == null
                 ? null
-                : (progress, message) -> exchange.progressNotification(
-                        new McpSchema.ProgressNotification(progressToken, progress, null, message, null));
+                : (progress, total, message) -> exchange.progressNotification(
+                        new McpSchema.ProgressNotification(progressToken, progress, total, message, null));
     }
 }

@@ -17,6 +17,7 @@ import com.infobip.openapi.mcp.error.ErrorModelWriter;
 import com.infobip.openapi.mcp.infrastructure.metrics.MetricService;
 import com.infobip.openapi.mcp.infrastructure.metrics.NoOpMetricService;
 import com.infobip.openapi.mcp.openapi.schema.DecomposedRequestData;
+import com.infobip.openapi.mcp.progress.DefaultProgressUpdateProvider;
 import com.infobip.openapi.mcp.util.XForwardedForCalculator;
 import io.modelcontextprotocol.spec.McpSchema;
 import io.swagger.v3.oas.models.OpenAPI;
@@ -91,7 +92,8 @@ class ToolHandlerTest {
                 properties,
                 enricherChain,
                 metricService,
-                new HttpServletRequestCredentialProvider());
+                new HttpServletRequestCredentialProvider(),
+                new DefaultProgressUpdateProvider());
     }
 
     @AfterEach
@@ -678,7 +680,8 @@ class ToolHandlerTest {
                     propertiesDisabled,
                     emptyEnricherChain,
                     metricService,
-                    new HttpServletRequestCredentialProvider());
+                    new HttpServletRequestCredentialProvider(),
+                    new DefaultProgressUpdateProvider());
 
             // When
             var result = toolHandlerWithBadPort.handleToolCall(fullOperation, decomposedSchema, createTestContext());
@@ -702,7 +705,8 @@ class ToolHandlerTest {
                     metricService,
                     context -> {
                         throw new RuntimeException("credential source unavailable");
-                    });
+                    },
+                    new DefaultProgressUpdateProvider());
 
             // When
             var result = toolHandlerWithThrowingExtractor.handleToolCall(
