@@ -3,11 +3,17 @@ package com.infobip.openapi.mcp.openapi.tool;
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
 import static org.assertj.core.api.BDDAssertions.then;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.infobip.openapi.mcp.McpRequestContext;
+import com.infobip.openapi.mcp.ProgressNotificationCallback;
 import com.infobip.openapi.mcp.auth.HttpServletRequestCredentialProvider;
 import com.infobip.openapi.mcp.config.OpenApiMcpProperties;
 import com.infobip.openapi.mcp.enricher.ApiRequestEnricherChain;
@@ -18,6 +24,8 @@ import com.infobip.openapi.mcp.infrastructure.metrics.MetricService;
 import com.infobip.openapi.mcp.infrastructure.metrics.NoOpMetricService;
 import com.infobip.openapi.mcp.openapi.schema.DecomposedRequestData;
 import com.infobip.openapi.mcp.progress.DefaultProgressUpdateProvider;
+import com.infobip.openapi.mcp.progress.ProgressUpdate;
+import com.infobip.openapi.mcp.progress.ProgressUpdateProvider;
 import com.infobip.openapi.mcp.util.XForwardedForCalculator;
 import io.modelcontextprotocol.spec.McpSchema;
 import io.swagger.v3.oas.models.OpenAPI;
@@ -25,6 +33,7 @@ import io.swagger.v3.oas.models.Operation;
 import io.swagger.v3.oas.models.PathItem;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Semaphore;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -52,11 +61,15 @@ class ToolHandlerTest {
     @Mock
     private OpenApiMcpProperties properties;
 
+    @Mock
+    private ProgressUpdateProvider progressUpdateProvider;
+
     private MetricService metricService = new NoOpMetricService();
 
     private WireMockServer wireMockServer;
     private ToolHandler toolHandler;
     private ErrorModelWriter errorModelWriter;
+    private Semaphore notificationSemaphore;
 
     @BeforeEach
     void setUp() {
@@ -86,6 +99,8 @@ class ToolHandlerTest {
         var xffEnricher = new XForwardedForEnricher(xffCalculator);
         var enricherChain = new ApiRequestEnricherChain(List.of(xffEnricher));
 
+        notificationSemaphore = new Semaphore(0);
+
         toolHandler = new ToolHandler(
                 restClient,
                 errorModelWriter,
@@ -93,7 +108,8 @@ class ToolHandlerTest {
                 enricherChain,
                 metricService,
                 new HttpServletRequestCredentialProvider(),
-                new DefaultProgressUpdateProvider());
+                progressUpdateProvider,
+                notificationSemaphore::acquire);
     }
 
     @AfterEach
@@ -534,6 +550,137 @@ class ToolHandlerTest {
             then(extractTextContent(result.content())).isEqualTo(responseBody);
             then(result.isError()).isFalse();
         }
+
+        @Test
+        void shouldCompleteSuccessfullyWhenProgressUpdateProviderTotalThrows() {
+            // given
+            lenient().when(properties.progressNotificationsEnabled()).thenReturn(true);
+            var fullOperation = new FullOperation("/users", PathItem.HttpMethod.GET, new Operation(), new OpenAPI());
+            var decomposedSchema = DecomposedRequestData.empty();
+            var responseBody = "{\"users\":[]}";
+
+            when(progressUpdateProvider.total(any())).thenThrow(new RuntimeException("total exploded"));
+
+            var context = createProgressContext((p, t, m) -> {});
+
+            wireMockServer.stubFor(get(urlPathEqualTo("/users"))
+                    .withHeader("Accept", equalTo("application/json"))
+                    .willReturn(aResponse().withStatus(200).withBody(responseBody)));
+
+            // when — total() throws; progress notifications are skipped but the API call proceeds
+            var result = toolHandler.handleToolCall(fullOperation, decomposedSchema, context);
+
+            // then
+            then(result.isError()).isFalse();
+            then(extractTextContent(result.content())).isEqualTo(responseBody);
+        }
+
+        @Test
+        void shouldCompleteSuccessfullyWhenProgressUpdateProviderNextThrows() {
+            // given
+            lenient().when(properties.progressNotificationsEnabled()).thenReturn(true);
+            var fullOperation = new FullOperation("/users", PathItem.HttpMethod.GET, new Operation(), new OpenAPI());
+            var decomposedSchema = DecomposedRequestData.empty();
+            var responseBody = "{\"users\":[]}";
+
+            when(progressUpdateProvider.next(anyLong(), any())).thenThrow(new RuntimeException("next exploded"));
+            // pre-release: notification thread acquires immediately on first tick
+            notificationSemaphore.release();
+
+            // WireMock delay ensures the notification thread fires before the HTTP response arrives
+            wireMockServer.stubFor(get(urlPathEqualTo("/users"))
+                    .withHeader("Accept", equalTo("application/json"))
+                    .willReturn(
+                            aResponse().withStatus(200).withBody(responseBody).withFixedDelay(100)));
+
+            var context = createProgressContext((p, t, m) -> {});
+
+            // when
+            var result = toolHandler.handleToolCall(fullOperation, decomposedSchema, context);
+
+            // then — tool call succeeds even though the notification provider threw
+            then(result.isError()).isFalse();
+            then(extractTextContent(result.content())).isEqualTo(responseBody);
+            verify(progressUpdateProvider).next(eq(0L), any());
+        }
+
+        @Test
+        void shouldCompleteSuccessfullyWhenNotificationCallbackThrows() {
+            // given
+            lenient().when(properties.progressNotificationsEnabled()).thenReturn(true);
+            var fullOperation = new FullOperation("/users", PathItem.HttpMethod.GET, new Operation(), new OpenAPI());
+            var decomposedSchema = DecomposedRequestData.empty();
+            var responseBody = "{\"users\":[]}";
+
+            when(progressUpdateProvider.next(anyLong(), any())).thenReturn(new ProgressUpdate(1.0, "processing"));
+            // pre-release: notification thread acquires immediately on first tick
+            notificationSemaphore.release();
+
+            var context = createProgressContext((p, t, m) -> {
+                throw new RuntimeException("callback exploded");
+            });
+
+            // WireMock delay ensures the notification thread fires before the HTTP response arrives
+            wireMockServer.stubFor(get(urlPathEqualTo("/users"))
+                    .withHeader("Accept", equalTo("application/json"))
+                    .willReturn(
+                            aResponse().withStatus(200).withBody(responseBody).withFixedDelay(100)));
+
+            // when
+            var result = toolHandler.handleToolCall(fullOperation, decomposedSchema, context);
+
+            // then — tool call succeeds even though the notification callback threw
+            then(result.isError()).isFalse();
+            then(extractTextContent(result.content())).isEqualTo(responseBody);
+            verify(progressUpdateProvider).next(eq(0L), any());
+        }
+
+        @Test
+        void shouldReturnErrorAndCleanUpNotificationThreadOnHttpError() {
+            // given
+            lenient().when(properties.progressNotificationsEnabled()).thenReturn(true);
+            var fullOperation = new FullOperation("/users", PathItem.HttpMethod.GET, new Operation(), new OpenAPI());
+            var decomposedSchema = DecomposedRequestData.empty();
+            var errorBody = "{\"error\":\"Internal Server Error\"}";
+
+            // notificationSemaphore has 0 permits: notification thread blocks on acquire() until interrupted
+            var context = createProgressContext((p, t, m) -> {});
+
+            wireMockServer.stubFor(get(urlPathEqualTo("/users"))
+                    .withHeader("Accept", equalTo("application/json"))
+                    .willReturn(aResponse().withStatus(500).withBody(errorBody)));
+
+            // when — HTTP returns error immediately; notification thread is interrupted and joined
+            // before handleToolCall returns (proven by the test not hanging)
+            var result = toolHandler.handleToolCall(fullOperation, decomposedSchema, context);
+
+            // then
+            then(result.isError()).isTrue();
+            then(extractTextContent(result.content())).isEqualTo(errorBody);
+        }
+
+        @Test
+        void shouldReturnBadGatewayAndCleanUpNotificationThreadOnHttpTimeout() {
+            // given
+            lenient().when(properties.progressNotificationsEnabled()).thenReturn(true);
+            var fullOperation = new FullOperation("/users", PathItem.HttpMethod.GET, new Operation(), new OpenAPI());
+            var decomposedSchema = DecomposedRequestData.empty();
+
+            // notificationSemaphore has 0 permits: notification thread blocks on acquire() until interrupted
+            var context = createProgressContext((p, t, m) -> {});
+
+            wireMockServer.stubFor(get(urlPathEqualTo("/users"))
+                    .withHeader("Accept", equalTo("application/json"))
+                    .willReturn(aResponse().withFixedDelay(TIMEOUT_MS + 100)));
+
+            // when — HTTP times out; notification thread is interrupted and joined
+            // before handleToolCall returns (proven by the test not hanging)
+            var result = toolHandler.handleToolCall(fullOperation, decomposedSchema, context);
+
+            // then
+            then(result.isError()).isTrue();
+            then(extractTextContent(result.content())).isEqualTo(EXPECTED_BAD_GATEWAY_ERROR_JSON);
+        }
     }
 
     @Nested
@@ -862,6 +1009,10 @@ class ToolHandlerTest {
             then(extractTextContent(result.content())).isEqualTo(responseBody);
             then(result.isError()).isFalse();
         }
+    }
+
+    private McpRequestContext createProgressContext(ProgressNotificationCallback callback) {
+        return new McpRequestContext(null, null, null, null, null, callback);
     }
 
     /**

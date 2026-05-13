@@ -67,6 +67,7 @@ public class ToolHandler {
     private final MetricService metricService;
     private final CredentialProvider credentialProvider;
     private final ProgressUpdateProvider progressUpdateProvider;
+    private final NotificationTicker ticker;
 
     public ToolHandler(
             RestClient restClient,
@@ -76,6 +77,31 @@ public class ToolHandler {
             MetricService metricService,
             CredentialProvider credentialProvider,
             ProgressUpdateProvider progressUpdateProvider) {
+        this(
+                restClient,
+                errorModelWriter,
+                properties,
+                enricherChain,
+                metricService,
+                credentialProvider,
+                progressUpdateProvider,
+                () -> Thread.sleep(properties.progressNotificationsInterval().toMillis()));
+    }
+
+    /**
+     * Internal constructor used in tests only. Allows for mocking the passage of
+     * time in tests by overriding the default Thread.sleep implementation of
+     * the ticker.
+     */
+    ToolHandler(
+            RestClient restClient,
+            ErrorModelWriter errorModelWriter,
+            OpenApiMcpProperties properties,
+            ApiRequestEnricherChain enricherChain,
+            MetricService metricService,
+            CredentialProvider credentialProvider,
+            ProgressUpdateProvider progressUpdateProvider,
+            NotificationTicker ticker) {
         this.restClient = restClient;
         this.errorModelWriter = errorModelWriter;
         this.properties = properties;
@@ -83,6 +109,7 @@ public class ToolHandler {
         this.metricService = metricService;
         this.credentialProvider = credentialProvider;
         this.progressUpdateProvider = progressUpdateProvider;
+        this.ticker = ticker;
         this.serializationCorrector = new JsonDoubleSerializationCorrector();
     }
 
@@ -284,29 +311,12 @@ public class ToolHandler {
             return enrichedSpec.retrieve().toEntity(String.class);
         }
 
-        var total = progressUpdateProvider.total(context);
-        var progressNotifThread = Thread.ofVirtual().start(() -> {
-            var tick = 0L;
-            while (true) {
-                try {
-                    Thread.sleep(properties.progressNotificationsInterval().toMillis());
-                    var update = progressUpdateProvider.next(tick++, context);
-                    context.notifyOfProgress(update.progress(), total, update.message());
-                } catch (InterruptedException e) {
-                    // This is regular flow that happens when the main tool handler thread
-                    // interrupts the progress notif thread before writing the tool call
-                    // result back to MCP client.
-                    return;
-                } catch (Throwable throwable) {
-                    LOGGER.warn(
-                            "Failed to send progress notification because: {} \n"
-                                    + "No further progress notifications will be sent.",
-                            throwable.getMessage(),
-                            throwable);
-                    return;
-                }
-            }
-        });
+        var total = resolveProgressTotal(context);
+        if (total == null) {
+            return enrichedSpec.retrieve().toEntity(String.class);
+        }
+
+        var progressNotifThread = Thread.ofVirtual().start(notificationLoop(total, context));
 
         try {
             var result = enrichedSpec.retrieve().toEntity(String.class);
@@ -326,6 +336,44 @@ public class ToolHandler {
             }
             throw apiCallFail;
         }
+    }
+
+    private @Nullable Double resolveProgressTotal(McpRequestContext context) {
+        try {
+            return progressUpdateProvider.total(context);
+        } catch (Throwable throwable) {
+            LOGGER.warn(
+                    "Failed to initialise progress notifications because: {} \n"
+                            + "No progress notifications will be sent.",
+                    throwable.getMessage(),
+                    throwable);
+            return null;
+        }
+    }
+
+    private Runnable notificationLoop(@Nullable Double total, McpRequestContext context) {
+        return () -> {
+            var tick = 0L;
+            while (true) {
+                try {
+                    ticker.tick();
+                    var update = progressUpdateProvider.next(tick++, context);
+                    context.notifyOfProgress(update.progress(), total, update.message());
+                } catch (InterruptedException e) {
+                    // This is regular flow that happens when the main tool handler thread
+                    // interrupts the progress notif thread before writing the tool call
+                    // result back to MCP client.
+                    return;
+                } catch (Throwable throwable) {
+                    LOGGER.warn(
+                            "Failed to send progress notification because: {} \n"
+                                    + "No further progress notifications will be sent.",
+                            throwable.getMessage(),
+                            throwable);
+                    return;
+                }
+            }
+        };
     }
 
     /**
