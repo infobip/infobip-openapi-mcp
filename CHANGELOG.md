@@ -9,14 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Sending progress notifications for MCP tools backed by HTTP API calls with high response latency. This feature works
-  only for stateful MCP servers, and only when MCP client requests it by sending `_meta.progressToken` parameter in tool
-  call. You can disable it with `infobip.openapi.mcp.progress-notifications-enabled: false`, and customize the interval
-  with `infobip.openapi.mcp.progress-notifications-interval`. Progress notification content can be customised via the
-  `ProgressUpdateProvider` extension point — implement the interface and register it as a Spring bean to control the
-  `progress`, `total`, and `message` fields sent in each notification. The `total` value is resolved once per tool call,
-  preventing it from changing mid-stream. The default implementation sends an incrementing counter with no total or
-  message.
+- Progress notifications for long-running tool calls. While an HTTP API call is in progress, the server sends periodic
+  `notifications/progress` messages to MCP clients that request them (via `_meta.progressToken`). Only works with
+  stateful MCP servers. You can disable it by setting `infobip.openapi.mcp.progress-notifications-enabled: false`.
+  Notification content can be customized by implementing a Spring bean of type `ProgressUpdateProvider`.
 
 ## 0.1.13
 

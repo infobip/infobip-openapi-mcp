@@ -100,6 +100,7 @@ HTTP call via `ToolHandler`) → optional `JsonDoubleSerializationCorrector` ret
 | `NamingStrategy`          | Custom tool name generation; replace the default bean                                                                    |
 | `ErrorModelProvider`      | Custom error response format returned to MCP clients                                                                     |
 | `CredentialProvider`      | Supply credentials from any source (HTTP header, vault, env, etc.); replace the default bean                             |
+| `ProgressUpdateProvider`  | Controls the `progress`, `total`, and `message` fields of each `notifications/progress` message; replace the default bean |
 
 Important: filters, enrichers, strategies and providers can be implemented by application code, which is outside the
 framework. You will not see those implementations in this project's source code. This is the supported way to extend and
@@ -157,6 +158,9 @@ extension on the Operation and from YAML config properties (`infobip.openapi.mcp
   the class contains any method that builds strings conditionally or in a loop; prefer `+` concatenation in classes
   where all string building is simple and unconditional. Assigning a plain variable (`x = someString`) does not count as
   string manipulation and does not influence the choice.
+- **Markdown links in `README.md`**: Use reference-style links. Place the full URL at the bottom of the file as a
+  numbered entry (e.g., `[16]: https://... "Title"`), and reference it in the body as `[link text][16]`. Never embed
+  raw URLs inline in `README.md` prose.
 
 ## Testing Conventions
 

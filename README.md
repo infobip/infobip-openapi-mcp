@@ -415,6 +415,52 @@ infobip:
 >         size: 2
 > ```
 
+### Progress Notifications
+
+While an HTTP API call is in progress, the framework can send periodic [`notifications/progress`][16] messages to MCP
+clients. This keeps clients responsive during slow API calls and prevents them from timing out prematurely.
+
+> [!NOTE]
+> Progress notifications only work with **stateful** MCP servers (SSE or stateful Streamable HTTP), and only
+> when the MCP client requests them by including `_meta.progressToken` in the tool call.
+
+The feature is enabled by default. To opt out:
+
+```yaml
+infobip:
+  openapi:
+    mcp:
+      progress-notifications-enabled: false
+```
+
+The interval between notifications defaults to 1 second and can be adjusted with
+`infobip.openapi.mcp.progress-notifications-interval`. Keep this value below your `read-timeout`, otherwise no
+notification will be sent before the HTTP call completes.
+
+By default, notifications carry an incrementing counter with no total or human-readable message. To customize the
+`progress`, `total`, and `message` fields, implement `ProgressUpdateProvider` and register it as a Spring bean:
+
+```java
+@Bean
+public ProgressUpdateProvider progressUpdateProvider() {
+    return new ProgressUpdateProvider() {
+        @Override
+        public Double total(McpRequestContext context) {
+            return null; // unknown duration
+        }
+
+        @Override
+        public ProgressUpdate next(long tick, McpRequestContext context) {
+            var toolName = context.toolName() != null ? context.toolName() : "tool";
+            return new ProgressUpdate(tick, "Waiting for " + toolName + "…");
+        }
+    };
+}
+```
+
+The `total` value is resolved once before the first notification and stays constant throughout the tool call, so
+clients that display a progress fraction always receive a consistent value.
+
 ### Properties
 
 [External configuration properties][11] that can be used to configure framework behavior:
@@ -517,3 +563,5 @@ This project is licensed under the [MIT License](LICENSE).
 [14]: https://semver.org/ "Semantic Versioning 2.0 specification"
 
 [15]: https://modelcontextprotocol.io/specification/2025-11-25/schema#toolannotations "Tool Annotations in MCP specification"
+
+[16]: https://modelcontextprotocol.io/specification/2025-11-25/basic/utilities/progress "Progress Notifications in MCP specification"
