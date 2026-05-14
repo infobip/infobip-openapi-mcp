@@ -311,8 +311,15 @@ public class ToolHandler {
             return enrichedSpec.retrieve().toEntity(String.class);
         }
 
-        var total = resolveProgressTotal(context);
-        if (total == null) {
+        Double total;
+        try {
+            total = progressUpdateProvider.total(context);
+        } catch (Throwable throwable) {
+            LOGGER.warn(
+                    "Failed to initialise progress notifications because: {} \n"
+                            + "No progress notifications will be sent.",
+                    throwable.getMessage(),
+                    throwable);
             return enrichedSpec.retrieve().toEntity(String.class);
         }
 
@@ -335,19 +342,6 @@ public class ToolHandler {
                 Thread.currentThread().interrupt();
             }
             throw apiCallFail;
-        }
-    }
-
-    private @Nullable Double resolveProgressTotal(McpRequestContext context) {
-        try {
-            return progressUpdateProvider.total(context);
-        } catch (Throwable throwable) {
-            LOGGER.warn(
-                    "Failed to initialise progress notifications because: {} \n"
-                            + "No progress notifications will be sent.",
-                    throwable.getMessage(),
-                    throwable);
-            return null;
         }
     }
 

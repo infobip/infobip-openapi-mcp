@@ -552,6 +552,38 @@ class ToolHandlerTest {
         }
 
         @Test
+        void shouldSendProgressNotificationsWhenProviderReturnsTotalNull() {
+            // given
+            lenient().when(properties.progressNotificationsEnabled()).thenReturn(true);
+            var fullOperation = new FullOperation("/users", PathItem.HttpMethod.GET, new Operation(), new OpenAPI());
+            var decomposedSchema = DecomposedRequestData.empty();
+            var responseBody = "{\"users\":[]}";
+
+            when(progressUpdateProvider.total(any())).thenReturn(null);
+            when(progressUpdateProvider.next(anyLong(), any())).thenReturn(new ProgressUpdate(1.0, "processing"));
+            // pre-release: notification thread acquires immediately on first tick
+            notificationSemaphore.release();
+
+            var notificationSent = new java.util.concurrent.atomic.AtomicBoolean(false);
+            var context = createProgressContext((p, t, m) -> notificationSent.set(true));
+
+            // WireMock delay ensures the notification thread fires before the HTTP response arrives
+            wireMockServer.stubFor(get(urlPathEqualTo("/users"))
+                    .withHeader("Accept", equalTo("application/json"))
+                    .willReturn(
+                            aResponse().withStatus(200).withBody(responseBody).withFixedDelay(100)));
+
+            // when
+            var result = toolHandler.handleToolCall(fullOperation, decomposedSchema, context);
+
+            // then — null total means unknown duration, not an error; notifications must still be sent
+            then(result.isError()).isFalse();
+            then(extractTextContent(result.content())).isEqualTo(responseBody);
+            then(notificationSent.get()).isTrue();
+            verify(progressUpdateProvider).next(eq(0L), any());
+        }
+
+        @Test
         void shouldCompleteSuccessfullyWhenProgressUpdateProviderTotalThrows() {
             // given
             lenient().when(properties.progressNotificationsEnabled()).thenReturn(true);
