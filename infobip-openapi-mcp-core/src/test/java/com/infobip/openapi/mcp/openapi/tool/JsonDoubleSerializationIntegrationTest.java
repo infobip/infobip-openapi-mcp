@@ -17,6 +17,7 @@ import com.infobip.openapi.mcp.error.ErrorModelWriter;
 import com.infobip.openapi.mcp.infrastructure.metrics.MetricService;
 import com.infobip.openapi.mcp.infrastructure.metrics.NoOpMetricService;
 import com.infobip.openapi.mcp.openapi.schema.DecomposedRequestData;
+import com.infobip.openapi.mcp.progress.DefaultProgressUpdateProvider;
 import io.modelcontextprotocol.spec.McpSchema;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.Operation;
@@ -81,20 +82,23 @@ class JsonDoubleSerializationIntegrationTest {
         // Create handlers with mitigation enabled and disabled
         var emptyEnricherChain = new ApiRequestEnricherChain(List.of());
         var credentialProvider = new HttpServletRequestCredentialProvider();
+        var progressUpdateProvider = new DefaultProgressUpdateProvider();
         toolHandlerWithMitigationEnabled = new ToolHandler(
                 restClient,
                 errorModelWriter,
                 propertiesWithMitigationEnabled,
                 emptyEnricherChain,
                 metricService,
-                credentialProvider);
+                credentialProvider,
+                progressUpdateProvider);
         toolHandlerWithMitigationDisabled = new ToolHandler(
                 restClient,
                 errorModelWriter,
                 propertiesWithMitigationDisabled,
                 emptyEnricherChain,
                 metricService,
-                credentialProvider);
+                credentialProvider,
+                progressUpdateProvider);
     }
 
     @AfterEach

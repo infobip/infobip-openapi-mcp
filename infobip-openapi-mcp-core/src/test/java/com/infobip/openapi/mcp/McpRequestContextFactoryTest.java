@@ -31,6 +31,9 @@ class McpRequestContextFactoryTest {
     @Mock
     private McpSchema.Implementation clientInfo;
 
+    @Mock
+    private McpSchema.CallToolRequest callToolRequest;
+
     private McpRequestContextFactory factory;
 
     @BeforeEach
@@ -53,7 +56,7 @@ class McpRequestContextFactoryTest {
             mockedHolder.when(RequestContextHolder::currentRequestAttributes).thenReturn(requestAttributes);
 
             // when
-            var context = factory.forStatefulTransport(exchange, null, givenOperation());
+            var context = factory.forStatefulTransport(exchange, callToolRequest, givenOperation());
 
             // then
             then(context).isNotNull();
@@ -77,7 +80,7 @@ class McpRequestContextFactoryTest {
                     .thenThrow(new IllegalStateException("No request context available"));
 
             // when
-            var context = factory.forStatefulTransport(exchange, null, givenOperation());
+            var context = factory.forStatefulTransport(exchange, callToolRequest, givenOperation());
 
             // then
             then(context).isNotNull();
@@ -101,7 +104,7 @@ class McpRequestContextFactoryTest {
                     .thenThrow(new IllegalStateException("No request context available"));
 
             // when
-            var context = factory.forStatefulTransport(exchange, null, givenOperation());
+            var context = factory.forStatefulTransport(exchange, callToolRequest, givenOperation());
 
             // then
             then(context).isNotNull();
@@ -124,7 +127,7 @@ class McpRequestContextFactoryTest {
                     .thenThrow(new IllegalStateException("No request context available"));
 
             // when
-            var context = factory.forStatefulTransport(exchange, null, givenOperation());
+            var context = factory.forStatefulTransport(exchange, callToolRequest, givenOperation());
 
             // then
             then(context).isNotNull();
@@ -145,7 +148,7 @@ class McpRequestContextFactoryTest {
             mockedHolder.when(RequestContextHolder::currentRequestAttributes).thenReturn(requestAttributes);
 
             // when
-            var context = factory.forStatelessTransport(null, null, givenOperation());
+            var context = factory.forStatelessTransport(null, callToolRequest, givenOperation());
 
             // then
             then(context).isNotNull();
@@ -164,7 +167,7 @@ class McpRequestContextFactoryTest {
                     .thenThrow(new IllegalStateException("No request context available"));
 
             // when
-            var context = factory.forStatelessTransport(null, null, givenOperation());
+            var context = factory.forStatelessTransport(null, callToolRequest, givenOperation());
 
             // then
             then(context).isNotNull();
@@ -185,7 +188,7 @@ class McpRequestContextFactoryTest {
             mockedHolder.when(RequestContextHolder::currentRequestAttributes).thenReturn(requestAttributes);
 
             // when
-            var context = factory.forStatelessTransport(transportContext, null, givenOperation());
+            var context = factory.forStatelessTransport(transportContext, callToolRequest, givenOperation());
 
             // then
             then(context).isNotNull();
@@ -209,7 +212,7 @@ class McpRequestContextFactoryTest {
             mockedHolder.when(RequestContextHolder::currentRequestAttributes).thenReturn(nonServletAttributes);
 
             // when
-            var context = factory.forStatefulTransport(exchange, null, givenOperation());
+            var context = factory.forStatefulTransport(exchange, callToolRequest, givenOperation());
 
             // then
             then(context).isNotNull();
@@ -235,7 +238,7 @@ class McpRequestContextFactoryTest {
             mockedHolder.when(RequestContextHolder::currentRequestAttributes).thenReturn(requestAttributes);
 
             // when
-            var context = factory.forStatefulTransport(exchange, null, givenOperation());
+            var context = factory.forStatefulTransport(exchange, callToolRequest, givenOperation());
 
             // then
             then(context).isNotNull();
@@ -260,7 +263,7 @@ class McpRequestContextFactoryTest {
             mockedHolder.when(RequestContextHolder::currentRequestAttributes).thenReturn(requestAttributes);
 
             // when
-            var context = factory.forStatelessTransport(null, null, givenOperation());
+            var context = factory.forStatelessTransport(null, callToolRequest, givenOperation());
 
             // then
             then(context).isNotNull();
@@ -320,6 +323,7 @@ class McpRequestContextFactoryTest {
         var sessionId = "session-123-abc";
         var toolName = "tool_name";
 
+        given(callToolRequest.name()).willReturn(toolName);
         given(exchange.sessionId()).willReturn(sessionId);
         given(exchange.getClientInfo()).willReturn(clientInfo);
 
@@ -327,7 +331,7 @@ class McpRequestContextFactoryTest {
             mockedHolder.when(RequestContextHolder::currentRequestAttributes).thenReturn(requestAttributes);
 
             // when
-            var context = factory.forStatefulTransport(exchange, toolName, givenOperation());
+            var context = factory.forStatefulTransport(exchange, callToolRequest, givenOperation());
 
             // then
             then(context).isNotNull();
@@ -343,6 +347,7 @@ class McpRequestContextFactoryTest {
         // given
         var sessionId = "session-456-def";
         var toolName = "tool_name";
+        given(callToolRequest.name()).willReturn(toolName);
         given(exchange.sessionId()).willReturn(sessionId);
         given(exchange.getClientInfo()).willReturn(clientInfo);
 
@@ -352,7 +357,7 @@ class McpRequestContextFactoryTest {
                     .thenThrow(new IllegalStateException("No request context available"));
 
             // when
-            var context = factory.forStatefulTransport(exchange, toolName, givenOperation());
+            var context = factory.forStatefulTransport(exchange, callToolRequest, givenOperation());
 
             // then
             then(context).isNotNull();
@@ -368,6 +373,7 @@ class McpRequestContextFactoryTest {
         // given
         var sessionId = "session-789-ghi";
         var toolName = "some_tool_name";
+        given(callToolRequest.name()).willReturn(toolName);
         given(exchange.sessionId()).willReturn(sessionId);
         given(exchange.getClientInfo()).willReturn(null);
 
@@ -377,7 +383,7 @@ class McpRequestContextFactoryTest {
                     .thenThrow(new IllegalStateException("No request context available"));
 
             // when
-            var context = factory.forStatefulTransport(exchange, toolName, givenOperation());
+            var context = factory.forStatefulTransport(exchange, callToolRequest, givenOperation());
 
             // then
             then(context).isNotNull();
@@ -392,6 +398,7 @@ class McpRequestContextFactoryTest {
     void shouldCreateContextFromStatefulTransportWithToolNameAndNullSessionId() {
         // given
         var toolName = "list_items";
+        given(callToolRequest.name()).willReturn(toolName);
         given(exchange.sessionId()).willReturn(null);
         given(exchange.getClientInfo()).willReturn(clientInfo);
 
@@ -401,7 +408,7 @@ class McpRequestContextFactoryTest {
                     .thenThrow(new IllegalStateException("No request context available"));
 
             // when
-            var context = factory.forStatefulTransport(exchange, toolName, givenOperation());
+            var context = factory.forStatefulTransport(exchange, callToolRequest, givenOperation());
 
             // then
             then(context).isNotNull();
@@ -419,12 +426,13 @@ class McpRequestContextFactoryTest {
         mockRequest.setRemoteAddr("198.51.100.50");
         var requestAttributes = new ServletRequestAttributes(mockRequest);
         var toolName = "some_action";
+        given(callToolRequest.name()).willReturn(toolName);
 
         try (MockedStatic<RequestContextHolder> mockedHolder = mockStatic(RequestContextHolder.class)) {
             mockedHolder.when(RequestContextHolder::currentRequestAttributes).thenReturn(requestAttributes);
 
             // when
-            var context = factory.forStatelessTransport(null, toolName, givenOperation());
+            var context = factory.forStatelessTransport(null, callToolRequest, givenOperation());
 
             // then
             then(context).isNotNull();
@@ -439,6 +447,7 @@ class McpRequestContextFactoryTest {
     void shouldCreateContextFromStatelessTransportWithToolNameAndNoHttpRequest() {
         // given
         var toolName = "create_order";
+        given(callToolRequest.name()).willReturn(toolName);
 
         try (MockedStatic<RequestContextHolder> mockedHolder = mockStatic(RequestContextHolder.class)) {
             mockedHolder
@@ -446,7 +455,7 @@ class McpRequestContextFactoryTest {
                     .thenThrow(new IllegalStateException("No request context available"));
 
             // when
-            var context = factory.forStatelessTransport(null, toolName, givenOperation());
+            var context = factory.forStatelessTransport(null, callToolRequest, givenOperation());
 
             // then
             then(context).isNotNull();
@@ -464,12 +473,13 @@ class McpRequestContextFactoryTest {
         var mockRequest = new MockHttpServletRequest();
         var requestAttributes = new ServletRequestAttributes(mockRequest);
         var toolName = "update_user_profile";
+        given(callToolRequest.name()).willReturn(toolName);
 
         try (MockedStatic<RequestContextHolder> mockedHolder = mockStatic(RequestContextHolder.class)) {
             mockedHolder.when(RequestContextHolder::currentRequestAttributes).thenReturn(requestAttributes);
 
             // when
-            var context = factory.forStatelessTransport(transportContext, toolName, givenOperation());
+            var context = factory.forStatelessTransport(transportContext, callToolRequest, givenOperation());
 
             // then
             then(context).isNotNull();
@@ -491,6 +501,7 @@ class McpRequestContextFactoryTest {
         var toolName = "post_messages";
         var fullOperation = givenOperation();
 
+        given(callToolRequest.name()).willReturn(toolName);
         given(exchange.sessionId()).willReturn(sessionId);
         given(exchange.getClientInfo()).willReturn(clientInfo);
         given(clientInfo.name()).willReturn("Claude Desktop");
@@ -500,7 +511,7 @@ class McpRequestContextFactoryTest {
             mockedHolder.when(RequestContextHolder::currentRequestAttributes).thenReturn(requestAttributes);
 
             // when
-            var context = factory.forStatefulTransport(exchange, toolName, fullOperation);
+            var context = factory.forStatefulTransport(exchange, callToolRequest, fullOperation);
 
             // then
             then(context).isNotNull();
@@ -522,6 +533,7 @@ class McpRequestContextFactoryTest {
         var sessionId = "session-empty-tool";
         var toolName = "";
 
+        given(callToolRequest.name()).willReturn(toolName);
         given(exchange.sessionId()).willReturn(sessionId);
         given(exchange.getClientInfo()).willReturn(clientInfo);
 
@@ -529,7 +541,7 @@ class McpRequestContextFactoryTest {
             mockedHolder.when(RequestContextHolder::currentRequestAttributes).thenReturn(requestAttributes);
 
             // when
-            var context = factory.forStatefulTransport(exchange, toolName, givenOperation());
+            var context = factory.forStatefulTransport(exchange, callToolRequest, givenOperation());
 
             // then
             then(context).isNotNull();
@@ -546,8 +558,8 @@ class McpRequestContextFactoryTest {
         var toolName = "post_sms_with-special_chars_123";
         var sessionId = "session-special-chars";
 
+        given(callToolRequest.name()).willReturn(toolName);
         given(exchange.sessionId()).willReturn(sessionId);
-        given(exchange.getClientInfo()).willReturn(clientInfo);
 
         try (MockedStatic<RequestContextHolder> mockedHolder = mockStatic(RequestContextHolder.class)) {
             mockedHolder
@@ -555,12 +567,64 @@ class McpRequestContextFactoryTest {
                     .thenThrow(new IllegalStateException("No request context available"));
 
             // when
-            var context = factory.forStatefulTransport(exchange, toolName, givenOperation());
+            var context = factory.forStatefulTransport(exchange, callToolRequest, givenOperation());
 
             // then
             then(context).isNotNull();
             then(context.sessionId()).isEqualTo(sessionId);
             then(context.toolName()).isEqualTo(toolName);
+        }
+    }
+
+    @Test
+    void shouldNotSupportProgressNotificationsWhenNoProgressTokenProvided() {
+        // given
+        try (MockedStatic<RequestContextHolder> mockedHolder = mockStatic(RequestContextHolder.class)) {
+            mockedHolder
+                    .when(RequestContextHolder::currentRequestAttributes)
+                    .thenThrow(new IllegalStateException("No request context available"));
+
+            // when
+            var context = factory.forStatefulTransport(exchange, callToolRequest, givenOperation());
+
+            // then — no progress token means no progress notifications will be sent
+            then(context.progressNotification()).isNotNull();
+            then(context.callToolRequest().progressToken()).isNull();
+        }
+    }
+
+    @Test
+    void shouldSupportProgressNotificationsWhenProgressTokenProvided() {
+        // given
+        given(callToolRequest.progressToken()).willReturn("token-abc");
+
+        try (MockedStatic<RequestContextHolder> mockedHolder = mockStatic(RequestContextHolder.class)) {
+            mockedHolder
+                    .when(RequestContextHolder::currentRequestAttributes)
+                    .thenThrow(new IllegalStateException("No request context available"));
+
+            // when
+            var context = factory.forStatefulTransport(exchange, callToolRequest, givenOperation());
+
+            // then — exchange and progress token are both present
+            then(context.progressNotification()).isNotNull();
+            then(context.callToolRequest().progressToken()).isEqualTo("token-abc");
+        }
+    }
+
+    @Test
+    void shouldNotSupportProgressNotificationsForStatelessTransport() {
+        // given
+        try (MockedStatic<RequestContextHolder> mockedHolder = mockStatic(RequestContextHolder.class)) {
+            mockedHolder
+                    .when(RequestContextHolder::currentRequestAttributes)
+                    .thenThrow(new IllegalStateException("No request context available"));
+
+            // when
+            var context = factory.forStatelessTransport(null, callToolRequest, givenOperation());
+
+            // then — no server exchange means no progress notifications will be sent
+            then(context.progressNotification()).isNull();
         }
     }
 

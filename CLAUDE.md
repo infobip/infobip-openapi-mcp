@@ -58,6 +58,10 @@ sdk use java <identifier>
   behind it. It is fine to mention configuration properties needed to enable or customize a feature, or java interfaces
   that users can implement such as `OpenApiFilter` or `ApiRequestEnricher`. Avoid class names, method names, test names,
   and other implementation details.
+  **Before adding a new sub-section** (`### Changed`, `### Fixed`, etc.) to `[Unreleased]`, ask: has any part of the
+  thing being documented ever appeared in a released version? If not, it all belongs under `### Added` — update or
+  extend the existing bullet rather than creating a new sub-section. The `Changed`/`Fixed`/`Removed` categories are
+  meaningful only relative to a released version, not between commits on an unreleased branch.
 - If you added or changed an external configuration property, add or update its row in the properties table in
   `README.md`.
 - Check and update `CLAUDE.md` to reflect the new state of the project.
@@ -96,6 +100,7 @@ HTTP call via `ToolHandler`) → optional `JsonDoubleSerializationCorrector` ret
 | `NamingStrategy`          | Custom tool name generation; replace the default bean                                                                    |
 | `ErrorModelProvider`      | Custom error response format returned to MCP clients                                                                     |
 | `CredentialProvider`      | Supply credentials from any source (HTTP header, vault, env, etc.); replace the default bean                             |
+| `ProgressUpdateProvider`  | Controls the `progress`, `total`, and `message` fields of each `notifications/progress` message; replace the default bean |
 
 Important: filters, enrichers, strategies and providers can be implemented by application code, which is outside the
 framework. You will not see those implementations in this project's source code. This is the supported way to extend and
@@ -153,6 +158,9 @@ extension on the Operation and from YAML config properties (`infobip.openapi.mcp
   the class contains any method that builds strings conditionally or in a loop; prefer `+` concatenation in classes
   where all string building is simple and unconditional. Assigning a plain variable (`x = someString`) does not count as
   string manipulation and does not influence the choice.
+- **Markdown links in `README.md`**: Use reference-style links. Place the full URL at the bottom of the file as a
+  numbered entry (e.g., `[16]: https://... "Title"`), and reference it in the body as `[link text][16]`. Never embed
+  raw URLs inline in `README.md` prose.
 
 ## Testing Conventions
 

@@ -27,6 +27,8 @@ import com.infobip.openapi.mcp.openapi.schema.InputSchemaComposer;
 import com.infobip.openapi.mcp.openapi.tool.*;
 import com.infobip.openapi.mcp.openapi.tool.naming.NamingStrategy;
 import com.infobip.openapi.mcp.openapi.tool.naming.NamingStrategyFactory;
+import com.infobip.openapi.mcp.progress.DefaultProgressUpdateProvider;
+import com.infobip.openapi.mcp.progress.ProgressUpdateProvider;
 import com.infobip.openapi.mcp.util.OpenApiMapperFactory;
 import com.infobip.openapi.mcp.util.ToolSpecBuilder;
 import com.infobip.openapi.mcp.util.XForwardedForCalculator;
@@ -154,6 +156,12 @@ class OpenApiMcpConfiguration {
     }
 
     @Bean
+    @ConditionalOnMissingBean
+    public ProgressUpdateProvider progressUpdateProvider() {
+        return new DefaultProgressUpdateProvider();
+    }
+
+    @Bean
     @ConditionalOnBean(MeterRegistry.class)
     public MetricService micrometerMetricService(MeterRegistry meterRegistry, NamingStrategy namingStrategy) {
         return new MicrometerMetricService(meterRegistry, namingStrategy);
@@ -177,9 +185,16 @@ class OpenApiMcpConfiguration {
             OpenApiMcpProperties properties,
             ApiRequestEnricherChain enricherChain,
             MetricService metricService,
-            CredentialProvider credentialProvider) {
+            CredentialProvider credentialProvider,
+            ProgressUpdateProvider progressUpdateProvider) {
         return new ToolHandler(
-                restClient, errorModelWriter, properties, enricherChain, metricService, credentialProvider);
+                restClient,
+                errorModelWriter,
+                properties,
+                enricherChain,
+                metricService,
+                credentialProvider,
+                progressUpdateProvider);
     }
 
     @Bean
