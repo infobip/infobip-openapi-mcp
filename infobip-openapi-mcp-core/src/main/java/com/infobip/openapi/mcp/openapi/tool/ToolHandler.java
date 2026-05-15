@@ -9,6 +9,7 @@ import com.infobip.openapi.mcp.infrastructure.metrics.MetricService;
 import com.infobip.openapi.mcp.openapi.schema.DecomposedRequestData;
 import com.infobip.openapi.mcp.progress.ProgressUpdateProvider;
 import io.modelcontextprotocol.spec.McpSchema;
+import java.util.Objects;
 import java.util.Optional;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
@@ -307,7 +308,10 @@ public class ToolHandler {
         enrichedSpec.headers(
                 headers -> headers.addIfAbsent(HttpHeaders.ACCEPT, PREFERRED_ACCEPT_MEDIA_TYPE.toString()));
 
-        if (!properties.progressNotificationsEnabled() || !context.supportsProgressNotifications()) {
+        if (!properties.progressNotificationsEnabled()
+                || context.progressNotification() == null
+                || context.callToolRequest() == null
+                || context.callToolRequest().progressToken() == null) {
             return enrichedSpec.retrieve().toEntity(String.class);
         }
 
@@ -346,13 +350,16 @@ public class ToolHandler {
     }
 
     private Runnable notificationLoop(@Nullable Double total, McpRequestContext context) {
+        var progressNotificationConsumer = Objects.requireNonNull(context.progressNotification());
+        var progressToken = Objects.requireNonNull(context.callToolRequest()).progressToken();
         return () -> {
             var tick = 0L;
             while (true) {
                 try {
                     ticker.tick();
                     var update = progressUpdateProvider.next(tick++, context);
-                    context.notifyOfProgress(update.progress(), total, update.message());
+                    progressNotificationConsumer.accept(new McpSchema.ProgressNotification(
+                            progressToken, update.progress(), total, update.message()));
                 } catch (InterruptedException e) {
                     // This is regular flow that happens when the main tool handler thread
                     // interrupts the progress notif thread before writing the tool call

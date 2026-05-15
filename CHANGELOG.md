@@ -13,8 +13,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `notifications/progress` messages to MCP clients that request them (via `_meta.progressToken`). Only works with
   stateful MCP servers. You can disable it by setting `infobip.openapi.mcp.progress-notifications-enabled: false`.
   Notification content can be customized by implementing a Spring bean of type `ProgressUpdateProvider`.
-  Fixed a bug where a `ProgressUpdateProvider` returning `null` from `total()` — the correct way to signal an unknown
-  duration — would silently suppress all progress notifications instead of sending them without a total value.
+
+### Changed
+
+- `McpRequestContext` now stores the MCP server exchange and tool request directly, deriving session 
+  ID, client info, tool name, and the progress notification consumer on demand via accessor methods.
 
 ## 0.1.13
 

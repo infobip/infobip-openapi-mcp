@@ -34,53 +34,37 @@ public class McpRequestContextFactory {
 
     /**
      * Creates an MCP request context for stateful transport protocols (SSE, Streamable, Stdio).
-     * <p>
-     * Stateful transports maintain a persistent connection/session with the client, so this
-     * factory method extracts session ID and client information from the exchange using reflection.
-     * The exchange parameter is typed as Object to avoid compile-time dependencies on specific
-     * MCP transport types.
-     * </p>
      *
-     * @param exchange      the MCP server exchange containing session information
-     * @param toolRequest   the name of the MCP tool being invoked, or null if not in tool invocation context
+     * @param exchange      the MCP server exchange for the current session
+     * @param toolRequest   the MCP tool invocation request
      * @param fullOperation the set of information from OpenAPI specification that
      *                      defines the API endpoint backing this tool
-     * @return a new context instance with stateful transport metadata and tool name
+     * @return a new context instance with the exchange and tool request stored for later use
      */
     public McpRequestContext forStatefulTransport(
             McpSyncServerExchange exchange, McpSchema.CallToolRequest toolRequest, FullOperation fullOperation) {
-        var httpServletRequest = getCurrentHttpServletRequest();
-        var sessionId = exchange.sessionId();
-        var clientInfo = exchange.getClientInfo();
-        return new McpRequestContext(
-                httpServletRequest,
-                sessionId,
-                clientInfo,
-                toolRequest.name(),
-                fullOperation,
-                notificationCallback(exchange, toolRequest));
+        return new McpRequestContext(getCurrentHttpServletRequest(), toolRequest, null, exchange, fullOperation);
     }
 
     /**
      * Creates an MCP request context for stateless transport protocol (HTTP).
      * <p>
-     * Stateless transports don't maintain persistent sessions, so session ID and client
-     * information are not available.
+     * Stateless transports don't maintain a persistent server exchange, so session ID, client
+     * info, and progress notifications are not available.
      * </p>
      *
      * @param transportContext the MCP transport context (may be null, currently unused)
-     * @param toolRequest      the name of the MCP tool being invoked, or null if not in tool invocation context
+     * @param toolRequest      the MCP tool invocation request
      * @param fullOperation    the set of information from OpenAPI specification that
      *                         defines the API endpoint backing this tool
-     * @return a new context instance without session metadata but with tool name
+     * @return a new context instance without an exchange but with the tool request
      */
     public McpRequestContext forStatelessTransport(
             @Nullable McpTransportContext transportContext,
             McpSchema.CallToolRequest toolRequest,
             FullOperation fullOperation) {
-        var httpServletRequest = getCurrentHttpServletRequest();
-        // Stateless transport doesn't have session or client info (yet)
-        return new McpRequestContext(httpServletRequest, null, null, toolRequest.name(), fullOperation, null);
+        // Stateless transport doesn't have a persistent server exchange
+        return new McpRequestContext(getCurrentHttpServletRequest(), toolRequest, null, null, fullOperation);
     }
 
     /**
@@ -119,14 +103,5 @@ public class McpRequestContextFactory {
             return null;
         }
         return null;
-    }
-
-    private @Nullable ProgressNotificationCallback notificationCallback(
-            McpSyncServerExchange exchange, McpSchema.CallToolRequest toolRequest) {
-        var progressToken = toolRequest.progressToken();
-        return progressToken == null
-                ? null
-                : (progress, total, message) -> exchange.progressNotification(
-                        new McpSchema.ProgressNotification(progressToken, progress, total, message, null));
     }
 }

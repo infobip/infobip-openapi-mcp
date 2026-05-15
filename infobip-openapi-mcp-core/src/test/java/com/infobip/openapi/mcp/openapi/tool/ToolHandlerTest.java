@@ -7,13 +7,13 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.infobip.openapi.mcp.McpRequestContext;
-import com.infobip.openapi.mcp.ProgressNotificationCallback;
 import com.infobip.openapi.mcp.auth.HttpServletRequestCredentialProvider;
 import com.infobip.openapi.mcp.config.OpenApiMcpProperties;
 import com.infobip.openapi.mcp.enricher.ApiRequestEnricherChain;
@@ -27,6 +27,7 @@ import com.infobip.openapi.mcp.progress.DefaultProgressUpdateProvider;
 import com.infobip.openapi.mcp.progress.ProgressUpdate;
 import com.infobip.openapi.mcp.progress.ProgressUpdateProvider;
 import com.infobip.openapi.mcp.util.XForwardedForCalculator;
+import io.modelcontextprotocol.server.McpSyncServerExchange;
 import io.modelcontextprotocol.spec.McpSchema;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.Operation;
@@ -565,7 +566,7 @@ class ToolHandlerTest {
             notificationSemaphore.release();
 
             var notificationSent = new java.util.concurrent.atomic.AtomicBoolean(false);
-            var context = createProgressContext((p, t, m) -> notificationSent.set(true));
+            var context = createProgressContext(n -> notificationSent.set(true));
 
             // WireMock delay ensures the notification thread fires before the HTTP response arrives
             wireMockServer.stubFor(get(urlPathEqualTo("/users"))
@@ -593,7 +594,7 @@ class ToolHandlerTest {
 
             when(progressUpdateProvider.total(any())).thenThrow(new RuntimeException("total exploded"));
 
-            var context = createProgressContext((p, t, m) -> {});
+            var context = createProgressContext(n -> {});
 
             wireMockServer.stubFor(get(urlPathEqualTo("/users"))
                     .withHeader("Accept", equalTo("application/json"))
@@ -625,7 +626,7 @@ class ToolHandlerTest {
                     .willReturn(
                             aResponse().withStatus(200).withBody(responseBody).withFixedDelay(100)));
 
-            var context = createProgressContext((p, t, m) -> {});
+            var context = createProgressContext(n -> {});
 
             // when
             var result = toolHandler.handleToolCall(fullOperation, decomposedSchema, context);
@@ -648,7 +649,7 @@ class ToolHandlerTest {
             // pre-release: notification thread acquires immediately on first tick
             notificationSemaphore.release();
 
-            var context = createProgressContext((p, t, m) -> {
+            var context = createProgressContext(n -> {
                 throw new RuntimeException("callback exploded");
             });
 
@@ -676,7 +677,7 @@ class ToolHandlerTest {
             var errorBody = "{\"error\":\"Internal Server Error\"}";
 
             // notificationSemaphore has 0 permits: notification thread blocks on acquire() until interrupted
-            var context = createProgressContext((p, t, m) -> {});
+            var context = createProgressContext(n -> {});
 
             wireMockServer.stubFor(get(urlPathEqualTo("/users"))
                     .withHeader("Accept", equalTo("application/json"))
@@ -699,7 +700,7 @@ class ToolHandlerTest {
             var decomposedSchema = DecomposedRequestData.empty();
 
             // notificationSemaphore has 0 permits: notification thread blocks on acquire() until interrupted
-            var context = createProgressContext((p, t, m) -> {});
+            var context = createProgressContext(n -> {});
 
             wireMockServer.stubFor(get(urlPathEqualTo("/users"))
                     .withHeader("Accept", equalTo("application/json"))
@@ -1043,8 +1044,19 @@ class ToolHandlerTest {
         }
     }
 
-    private McpRequestContext createProgressContext(ProgressNotificationCallback callback) {
-        return new McpRequestContext(null, null, null, null, null, callback);
+    private McpRequestContext createProgressContext(
+            java.util.function.Consumer<McpSchema.ProgressNotification> consumer) {
+        var exchange = mock(McpSyncServerExchange.class);
+        lenient()
+                .doAnswer(inv -> {
+                    consumer.accept(inv.getArgument(0));
+                    return null;
+                })
+                .when(exchange)
+                .progressNotification(any(McpSchema.ProgressNotification.class));
+        var toolRequest = mock(McpSchema.CallToolRequest.class);
+        when(toolRequest.progressToken()).thenReturn("test-token");
+        return new McpRequestContext(null, toolRequest, null, exchange, null);
     }
 
     /**

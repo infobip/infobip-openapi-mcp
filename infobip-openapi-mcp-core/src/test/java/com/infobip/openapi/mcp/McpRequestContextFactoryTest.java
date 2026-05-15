@@ -560,7 +560,6 @@ class McpRequestContextFactoryTest {
 
         given(callToolRequest.name()).willReturn(toolName);
         given(exchange.sessionId()).willReturn(sessionId);
-        given(exchange.getClientInfo()).willReturn(clientInfo);
 
         try (MockedStatic<RequestContextHolder> mockedHolder = mockStatic(RequestContextHolder.class)) {
             mockedHolder
@@ -580,9 +579,6 @@ class McpRequestContextFactoryTest {
     @Test
     void shouldNotSupportProgressNotificationsWhenNoProgressTokenProvided() {
         // given
-        given(exchange.sessionId()).willReturn("session-123");
-        given(exchange.getClientInfo()).willReturn(null);
-
         try (MockedStatic<RequestContextHolder> mockedHolder = mockStatic(RequestContextHolder.class)) {
             mockedHolder
                     .when(RequestContextHolder::currentRequestAttributes)
@@ -591,8 +587,9 @@ class McpRequestContextFactoryTest {
             // when
             var context = factory.forStatefulTransport(exchange, callToolRequest, givenOperation());
 
-            // then
-            then(context.supportsProgressNotifications()).isFalse();
+            // then — no progress token means no progress notifications will be sent
+            then(context.progressNotification()).isNotNull();
+            then(context.callToolRequest().progressToken()).isNull();
         }
     }
 
@@ -600,8 +597,6 @@ class McpRequestContextFactoryTest {
     void shouldSupportProgressNotificationsWhenProgressTokenProvided() {
         // given
         given(callToolRequest.progressToken()).willReturn("token-abc");
-        given(exchange.sessionId()).willReturn("session-123");
-        given(exchange.getClientInfo()).willReturn(null);
 
         try (MockedStatic<RequestContextHolder> mockedHolder = mockStatic(RequestContextHolder.class)) {
             mockedHolder
@@ -611,8 +606,9 @@ class McpRequestContextFactoryTest {
             // when
             var context = factory.forStatefulTransport(exchange, callToolRequest, givenOperation());
 
-            // then
-            then(context.supportsProgressNotifications()).isTrue();
+            // then — exchange and progress token are both present
+            then(context.progressNotification()).isNotNull();
+            then(context.callToolRequest().progressToken()).isEqualTo("token-abc");
         }
     }
 
@@ -627,8 +623,8 @@ class McpRequestContextFactoryTest {
             // when
             var context = factory.forStatelessTransport(null, callToolRequest, givenOperation());
 
-            // then
-            then(context.supportsProgressNotifications()).isFalse();
+            // then — no server exchange means no progress notifications will be sent
+            then(context.progressNotification()).isNull();
         }
     }
 
