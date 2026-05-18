@@ -50,12 +50,12 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
         <!-- Dependencies: -->
-        <jackson.version>2.21.2</jackson.version>
-        <spring-ai.version>1.1.4</spring-ai.version>
-        <spring-boot.version>3.5.13</spring-boot.version>
+        <jackson.version>2.21.3</jackson.version>
+        <spring-ai.version>1.1.6</spring-ai.version>
+        <spring-boot.version>3.5.14</spring-boot.version>
         <jspecify.version>1.0.0</jspecify.version>
-        <junit.version>5.14.3</junit.version>
-        <mockito.version>5.21.0</mockito.version>
+        <junit.version>5.14.4</junit.version>
+        <mockito.version>5.23.0</mockito.version>
         <assertj.version>3.27.7</assertj.version>
         <wiremock.version>3.13.2</wiremock.version>
     </properties>
@@ -96,7 +96,7 @@
                 <!-- TODO: try removing after upgrading swagger parser -->
                 <groupId>org.apache.commons</groupId>
                 <artifactId>commons-lang3</artifactId>
-                <version>3.19.0</version>
+                <version>3.20.0</version>
             </dependency>
 
             <!-- Testing -->
