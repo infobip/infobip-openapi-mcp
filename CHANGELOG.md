@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## 0.1.15
+
 ### Changed
 
 - Bumped dependencies: Jackson 2.21.3, Spring AI 1.1.6, Spring Boot 3.5.14, and others.
