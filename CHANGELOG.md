@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## 0.1.14
+
 ### Added
 
 - Progress notifications for long-running tool calls. While an HTTP API call is in progress, the server sends periodic
