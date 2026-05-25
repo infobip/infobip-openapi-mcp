@@ -461,6 +461,54 @@ public ProgressUpdateProvider progressUpdateProvider() {
 The `total` value is resolved once before the first notification and stays constant throughout the tool call, so
 clients that display a progress fraction always receive a consistent value.
 
+### Prompts
+
+The framework supports [MCP prompts][17] — reusable prompt templates that MCP clients can discover and invoke. Prompts
+are defined using the `x-mcp-prompts` [vendor extension][7] on the root OpenAPI object and resolved at runtime by
+calling a backend endpoint.
+
+Each prompt declares a name, description, named arguments (with optional/required flags), and a `resolve` block that
+specifies which backend endpoint to call and with which HTTP method. When a client calls `getPrompt`, the framework
+forwards the provided arguments to the backend — as query parameters for `GET` or as a JSON request body for `POST` —
+and returns the backend's response to the MCP client. Credentials are forwarded using the configured
+`CredentialProvider`.
+
+```yaml
+# Top-level OpenAPI vendor extension (sibling to info, paths, components)
+x-mcp-prompts:
+  greet:
+    description: "Greet a user by name"
+    arguments:
+      name:
+        description: "User's name"
+        required: true
+    resolve:
+      path: /prompts/greet
+      method: GET
+  summarize:
+    description: "Summarize the API capabilities"
+    arguments:
+      format:
+        description: "Output format (markdown, plain, json)"
+    resolve:
+      path: /prompts/summarize
+      method: POST
+```
+
+The backend endpoint must return a JSON response with the following structure:
+
+```json
+{
+  "description": "Greet a user",
+  "messages": [
+    {"role": "user", "content": "Generate a greeting for Alice."},
+    {"role": "assistant", "content": "Hello Alice, welcome!"}
+  ]
+}
+```
+
+Messages support both `user` and `assistant` roles, enabling few-shot prompt patterns.
+
 ### Properties
 
 [External configuration properties][11] that can be used to configure framework behavior:
@@ -565,3 +613,5 @@ This project is licensed under the [MIT License](LICENSE).
 [15]: https://modelcontextprotocol.io/specification/2025-11-25/schema#toolannotations "Tool Annotations in MCP specification"
 
 [16]: https://modelcontextprotocol.io/specification/2025-11-25/basic/utilities/progress "Progress Notifications in MCP specification"
+
+[17]: https://modelcontextprotocol.io/specification/2025-11-25/basic/prompts "Prompts in MCP specification"

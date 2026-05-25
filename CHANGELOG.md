@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- MCP prompt support via the `x-mcp-prompts` vendor extension on the root OpenAPI object. Each
+  prompt declares a description, named arguments (with optional/required flags), and a resolve
+  endpoint on the backend server. When a client calls `getPrompt`, the framework forwards the
+  arguments to the configured backend endpoint — as query parameters for GET or as a JSON body
+  for POST — and returns the backend's response (description and messages with `user`/`assistant`
+  roles) to the MCP client. Credentials are forwarded using the configured `CredentialProvider`.
+  Prompts are discoverable by clients via `listPrompts` and invocable via `getPrompt`.
+
 ## 0.1.15
 
 ### Changed

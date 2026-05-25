@@ -84,7 +84,10 @@ The framework follows this startup flow:
    transform the spec
 3. `ToolRegistry` converts each API operation into a `RegisteredTool` using `InputSchemaComposer`,
    `InputExampleComposer`, `ToolAnnotationResolver`, and the configured `NamingStrategy`
-4. Tools are registered with the Spring AI MCP server (SSE, Streamable HTTP, Stateless HTTP, or stdio transport)
+4. `PromptRegistry` reads the `x-mcp-prompts` vendor extension from the OpenAPI spec and converts each entry into a
+   `RegisteredPrompt` with an `McpSchema.Prompt` and a handler that resolves the prompt by calling a backend endpoint
+5. Tools and prompts are registered with the Spring AI MCP server (SSE, Streamable HTTP, Stateless HTTP, or stdio
+   transport)
 
 **Runtime tool call flow:**
 `ToolSpecBuilder` → `ToolCallFilterChain` (ordered `ToolCallFilter` beans) → `RegisteredTool` (lowest precedence, makes

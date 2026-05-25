@@ -29,6 +29,8 @@ import com.infobip.openapi.mcp.openapi.tool.naming.NamingStrategy;
 import com.infobip.openapi.mcp.openapi.tool.naming.NamingStrategyFactory;
 import com.infobip.openapi.mcp.progress.DefaultProgressUpdateProvider;
 import com.infobip.openapi.mcp.progress.ProgressUpdateProvider;
+import com.infobip.openapi.mcp.prompt.PromptRegistry;
+import com.infobip.openapi.mcp.prompt.PromptSpecBuilder;
 import com.infobip.openapi.mcp.util.OpenApiMapperFactory;
 import com.infobip.openapi.mcp.util.ToolSpecBuilder;
 import com.infobip.openapi.mcp.util.XForwardedForCalculator;
@@ -348,6 +350,63 @@ class OpenApiMcpConfiguration {
     }
 
     @Bean
+    public PromptRegistry promptRegistry(
+            OpenApiRegistry openApiRegistry,
+            @Qualifier(TOOL_HANDLER_REST_CLIENT_QUALIFIER) RestClient restClient,
+            ObjectMapper objectMapper,
+            CredentialProvider credentialProvider) {
+        return new PromptRegistry(openApiRegistry, restClient, objectMapper, credentialProvider);
+    }
+
+    @Bean
+    public PromptSpecBuilder promptSpecBuilder(McpRequestContextFactory contextFactory) {
+        return new PromptSpecBuilder(contextFactory);
+    }
+
+    @Bean
+    @ConditionalOnProperty(prefix = McpServerProperties.CONFIG_PREFIX, name = "protocol", havingValue = "SSE")
+    @ConditionalOnProperty(
+            prefix = McpServerProperties.CONFIG_PREFIX,
+            name = "stdio",
+            havingValue = "false",
+            matchIfMissing = true)
+    public List<McpServerFeatures.SyncPromptSpecification> promptSpecificationsSSE(
+            PromptRegistry promptRegistry, PromptSpecBuilder promptSpecBuilder) {
+        return registerPrompts(promptRegistry, promptSpecBuilder);
+    }
+
+    @Bean
+    @ConditionalOnProperty(prefix = McpServerProperties.CONFIG_PREFIX, name = "protocol", havingValue = "STREAMABLE")
+    @ConditionalOnProperty(
+            prefix = McpServerProperties.CONFIG_PREFIX,
+            name = "stdio",
+            havingValue = "false",
+            matchIfMissing = true)
+    public List<McpServerFeatures.SyncPromptSpecification> promptSpecificationsStreamable(
+            PromptRegistry promptRegistry, PromptSpecBuilder promptSpecBuilder) {
+        return registerPrompts(promptRegistry, promptSpecBuilder);
+    }
+
+    @Bean
+    @ConditionalOnProperty(prefix = McpServerProperties.CONFIG_PREFIX, name = "protocol", havingValue = "STATELESS")
+    @ConditionalOnProperty(
+            prefix = McpServerProperties.CONFIG_PREFIX,
+            name = "stdio",
+            havingValue = "false",
+            matchIfMissing = true)
+    public List<McpStatelessServerFeatures.SyncPromptSpecification> promptSpecificationsStateless(
+            PromptRegistry promptRegistry, PromptSpecBuilder promptSpecBuilder) {
+        return registerStatelessPrompts(promptRegistry, promptSpecBuilder);
+    }
+
+    @Bean
+    @ConditionalOnProperty(prefix = McpServerProperties.CONFIG_PREFIX, name = "stdio", havingValue = "true")
+    public List<McpServerFeatures.SyncPromptSpecification> promptSpecificationsStdio(
+            PromptRegistry promptRegistry, PromptSpecBuilder promptSpecBuilder) {
+        return registerPrompts(promptRegistry, promptSpecBuilder);
+    }
+
+    @Bean
     @ConditionalOnProperty(prefix = OpenApiMcpProperties.LiveReload.PREFIX, name = "enabled", havingValue = "true")
     public ToolLiveReload openApiLiveReload(
             Optional<McpSyncServer> mcpSyncServer,
@@ -401,5 +460,19 @@ class OpenApiMcpConfiguration {
     private List<McpStatelessServerFeatures.SyncToolSpecification> registerStatelessTools(
             ToolRegistry toolRegistry, ToolSpecBuilder toolSpecBuilder) {
         return registerAfterLoadingOpenApiRegistry(toolRegistry, toolSpecBuilder::buildSyncStatelessToolSpecification);
+    }
+
+    private List<McpServerFeatures.SyncPromptSpecification> registerPrompts(
+            PromptRegistry promptRegistry, PromptSpecBuilder promptSpecBuilder) {
+        return promptRegistry.getPrompts().stream()
+                .map(promptSpecBuilder::buildSyncPromptSpecification)
+                .toList();
+    }
+
+    private List<McpStatelessServerFeatures.SyncPromptSpecification> registerStatelessPrompts(
+            PromptRegistry promptRegistry, PromptSpecBuilder promptSpecBuilder) {
+        return promptRegistry.getPrompts().stream()
+                .map(promptSpecBuilder::buildSyncStatelessPromptSpecification)
+                .toList();
     }
 }
