@@ -15,7 +15,7 @@ public abstract class PromptTestBase extends IntegrationTestBase {
 
     private static final String PROMPT_RESOLVE_RESPONSE = """
             {
-                "description": "Greet a user",
+                "description": "Greet a user via backend",
                 "messages": [
                     {"role": "user", "content": "Generate a greeting for Alice."},
                     {"role": "assistant", "content": "Hello Alice, welcome!"}
@@ -37,16 +37,16 @@ public abstract class PromptTestBase extends IntegrationTestBase {
     @BeforeEach
     void setupPromptStubs() {
         stubPromptOpenApiSpec();
-        staticWireMockServer.stubFor(get(urlPathEqualTo("/prompts/greet"))
+        staticWireMockServer.stubFor(get(urlPathEqualTo("/prompts/greet-resolved"))
                 .withQueryParam("name", equalTo("Alice"))
                 .willReturn(okJson(PROMPT_RESOLVE_RESPONSE)));
-        staticWireMockServer.stubFor(get(urlPathEqualTo("/prompts/greet"))
+        staticWireMockServer.stubFor(get(urlPathEqualTo("/prompts/greet-resolved"))
                 .withQueryParam("name", absent())
                 .willReturn(okJson("""
                         {
-                            "description": "Greet a user",
+                            "description": "Greet a user via backend",
                             "messages": [
-                                {"role": "user", "content": "Generate a greeting for {{name}}."}
+                                {"role": "user", "content": "Generate a greeting."}
                             ]
                         }
                         """)));
@@ -62,34 +62,66 @@ public abstract class PromptTestBase extends IntegrationTestBase {
     }
 
     @Test
-    void shouldListConfiguredPrompts() {
+    void shouldListAllConfiguredPrompts() {
         withInitializedMcpClient(givenClient -> {
             // When
             var result = givenClient.listPrompts();
 
             // Then
-            then(result.prompts()).hasSize(1);
-            var prompt = result.prompts().getFirst();
-            then(prompt.name()).isEqualTo("greet");
-            then(prompt.description()).isEqualTo("Greet a user");
-            then(prompt.arguments()).hasSize(1);
-            then(prompt.arguments().getFirst())
+            then(result.prompts()).hasSize(2);
+
+            var staticPrompt = result.prompts().stream()
+                    .filter(p -> p.name().equals("greet-static"))
+                    .findFirst()
+                    .orElseThrow();
+            then(staticPrompt.description()).isEqualTo("Greet a user (static template)");
+            then(staticPrompt.arguments()).hasSize(1);
+            then(staticPrompt.arguments().getFirst())
                     .usingRecursiveComparison()
                     .isEqualTo(new McpSchema.PromptArgument("name", "User name", true));
+
+            var resolvedPrompt = result.prompts().stream()
+                    .filter(p -> p.name().equals("greet-resolved"))
+                    .findFirst()
+                    .orElseThrow();
+            then(resolvedPrompt.description()).isEqualTo("Greet a user (backend resolved)");
         });
     }
 
     @Test
-    void shouldGetPromptWithInterpolatedArguments() {
+    void shouldGetInlinePromptWithRenderedTemplate() {
         withInitializedMcpClient(givenClient -> {
             // Given
-            var request = new McpSchema.GetPromptRequest("greet", Map.of("name", "Alice"));
+            var request = new McpSchema.GetPromptRequest("greet-static", Map.of("name", "Alice"));
 
             // When
             var result = givenClient.getPrompt(request);
 
             // Then
-            then(result.description()).isEqualTo("Greet a user");
+            then(result.description()).isEqualTo("Greet a user (static template)");
+            then(result.messages()).hasSize(2);
+
+            then(result.messages().getFirst().role()).isEqualTo(McpSchema.Role.USER);
+            then(((McpSchema.TextContent) result.messages().getFirst().content()).text())
+                    .isEqualTo("You are about to greet Alice.");
+
+            then(result.messages().get(1).role()).isEqualTo(McpSchema.Role.ASSISTANT);
+            then(((McpSchema.TextContent) result.messages().get(1).content()).text())
+                    .isEqualTo("Hello Alice, welcome to the platform!");
+        });
+    }
+
+    @Test
+    void shouldGetResolvedPromptFromBackend() {
+        withInitializedMcpClient(givenClient -> {
+            // Given
+            var request = new McpSchema.GetPromptRequest("greet-resolved", Map.of("name", "Alice"));
+
+            // When
+            var result = givenClient.getPrompt(request);
+
+            // Then
+            then(result.description()).isEqualTo("Greet a user via backend");
             then(result.messages()).hasSize(2);
 
             then(result.messages().getFirst().role()).isEqualTo(McpSchema.Role.USER);
@@ -103,17 +135,18 @@ public abstract class PromptTestBase extends IntegrationTestBase {
     }
 
     @Test
-    void shouldCallBackendWithoutArgumentsWhenNoneProvided() {
+    void shouldRenderInlinePromptWithMissingRequiredArgAsError() {
         withInitializedMcpClient(givenClient -> {
             // Given
-            var request = new McpSchema.GetPromptRequest("greet", Map.of());
+            var request = new McpSchema.GetPromptRequest("greet-static", Map.of());
 
-            // When
-            var result = givenClient.getPrompt(request);
-
-            // Then
-            then(((McpSchema.TextContent) result.messages().getFirst().content()).text())
-                    .isEqualTo("Generate a greeting for {{name}}.");
+            // When / Then — missing required arg should cause an error
+            try {
+                givenClient.getPrompt(request);
+                then(false).as("Expected exception for missing required arg").isTrue();
+            } catch (Exception e) {
+                then(e.getMessage()).contains("name");
+            }
         });
     }
 
@@ -138,21 +171,44 @@ public abstract class PromptTestBase extends IntegrationTestBase {
                             }
                         }
                     },
-                    "x-mcp-prompts": {
-                        "greet": {
-                            "description": "Greet a user",
-                            "arguments": {
-                                "name": {
+                    "x-mcp-prompts": [
+                        {
+                            "name": "greet-static",
+                            "description": "Greet a user (static template)",
+                            "arguments": [
+                                {
+                                    "name": "name",
                                     "description": "User name",
                                     "required": true
                                 }
-                            },
+                            ],
+                            "messages": [
+                                {
+                                    "role": "user",
+                                    "content": "You are about to greet {{name}}."
+                                },
+                                {
+                                    "role": "assistant",
+                                    "content": "Hello {{name}}, welcome to the platform!"
+                                }
+                            ]
+                        },
+                        {
+                            "name": "greet-resolved",
+                            "description": "Greet a user (backend resolved)",
+                            "arguments": [
+                                {
+                                    "name": "name",
+                                    "description": "User name",
+                                    "required": true
+                                }
+                            ],
                             "resolve": {
-                                "path": "/prompts/greet",
+                                "path": "/prompts/greet-resolved",
                                 "method": "GET"
                             }
                         }
-                    }
+                    ]
                 }
                 """;
     }

@@ -15,6 +15,7 @@
         <jakarta-servlet.version>6.1.0</jakarta-servlet.version>
 		<swagger-parser.version>2.1.41</swagger-parser.version>
         <nimbus-jwt.version>10.9</nimbus-jwt.version>
+        <mustache.version>0.9.14</mustache.version>
 	</properties>
 
 	<dependencies>
@@ -68,6 +69,11 @@
             <groupId>com.nimbusds</groupId>
             <artifactId>nimbus-jose-jwt</artifactId>
             <version>${nimbus-jwt.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.github.spullara.mustache.java</groupId>
+            <artifactId>compiler</artifactId>
+            <version>${mustache.version}</version>
         </dependency>
 
 		<!-- Testing -->

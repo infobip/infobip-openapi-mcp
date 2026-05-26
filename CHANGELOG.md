@@ -9,13 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- MCP prompt support via the `x-mcp-prompts` vendor extension on the root OpenAPI object. Each
-  prompt declares a description, named arguments (with optional/required flags), and a resolve
-  endpoint on the backend server. When a client calls `getPrompt`, the framework forwards the
-  arguments to the configured backend endpoint — as query parameters for GET or as a JSON body
-  for POST — and returns the backend's response (description and messages with `user`/`assistant`
-  roles) to the MCP client. Credentials are forwarded using the configured `CredentialProvider`.
-  Prompts are discoverable by clients via `listPrompts` and invocable via `getPrompt`.
+- MCP prompt support via the `x-mcp-prompts` vendor extension on the root OpenAPI object. Prompts
+  are defined as an array of objects, each with a `name`, `description`, and `arguments` list.
+  Two resolution modes are available:
+  - **Static templates** — prompts with inline `messages` containing Mustache `{{placeholder}}`
+    templates that are rendered server-side from user-supplied arguments. No backend call needed.
+    Missing required arguments fail the request; missing optional arguments render as empty strings.
+  - **Backend resolution** — prompts with a `resolve` block that delegates to a backend HTTP
+    endpoint. Arguments are forwarded as query parameters for `GET` or as a JSON body for `POST`.
+    Credentials are forwarded using the configured `CredentialProvider`.
+  
+  Prompts are discoverable by clients via `listPrompts` and invocable via `getPrompt`. Live
+  reload detects prompt additions and removals automatically.
 
 ## 0.1.15
 

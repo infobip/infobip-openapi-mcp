@@ -1,14 +1,16 @@
 package com.infobip.openapi.mcp.prompt;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.infobip.openapi.mcp.McpRequestContext;
 import com.infobip.openapi.mcp.auth.CredentialProvider;
 import com.infobip.openapi.mcp.openapi.OpenApiRegistry;
 import com.infobip.openapi.mcp.openapi.schema.Spec;
 import io.modelcontextprotocol.spec.McpSchema;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
+import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
@@ -19,9 +21,14 @@ import org.springframework.web.client.RestClient;
 /**
  * Registry for converting {@code x-mcp-prompts} OpenAPI vendor extension definitions
  * into MCP prompt specifications.
- * <p>
- * Each prompt definition is converted into a {@link RegisteredPrompt} containing the MCP
- * prompt schema and a handler that resolves the prompt by calling a backend endpoint.
+ *
+ * <p>Supports two modes per prompt:
+ * <ul>
+ *   <li><b>Inline mode</b> — prompts with a {@code messages} list containing
+ *       Mustache templates that are rendered server-side from the user-supplied arguments.</li>
+ *   <li><b>Resolved mode</b> — prompts with a {@code resolve} block that
+ *       delegates to a backend HTTP endpoint.</li>
+ * </ul>
  */
 public class PromptRegistry {
 
@@ -31,6 +38,9 @@ public class PromptRegistry {
     private final RestClient restClient;
     private final ObjectMapper objectMapper;
     private final CredentialProvider credentialProvider;
+    private final MustacheTemplateRenderer templateRenderer = new MustacheTemplateRenderer();
+
+    private List<RegisteredPrompt> registeredPromptsCache = List.of();
 
     public PromptRegistry(
             OpenApiRegistry openApiRegistry,
@@ -49,43 +59,111 @@ public class PromptRegistry {
      *
      * @return a list of registered prompts ready for MCP server registration
      */
-    @SuppressWarnings("unchecked")
     public List<RegisteredPrompt> getPrompts() {
+        var definitions = parseExtension();
+        if (definitions.isEmpty()) {
+            registeredPromptsCache = List.of();
+            return registeredPromptsCache;
+        }
+
+        validateUniqueNames(definitions);
+
+        templateRenderer.clear();
+
+        registeredPromptsCache =
+                definitions.stream().map(this::buildRegisteredPrompt).toList();
+        return registeredPromptsCache;
+    }
+
+    /**
+     * Returns the cached list of registered prompts from the last {@link #getPrompts()} call.
+     */
+    public List<RegisteredPrompt> getRegisteredPromptsCache() {
+        return registeredPromptsCache;
+    }
+
+    private List<PromptExtensionDefinition> parseExtension() {
         var extensions = openApiRegistry.openApi().getExtensions();
         if (extensions == null) {
             return List.of();
         }
 
         var promptsExtension = extensions.get(Spec.MCP_PROMPTS_EXTENSION);
-        if (!(promptsExtension instanceof Map<?, ?> promptsMap)) {
+        if (promptsExtension == null) {
             return List.of();
         }
 
-        return ((Map<String, Object>) promptsMap)
-                .entrySet().stream()
-                        .map(entry -> buildRegisteredPrompt(
-                                entry.getKey(),
-                                objectMapper.convertValue(entry.getValue(), PromptExtensionDefinition.class)))
-                        .toList();
+        return objectMapper.convertValue(promptsExtension, new TypeReference<>() {});
     }
 
-    private RegisteredPrompt buildRegisteredPrompt(String name, PromptExtensionDefinition definition) {
-        var arguments = definition.arguments().entrySet().stream()
-                .map(entry -> new McpSchema.PromptArgument(
-                        entry.getKey(),
-                        entry.getValue().description(),
-                        entry.getValue().required()))
+    private void validateUniqueNames(List<PromptExtensionDefinition> definitions) {
+        var duplicates = definitions.stream()
+                .collect(Collectors.groupingBy(PromptExtensionDefinition::name, Collectors.counting()))
+                .entrySet()
+                .stream()
+                .filter(entry -> entry.getValue() > 1)
+                .map(Map.Entry::getKey)
+                .sorted()
                 .toList();
 
-        var prompt = new McpSchema.Prompt(name, definition.description(), arguments);
+        if (!duplicates.isEmpty()) {
+            throw new IllegalArgumentException("Duplicate prompt names in x-mcp-prompts: " + duplicates);
+        }
+    }
 
+    private RegisteredPrompt buildRegisteredPrompt(PromptExtensionDefinition definition) {
+        var arguments = definition.arguments().stream()
+                .map(arg -> new McpSchema.PromptArgument(arg.name(), arg.description(), arg.required()))
+                .toList();
+
+        var prompt = new McpSchema.Prompt(definition.name(), definition.description(), arguments);
+
+        if (definition.messages() != null) {
+            return buildInlinePrompt(prompt, definition);
+        }
+        return buildResolvedPrompt(prompt, definition);
+    }
+
+    private RegisteredPrompt buildInlinePrompt(McpSchema.Prompt prompt, PromptExtensionDefinition definition) {
+        var messages = definition.messages();
+        var requiredArgNames = definition.arguments().stream()
+                .filter(PromptExtensionArgument::required)
+                .map(PromptExtensionArgument::name)
+                .toList();
+
+        templateRenderer.compileTemplates(definition.name(), messages);
+
+        return new RegisteredPrompt(prompt, (context, request) -> {
+            var args = request.arguments() != null ? request.arguments() : Map.<String, Object>of();
+
+            var missingRequired = requiredArgNames.stream()
+                    .filter(name -> !args.containsKey(name) || args.get(name) == null)
+                    .toList();
+            if (!missingRequired.isEmpty()) {
+                throw new RuntimeException(
+                        "Missing required arguments for prompt '" + definition.name() + "': " + missingRequired);
+            }
+
+            var promptMessages = IntStream.range(0, messages.size())
+                    .mapToObj(i -> {
+                        var rendered = templateRenderer.render(definition.name(), i, args);
+                        return new McpSchema.PromptMessage(
+                                toMcpRole(messages.get(i).role()), new McpSchema.TextContent(rendered));
+                    })
+                    .toList();
+
+            return new McpSchema.GetPromptResult(definition.description(), promptMessages);
+        });
+    }
+
+    private RegisteredPrompt buildResolvedPrompt(McpSchema.Prompt prompt, PromptExtensionDefinition definition) {
         return new RegisteredPrompt(
-                prompt, (context, request) -> resolvePrompt(name, definition.resolve(), request, context));
+                prompt, (context, request) -> resolvePrompt(definition.name(), definition.resolve(), request, context));
     }
 
     private McpSchema.GetPromptResult resolvePrompt(
             String promptName,
-            PromptResolveConfig resolveConfig,
+            @Nullable PromptResolveConfig resolveConfig,
             McpSchema.GetPromptRequest request,
             McpRequestContext context) {
         var args = request.arguments() != null ? request.arguments() : Map.<String, Object>of();

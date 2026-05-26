@@ -464,38 +464,45 @@ clients that display a progress fraction always receive a consistent value.
 ### Prompts
 
 The framework supports [MCP prompts][17] — reusable prompt templates that MCP clients can discover and invoke. Prompts
-are defined using the `x-mcp-prompts` [vendor extension][7] on the root OpenAPI object and resolved at runtime by
-calling a backend endpoint.
+are defined using the `x-mcp-prompts` [vendor extension][7] on the root OpenAPI object as an array of prompt
+definitions. Two resolution modes are available:
 
-Each prompt declares a name, description, named arguments (with optional/required flags), and a `resolve` block that
-specifies which backend endpoint to call and with which HTTP method. When a client calls `getPrompt`, the framework
-forwards the provided arguments to the backend — as query parameters for `GET` or as a JSON request body for `POST` —
-and returns the backend's response to the MCP client. Credentials are forwarded using the configured
-`CredentialProvider`.
+- **Static templates** — prompts with inline `messages` containing [Mustache][18] `{{placeholder}}` templates. Templates
+  are rendered server-side from the user-supplied arguments with no backend call. Missing required arguments fail the
+  request; missing optional arguments render as empty strings.
+- **Backend resolution** — prompts with a `resolve` block that delegates to a backend HTTP endpoint at runtime.
+  Arguments are forwarded as query parameters for `GET` or as a JSON request body for `POST`. Credentials are forwarded
+  using the configured `CredentialProvider`.
+
+Each prompt must use exactly one mode — defining both `messages` and `resolve` on the same prompt causes a startup
+error.
 
 ```yaml
 # Top-level OpenAPI vendor extension (sibling to info, paths, components)
 x-mcp-prompts:
-  greet:
+  - name: greet
     description: "Greet a user by name"
     arguments:
-      name:
+      - name: user_name
         description: "User's name"
         required: true
-    resolve:
-      path: /prompts/greet
-      method: GET
-  summarize:
+    messages:
+      - role: user
+        content: "Hello {{user_name}}, welcome!"
+      - role: assistant
+        content: "Thanks! Glad to be here, {{user_name}}."
+
+  - name: summarize
     description: "Summarize the API capabilities"
     arguments:
-      format:
+      - name: format
         description: "Output format (markdown, plain, json)"
     resolve:
       path: /prompts/summarize
       method: POST
 ```
 
-The backend endpoint must return a JSON response with the following structure:
+For backend-resolved prompts, the endpoint must return a JSON response with the following structure:
 
 ```json
 {
@@ -507,7 +514,9 @@ The backend endpoint must return a JSON response with the following structure:
 }
 ```
 
-Messages support both `user` and `assistant` roles, enabling few-shot prompt patterns.
+Messages support both `user` and `assistant` roles, enabling few-shot prompt patterns. Prompts are automatically
+included in live reload — when the OpenAPI specification changes, prompt additions and removals are detected and
+connected MCP clients are notified.
 
 ### Properties
 
@@ -615,3 +624,5 @@ This project is licensed under the [MIT License](LICENSE).
 [16]: https://modelcontextprotocol.io/specification/2025-11-25/basic/utilities/progress "Progress Notifications in MCP specification"
 
 [17]: https://modelcontextprotocol.io/specification/2025-11-25/basic/prompts "Prompts in MCP specification"
+
+[18]: https://mustache.github.io "Mustache — Logic-less templates"

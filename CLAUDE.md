@@ -85,7 +85,9 @@ The framework follows this startup flow:
 3. `ToolRegistry` converts each API operation into a `RegisteredTool` using `InputSchemaComposer`,
    `InputExampleComposer`, `ToolAnnotationResolver`, and the configured `NamingStrategy`
 4. `PromptRegistry` reads the `x-mcp-prompts` vendor extension from the OpenAPI spec and converts each entry into a
-   `RegisteredPrompt` with an `McpSchema.Prompt` and a handler that resolves the prompt by calling a backend endpoint
+   `RegisteredPrompt` with an `McpSchema.Prompt` and a handler. Two modes are supported: **inline mode**
+   where Mustache templates are compiled at startup and rendered server-side from user arguments, and **resolved mode**
+   where the handler calls a backend HTTP endpoint to resolve the prompt
 5. Tools and prompts are registered with the Spring AI MCP server (SSE, Streamable HTTP, Stateless HTTP, or stdio
    transport)
 

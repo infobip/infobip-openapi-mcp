@@ -13,11 +13,12 @@ import com.infobip.openapi.mcp.auth.CredentialProvider;
 import com.infobip.openapi.mcp.openapi.OpenApiRegistry;
 import io.modelcontextprotocol.spec.McpSchema;
 import io.swagger.v3.oas.models.OpenAPI;
-import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -53,295 +54,468 @@ class PromptRegistryTest {
         wireMockServer.stop();
     }
 
-    @Test
-    void shouldReturnEmptyListWhenNoExtensions() {
-        // Given
-        var registry = givenRegistryWithExtension(null);
+    @Nested
+    class EmptyExtension {
 
-        // When
-        var prompts = registry.getPrompts();
+        @Test
+        void shouldReturnEmptyListWhenNoExtensions() {
+            // Given
+            var registry = givenRegistryWithExtension(null);
 
-        // Then
-        then(prompts).isEmpty();
+            // When
+            var prompts = registry.getPrompts();
+
+            // Then
+            then(prompts).isEmpty();
+        }
+
+        @Test
+        void shouldReturnEmptyListWhenNoPromptsExtension() {
+            // Given
+            var openApi = new OpenAPI();
+            openApi.addExtension("x-other", "value");
+            when(openApiRegistry.openApi()).thenReturn(openApi);
+            var registry = new PromptRegistry(openApiRegistry, restClient, OBJECT_MAPPER, noOpCredentialProvider);
+
+            // When
+            var prompts = registry.getPrompts();
+
+            // Then
+            then(prompts).isEmpty();
+        }
     }
 
-    @Test
-    void shouldReturnEmptyListWhenNoPromptsExtension() {
-        // Given
-        var openApi = new OpenAPI();
-        openApi.addExtension("x-other", "value");
-        when(openApiRegistry.openApi()).thenReturn(openApi);
-        var registry = new PromptRegistry(openApiRegistry, restClient, OBJECT_MAPPER, noOpCredentialProvider);
+    @Nested
+    class InlineTemplates {
 
-        // When
-        var prompts = registry.getPrompts();
+        @Test
+        void shouldRegisterInlinePromptWithArguments() {
+            // Given
+            var registry = givenRegistryWithExtension(List.of(Map.of(
+                    "name",
+                    "greet",
+                    "description",
+                    "Greet a user",
+                    "arguments",
+                    List.of(Map.of("name", "user_name", "description", "User name", "required", true)),
+                    "messages",
+                    List.of(Map.of("role", "user", "content", "Hello {{user_name}}, welcome!")))));
 
-        // Then
-        then(prompts).isEmpty();
+            // When
+            var prompts = registry.getPrompts();
+
+            // Then
+            then(prompts).hasSize(1);
+            var prompt = prompts.getFirst().prompt();
+            then(prompt.name()).isEqualTo("greet");
+            then(prompt.description()).isEqualTo("Greet a user");
+            then(prompt.arguments()).hasSize(1);
+            then(prompt.arguments().getFirst())
+                    .usingRecursiveComparison()
+                    .isEqualTo(new McpSchema.PromptArgument("user_name", "User name", true));
+        }
+
+        @Test
+        void shouldRenderInlineTemplateWithArguments() {
+            // Given
+            var registry = givenRegistryWithExtension(List.of(Map.of(
+                    "name",
+                    "greet",
+                    "description",
+                    "Greet",
+                    "arguments",
+                    List.of(Map.of("name", "user_name", "description", "Name", "required", true)),
+                    "messages",
+                    List.of(Map.of("role", "user", "content", "Hello {{user_name}}!")))));
+
+            var prompt = registry.getPrompts().getFirst();
+            var request = new McpSchema.GetPromptRequest("greet", Map.of("user_name", "Alice"));
+
+            // When
+            var result = prompt.handler().apply(CONTEXT, request);
+
+            // Then
+            then(result.description()).isEqualTo("Greet");
+            then(result.messages()).hasSize(1);
+            then(result.messages().getFirst().role()).isEqualTo(McpSchema.Role.USER);
+            then(((McpSchema.TextContent) result.messages().getFirst().content()).text())
+                    .isEqualTo("Hello Alice!");
+        }
+
+        @Test
+        void shouldRenderMultipleMessagesInOrder() {
+            // Given
+            var registry = givenRegistryWithExtension(List.of(Map.of(
+                    "name", "fewshot",
+                    "description", "Few-shot",
+                    "messages",
+                            List.of(
+                                    Map.of("role", "user", "content", "Summarize {{topic}} briefly."),
+                                    Map.of("role", "assistant", "content", "Here is a brief summary of {{topic}}."),
+                                    Map.of("role", "user", "content", "Now expand on {{topic}}.")))));
+
+            var prompt = registry.getPrompts().getFirst();
+            var request = new McpSchema.GetPromptRequest("fewshot", Map.of("topic", "Java"));
+
+            // When
+            var result = prompt.handler().apply(CONTEXT, request);
+
+            // Then
+            then(result.messages()).hasSize(3);
+            then(result.messages().stream().map(McpSchema.PromptMessage::role).toList())
+                    .containsExactly(McpSchema.Role.USER, McpSchema.Role.ASSISTANT, McpSchema.Role.USER);
+            then(((McpSchema.TextContent) result.messages().getFirst().content()).text())
+                    .isEqualTo("Summarize Java briefly.");
+            then(((McpSchema.TextContent) result.messages().get(2).content()).text())
+                    .isEqualTo("Now expand on Java.");
+        }
+
+        @Test
+        void shouldThrowWhenRequiredArgumentIsMissing() {
+            // Given
+            var registry = givenRegistryWithExtension(List.of(Map.of(
+                    "name",
+                    "greet",
+                    "description",
+                    "Greet",
+                    "arguments",
+                    List.of(Map.of("name", "user_name", "description", "Name", "required", true)),
+                    "messages",
+                    List.of(Map.of("role", "user", "content", "Hello {{user_name}}!")))));
+
+            var prompt = registry.getPrompts().getFirst();
+            var request = new McpSchema.GetPromptRequest("greet", Map.of());
+
+            // When / Then
+            thenThrownBy(() -> prompt.handler().apply(CONTEXT, request))
+                    .isInstanceOf(RuntimeException.class)
+                    .hasMessageContaining("user_name");
+        }
+
+        @Test
+        void shouldRenderMissingOptionalArgumentAsEmpty() {
+            // Given
+            var registry = givenRegistryWithExtension(List.of(Map.of(
+                    "name",
+                    "greet",
+                    "description",
+                    "Greet",
+                    "arguments",
+                    List.of(Map.of("name", "greeting", "description", "Greeting word")),
+                    "messages",
+                    List.of(Map.of("role", "user", "content", "{{greeting}} World!")))));
+
+            var prompt = registry.getPrompts().getFirst();
+            var request = new McpSchema.GetPromptRequest("greet", Map.of());
+
+            // When
+            var result = prompt.handler().apply(CONTEXT, request);
+
+            // Then
+            then(((McpSchema.TextContent) result.messages().getFirst().content()).text())
+                    .isEqualTo(" World!");
+        }
+
+        @Test
+        void shouldNotHtmlEscapeArgumentValues() {
+            // Given
+            var registry = givenRegistryWithExtension(List.of(Map.of(
+                    "name", "code",
+                    "description", "Code",
+                    "messages", List.of(Map.of("role", "user", "content", "Code: {{snippet}}")))));
+
+            var prompt = registry.getPrompts().getFirst();
+            var request = new McpSchema.GetPromptRequest("code", Map.of("snippet", "<div class=\"test\"> & foo</div>"));
+
+            // When
+            var result = prompt.handler().apply(CONTEXT, request);
+
+            // Then
+            then(((McpSchema.TextContent) result.messages().getFirst().content()).text())
+                    .isEqualTo("Code: <div class=\"test\"> & foo</div>");
+        }
     }
 
-    @Test
-    void shouldRegisterPromptWithNoArguments() {
-        // Given
-        var registry = givenRegistryWithExtension(Map.of(
-                "simple-prompt",
-                Map.of(
-                        "description",
-                        "A simple prompt",
-                        "resolve",
-                        Map.of("path", "/prompts/simple", "method", "GET"))));
+    @Nested
+    class ResolvedBackendResolution {
 
-        // When
-        var prompts = registry.getPrompts();
+        @Test
+        void shouldRegisterResolvedPromptWithNoArguments() {
+            // Given
+            var registry = givenRegistryWithExtension(List.of(Map.of(
+                    "name", "simple-prompt",
+                    "description", "A simple prompt",
+                    "resolve", Map.of("path", "/prompts/simple", "method", "GET"))));
 
-        // Then
-        then(prompts).hasSize(1);
-        var prompt = prompts.getFirst().prompt();
-        then(prompt.name()).isEqualTo("simple-prompt");
-        then(prompt.description()).isEqualTo("A simple prompt");
-        then(prompt.arguments()).isEmpty();
+            // When
+            var prompts = registry.getPrompts();
+
+            // Then
+            then(prompts).hasSize(1);
+            var prompt = prompts.getFirst().prompt();
+            then(prompt.name()).isEqualTo("simple-prompt");
+            then(prompt.description()).isEqualTo("A simple prompt");
+            then(prompt.arguments()).isEmpty();
+        }
+
+        @Test
+        void shouldResolvePromptViaGetWithQueryParameters() {
+            // Given
+            wireMockServer.stubFor(get(urlPathEqualTo("/prompts/greet"))
+                    .withQueryParam("name", equalTo("Alice"))
+                    .willReturn(okJson("""
+                            {
+                                "description": "Greet a user",
+                                "messages": [
+                                    {"role": "user", "content": "Hello Alice!"}
+                                ]
+                            }
+                            """)));
+
+            var registry = givenRegistryWithExtension(List.of(Map.of(
+                    "name",
+                    "greet",
+                    "description",
+                    "Greet",
+                    "arguments",
+                    List.of(Map.of("name", "name", "description", "Name", "required", true)),
+                    "resolve",
+                    Map.of("path", "/prompts/greet", "method", "GET"))));
+
+            var prompt = registry.getPrompts().getFirst();
+            var request = new McpSchema.GetPromptRequest("greet", Map.of("name", "Alice"));
+
+            // When
+            var result = prompt.handler().apply(CONTEXT, request);
+
+            // Then
+            then(result.description()).isEqualTo("Greet a user");
+            then(result.messages()).hasSize(1);
+            then(result.messages().getFirst().role()).isEqualTo(McpSchema.Role.USER);
+            then(((McpSchema.TextContent) result.messages().getFirst().content()).text())
+                    .isEqualTo("Hello Alice!");
+        }
+
+        @Test
+        void shouldResolvePromptViaPostWithJsonBody() {
+            // Given
+            wireMockServer.stubFor(post(urlPathEqualTo("/prompts/summarize"))
+                    .withHeader("Content-Type", containing("application/json"))
+                    .withRequestBody(matchingJsonPath("$.format", equalTo("markdown")))
+                    .willReturn(okJson("""
+                            {
+                                "description": "Summarize",
+                                "messages": [
+                                    {"role": "user", "content": "Summarize in markdown."},
+                                    {"role": "assistant", "content": "Here is the summary."}
+                                ]
+                            }
+                            """)));
+
+            var registry = givenRegistryWithExtension(List.of(Map.of(
+                    "name",
+                    "summarize",
+                    "description",
+                    "Summarize",
+                    "arguments",
+                    List.of(Map.of("name", "format", "description", "Format")),
+                    "resolve",
+                    Map.of("path", "/prompts/summarize", "method", "POST"))));
+
+            var prompt = registry.getPrompts().getFirst();
+            var request = new McpSchema.GetPromptRequest("summarize", Map.of("format", "markdown"));
+
+            // When
+            var result = prompt.handler().apply(CONTEXT, request);
+
+            // Then
+            then(result.messages()).hasSize(2);
+            then(((McpSchema.TextContent) result.messages().getFirst().content()).text())
+                    .isEqualTo("Summarize in markdown.");
+            then(((McpSchema.TextContent) result.messages().get(1).content()).text())
+                    .isEqualTo("Here is the summary.");
+        }
+
+        @Test
+        void shouldForwardCredentialsInAuthorizationHeader() {
+            // Given
+            wireMockServer.stubFor(get(urlPathEqualTo("/prompts/secure"))
+                    .withHeader("Authorization", equalTo("Bearer test-token"))
+                    .willReturn(okJson("""
+                            {
+                                "description": "Secure prompt",
+                                "messages": [{"role": "user", "content": "Secret data."}]
+                            }
+                            """)));
+
+            CredentialProvider credentialProvider = context -> Optional.of("Bearer test-token");
+            var registry = givenRegistryWithExtension(
+                    List.of(Map.of(
+                            "name", "secure",
+                            "description", "Secure",
+                            "resolve", Map.of("path", "/prompts/secure", "method", "GET"))),
+                    credentialProvider);
+
+            var prompt = registry.getPrompts().getFirst();
+            var request = new McpSchema.GetPromptRequest("secure", Map.of());
+
+            // When
+            var result = prompt.handler().apply(CONTEXT, request);
+
+            // Then
+            then(((McpSchema.TextContent) result.messages().getFirst().content()).text())
+                    .isEqualTo("Secret data.");
+            wireMockServer.verify(getRequestedFor(urlPathEqualTo("/prompts/secure"))
+                    .withHeader("Authorization", equalTo("Bearer test-token")));
+        }
+
+        @Test
+        void shouldThrowWhenBackendReturnsError() {
+            // Given
+            wireMockServer.stubFor(get(urlPathEqualTo("/prompts/failing"))
+                    .willReturn(serverError().withBody("Internal error")));
+
+            var registry = givenRegistryWithExtension(List.of(Map.of(
+                    "name", "failing",
+                    "description", "Failing",
+                    "resolve", Map.of("path", "/prompts/failing", "method", "GET"))));
+
+            var prompt = registry.getPrompts().getFirst();
+            var request = new McpSchema.GetPromptRequest("failing", Map.of());
+
+            // When / Then
+            thenThrownBy(() -> prompt.handler().apply(CONTEXT, request)).isInstanceOf(RuntimeException.class);
+        }
     }
 
-    @Test
-    void shouldRegisterPromptWithArguments() {
-        // Given
-        var registry = givenRegistryWithExtension(Map.of(
-                "greet",
-                Map.of(
-                        "description",
-                        "Greet a user",
-                        "arguments",
-                        Map.of(
-                                "name",
-                                Map.of("description", "User name", "required", true),
-                                "format",
-                                Map.of("description", "Output format")),
-                        "resolve",
-                        Map.of("path", "/prompts/greet", "method", "POST"))));
+    @Nested
+    class MixedModes {
 
-        // When
-        var prompts = registry.getPrompts();
+        @Test
+        void shouldRegisterBothInlineAndResolvedPrompts() {
+            // Given
+            var registry = givenRegistryWithExtension(List.of(
+                    Map.of(
+                            "name", "static-greet",
+                            "description", "Static greeting",
+                            "messages", List.of(Map.of("role", "user", "content", "Hello {{name}}!"))),
+                    Map.of(
+                            "name", "dynamic-greet",
+                            "description", "Dynamic greeting",
+                            "resolve", Map.of("path", "/prompts/greet", "method", "GET"))));
 
-        // Then
-        then(prompts).hasSize(1);
-        var args = prompts.getFirst().prompt().arguments();
-        then(args).hasSize(2);
+            // When
+            var prompts = registry.getPrompts();
 
-        var nameArg =
-                args.stream().filter(a -> a.name().equals("name")).findFirst().orElseThrow();
-        then(nameArg).usingRecursiveComparison().isEqualTo(new McpSchema.PromptArgument("name", "User name", true));
+            // Then
+            then(prompts).hasSize(2);
+            then(prompts.stream().map(rp -> rp.prompt().name()).toList())
+                    .containsExactly("static-greet", "dynamic-greet");
+        }
 
-        var formatArg =
-                args.stream().filter(a -> a.name().equals("format")).findFirst().orElseThrow();
-        then(formatArg)
-                .usingRecursiveComparison()
-                .isEqualTo(new McpSchema.PromptArgument("format", "Output format", false));
+        @Test
+        void shouldHandleNullArguments() {
+            // Given
+            wireMockServer.stubFor(get(urlPathEqualTo("/prompts/noargs")).willReturn(okJson("""
+                            {
+                                "description": "No args",
+                                "messages": [{"role": "user", "content": "Static prompt."}]
+                            }
+                            """)));
+
+            var registry = givenRegistryWithExtension(List.of(Map.of(
+                    "name", "noargs",
+                    "description", "No args",
+                    "resolve", Map.of("path", "/prompts/noargs", "method", "GET"))));
+
+            var prompt = registry.getPrompts().getFirst();
+            var request = new McpSchema.GetPromptRequest("noargs", null);
+
+            // When
+            var result = prompt.handler().apply(CONTEXT, request);
+
+            // Then
+            then(((McpSchema.TextContent) result.messages().getFirst().content()).text())
+                    .isEqualTo("Static prompt.");
+        }
     }
 
-    @Test
-    void shouldRegisterMultiplePrompts() {
-        // Given
-        var promptsMap = new LinkedHashMap<String, Object>();
-        promptsMap.put(
-                "first",
-                Map.of("description", "First prompt", "resolve", Map.of("path", "/prompts/first", "method", "GET")));
-        promptsMap.put(
-                "second",
-                Map.of("description", "Second prompt", "resolve", Map.of("path", "/prompts/second", "method", "POST")));
-        var registry = givenRegistryWithExtension(promptsMap);
+    @Nested
+    class Validation {
 
-        // When
-        var prompts = registry.getPrompts();
+        @Test
+        void shouldThrowOnDuplicatePromptNames() {
+            // Given
+            var registry = givenRegistryWithExtension(List.of(
+                    Map.of(
+                            "name", "greet",
+                            "description", "First",
+                            "messages", List.of(Map.of("role", "user", "content", "Hello"))),
+                    Map.of(
+                            "name", "greet",
+                            "description", "Second",
+                            "messages", List.of(Map.of("role", "user", "content", "Hi")))));
 
-        // Then
-        then(prompts).hasSize(2);
-        then(prompts.stream().map(rp -> rp.prompt().name()).toList()).containsExactly("first", "second");
+            // When / Then
+            thenThrownBy(registry::getPrompts)
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("Duplicate prompt names");
+        }
+
+        @Test
+        void shouldThrowWhenBothResolveAndMessagesPresent() {
+            // Given / When / Then
+            thenThrownBy(() -> givenRegistryWithExtension(List.of(Map.of(
+                                    "name",
+                                    "invalid",
+                                    "description",
+                                    "Invalid",
+                                    "resolve",
+                                    Map.of("path", "/prompts/x", "method", "GET"),
+                                    "messages",
+                                    List.of(Map.of("role", "user", "content", "Hello")))))
+                            .getPrompts())
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("not both");
+        }
+
+        @Test
+        void shouldThrowWhenNeitherResolveNorMessagesPresent() {
+            // Given / When / Then
+            thenThrownBy(() -> givenRegistryWithExtension(List.of(Map.of("name", "invalid", "description", "Invalid")))
+                            .getPrompts())
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("must define either");
+        }
     }
 
-    @Test
-    void shouldResolvePromptViaGetWithQueryParameters() {
-        // Given
-        wireMockServer.stubFor(get(urlPathEqualTo("/prompts/greet"))
-                .withQueryParam("name", equalTo("Alice"))
-                .willReturn(okJson("""
-                        {
-                            "description": "Greet a user",
-                            "messages": [
-                                {"role": "user", "content": "Hello Alice!"}
-                            ]
-                        }
-                        """)));
+    @Nested
+    class Cache {
 
-        var registry = givenRegistryWithExtension(Map.of(
-                "greet",
-                Map.of(
-                        "description", "Greet",
-                        "arguments", Map.of("name", Map.of("description", "Name", "required", true)),
-                        "resolve", Map.of("path", "/prompts/greet", "method", "GET"))));
+        @Test
+        void shouldUpdateRegisteredPromptsCache() {
+            // Given
+            var registry = givenRegistryWithExtension(List.of(Map.of(
+                    "name", "greet",
+                    "description", "Greet",
+                    "messages", List.of(Map.of("role", "user", "content", "Hello")))));
 
-        var prompt = registry.getPrompts().getFirst();
-        var request = new McpSchema.GetPromptRequest("greet", Map.of("name", "Alice"));
+            then(registry.getRegisteredPromptsCache()).isEmpty();
 
-        // When
-        var result = prompt.handler().apply(CONTEXT, request);
+            // When
+            registry.getPrompts();
 
-        // Then
-        then(result.description()).isEqualTo("Greet a user");
-        then(result.messages()).hasSize(1);
-        then(result.messages().getFirst().role()).isEqualTo(McpSchema.Role.USER);
-        then(((McpSchema.TextContent) result.messages().getFirst().content()).text())
-                .isEqualTo("Hello Alice!");
+            // Then
+            then(registry.getRegisteredPromptsCache()).hasSize(1);
+        }
     }
 
-    @Test
-    void shouldResolvePromptViaPostWithJsonBody() {
-        // Given
-        wireMockServer.stubFor(post(urlPathEqualTo("/prompts/summarize"))
-                .withHeader("Content-Type", containing("application/json"))
-                .withRequestBody(matchingJsonPath("$.format", equalTo("markdown")))
-                .willReturn(okJson("""
-                        {
-                            "description": "Summarize",
-                            "messages": [
-                                {"role": "user", "content": "Summarize in markdown."},
-                                {"role": "assistant", "content": "Here is the summary."}
-                            ]
-                        }
-                        """)));
-
-        var registry = givenRegistryWithExtension(Map.of(
-                "summarize",
-                Map.of(
-                        "description", "Summarize",
-                        "arguments", Map.of("format", Map.of("description", "Format")),
-                        "resolve", Map.of("path", "/prompts/summarize", "method", "POST"))));
-
-        var prompt = registry.getPrompts().getFirst();
-        var request = new McpSchema.GetPromptRequest("summarize", Map.of("format", "markdown"));
-
-        // When
-        var result = prompt.handler().apply(CONTEXT, request);
-
-        // Then
-        then(result.messages()).hasSize(2);
-        then(result.messages().getFirst().role()).isEqualTo(McpSchema.Role.USER);
-        then(((McpSchema.TextContent) result.messages().getFirst().content()).text())
-                .isEqualTo("Summarize in markdown.");
-        then(result.messages().get(1).role()).isEqualTo(McpSchema.Role.ASSISTANT);
-        then(((McpSchema.TextContent) result.messages().get(1).content()).text())
-                .isEqualTo("Here is the summary.");
-    }
-
-    @Test
-    void shouldForwardCredentialsInAuthorizationHeader() {
-        // Given
-        wireMockServer.stubFor(get(urlPathEqualTo("/prompts/secure"))
-                .withHeader("Authorization", equalTo("Bearer test-token"))
-                .willReturn(okJson("""
-                        {
-                            "description": "Secure prompt",
-                            "messages": [{"role": "user", "content": "Secret data."}]
-                        }
-                        """)));
-
-        CredentialProvider credentialProvider = context -> Optional.of("Bearer test-token");
-        var registry = givenRegistryWithExtension(
-                Map.of(
-                        "secure",
-                        Map.of("description", "Secure", "resolve", Map.of("path", "/prompts/secure", "method", "GET"))),
-                credentialProvider);
-
-        var prompt = registry.getPrompts().getFirst();
-        var request = new McpSchema.GetPromptRequest("secure", Map.of());
-
-        // When
-        var result = prompt.handler().apply(CONTEXT, request);
-
-        // Then
-        then(((McpSchema.TextContent) result.messages().getFirst().content()).text())
-                .isEqualTo("Secret data.");
-        wireMockServer.verify(getRequestedFor(urlPathEqualTo("/prompts/secure"))
-                .withHeader("Authorization", equalTo("Bearer test-token")));
-    }
-
-    @Test
-    void shouldResolvePromptWithBothRoles() {
-        // Given
-        wireMockServer.stubFor(get(urlPathEqualTo("/prompts/fewshot")).willReturn(okJson("""
-                        {
-                            "description": "Few-shot prompt",
-                            "messages": [
-                                {"role": "user", "content": "User message"},
-                                {"role": "assistant", "content": "Assistant message"},
-                                {"role": "user", "content": "Follow-up"}
-                            ]
-                        }
-                        """)));
-
-        var registry = givenRegistryWithExtension(Map.of(
-                "fewshot",
-                Map.of("description", "Few-shot", "resolve", Map.of("path", "/prompts/fewshot", "method", "GET"))));
-
-        var prompt = registry.getPrompts().getFirst();
-        var request = new McpSchema.GetPromptRequest("fewshot", Map.of());
-
-        // When
-        var result = prompt.handler().apply(CONTEXT, request);
-
-        // Then
-        then(result.messages()).hasSize(3);
-        then(result.messages().stream().map(McpSchema.PromptMessage::role).toList())
-                .containsExactly(McpSchema.Role.USER, McpSchema.Role.ASSISTANT, McpSchema.Role.USER);
-    }
-
-    @Test
-    void shouldThrowWhenBackendReturnsError() {
-        // Given
-        wireMockServer.stubFor(
-                get(urlPathEqualTo("/prompts/failing")).willReturn(serverError().withBody("Internal error")));
-
-        var registry = givenRegistryWithExtension(Map.of(
-                "failing",
-                Map.of("description", "Failing", "resolve", Map.of("path", "/prompts/failing", "method", "GET"))));
-
-        var prompt = registry.getPrompts().getFirst();
-        var request = new McpSchema.GetPromptRequest("failing", Map.of());
-
-        // When / Then
-        thenThrownBy(() -> prompt.handler().apply(CONTEXT, request)).isInstanceOf(RuntimeException.class);
-    }
-
-    @Test
-    void shouldHandleNullArguments() {
-        // Given
-        wireMockServer.stubFor(get(urlPathEqualTo("/prompts/noargs")).willReturn(okJson("""
-                        {
-                            "description": "No args",
-                            "messages": [{"role": "user", "content": "Static prompt."}]
-                        }
-                        """)));
-
-        var registry = givenRegistryWithExtension(Map.of(
-                "noargs",
-                Map.of("description", "No args", "resolve", Map.of("path", "/prompts/noargs", "method", "GET"))));
-
-        var prompt = registry.getPrompts().getFirst();
-        var request = new McpSchema.GetPromptRequest("noargs", null);
-
-        // When
-        var result = prompt.handler().apply(CONTEXT, request);
-
-        // Then
-        then(((McpSchema.TextContent) result.messages().getFirst().content()).text())
-                .isEqualTo("Static prompt.");
-    }
-
-    private PromptRegistry givenRegistryWithExtension(Map<String, Object> promptsExtension) {
+    private PromptRegistry givenRegistryWithExtension(List<Map<String, Object>> promptsExtension) {
         return givenRegistryWithExtension(promptsExtension, noOpCredentialProvider);
     }
 
     private PromptRegistry givenRegistryWithExtension(
-            Map<String, Object> promptsExtension, CredentialProvider credentialProvider) {
+            List<Map<String, Object>> promptsExtension, CredentialProvider credentialProvider) {
         var openApi = new OpenAPI();
         if (promptsExtension != null) {
             openApi.addExtension("x-mcp-prompts", promptsExtension);
