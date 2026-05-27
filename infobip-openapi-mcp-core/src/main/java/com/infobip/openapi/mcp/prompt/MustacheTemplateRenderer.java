@@ -2,7 +2,9 @@ package com.infobip.openapi.mcp.prompt;
 
 import com.github.mustachejava.DefaultMustacheFactory;
 import com.github.mustachejava.Mustache;
+import com.github.mustachejava.MustacheException;
 import com.github.mustachejava.MustacheFactory;
+import java.io.IOException;
 import java.io.StringReader;
 import java.io.StringWriter;
 import java.io.Writer;
@@ -23,8 +25,8 @@ class MustacheTemplateRenderer {
         public void encode(String value, Writer writer) {
             try {
                 writer.write(value);
-            } catch (java.io.IOException e) {
-                throw new com.github.mustachejava.MustacheException("Failed to write unescaped value", e);
+            } catch (IOException e) {
+                throw new MustacheException("Failed to write unescaped value", e);
             }
         }
     };

@@ -487,6 +487,18 @@ class PromptRegistryTest {
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("must define either");
         }
+
+        @Test
+        void shouldThrowWhenMessagesListIsEmpty() {
+            // Given / When / Then
+            thenThrownBy(() -> givenRegistryWithExtension(List.of(Map.of(
+                                    "name", "invalid",
+                                    "description", "Invalid",
+                                    "messages", List.of())))
+                            .getPrompts())
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("empty");
+        }
     }
 
     @Nested

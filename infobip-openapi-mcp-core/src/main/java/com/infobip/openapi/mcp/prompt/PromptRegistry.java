@@ -10,7 +10,6 @@ import io.modelcontextprotocol.spec.McpSchema;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
@@ -40,7 +39,7 @@ public class PromptRegistry {
     private final CredentialProvider credentialProvider;
     private final MustacheTemplateRenderer templateRenderer = new MustacheTemplateRenderer();
 
-    private List<RegisteredPrompt> registeredPromptsCache = List.of();
+    private volatile List<RegisteredPrompt> registeredPromptsCache = List.of();
 
     public PromptRegistry(
             OpenApiRegistry openApiRegistry,
@@ -62,7 +61,7 @@ public class PromptRegistry {
     public List<RegisteredPrompt> getPrompts() {
         var definitions = parseExtension();
         if (definitions.isEmpty()) {
-            LOGGER.info("No prompt definitions found in OpenAPI spec.");
+            LOGGER.debug("No prompt definitions found in OpenAPI spec.");
             registeredPromptsCache = List.of();
             return registeredPromptsCache;
         }
@@ -174,7 +173,7 @@ public class PromptRegistry {
 
     private McpSchema.GetPromptResult resolvePrompt(
             String promptName,
-            @Nullable PromptResolveConfig resolveConfig,
+            PromptResolveConfig resolveConfig,
             McpSchema.GetPromptRequest request,
             McpRequestContext context) {
         var args = request.arguments() != null ? request.arguments() : Map.<String, Object>of();
@@ -198,7 +197,15 @@ public class PromptRegistry {
 
         credential.ifPresent(auth -> spec.header(HttpHeaders.AUTHORIZATION, auth));
 
-        var responseBody = spec.retrieve().body(String.class);
+        String responseBody;
+        try {
+            responseBody = spec.retrieve().body(String.class);
+        } catch (Exception e) {
+            throw new RuntimeException(
+                    "Failed to resolve prompt '" + promptName + "' via " + method + " " + resolveConfig.path() + ": "
+                            + e.getMessage(),
+                    e);
+        }
 
         return toGetPromptResult(promptName, responseBody);
     }

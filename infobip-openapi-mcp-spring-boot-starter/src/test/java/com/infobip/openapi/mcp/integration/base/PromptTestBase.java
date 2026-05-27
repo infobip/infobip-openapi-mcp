@@ -8,6 +8,7 @@ import io.modelcontextprotocol.spec.McpSchema;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.MediaType;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 
@@ -50,6 +51,17 @@ public abstract class PromptTestBase extends IntegrationTestBase {
                             ]
                         }
                         """)));
+        staticWireMockServer.stubFor(post(urlPathEqualTo("/prompts/summarize-resolved"))
+                .withHeader("Content-Type", containing(MediaType.APPLICATION_JSON_VALUE))
+                .willReturn(okJson("""
+                        {
+                            "description": "Summarize the API capabilities",
+                            "messages": [
+                                {"role": "user", "content": "Summarize in markdown format."},
+                                {"role": "assistant", "content": "## Summary\\n- Get users"}
+                            ]
+                        }
+                        """)));
     }
 
     private static void stubPromptOpenApiSpec() {
@@ -68,7 +80,7 @@ public abstract class PromptTestBase extends IntegrationTestBase {
             var result = givenClient.listPrompts();
 
             // Then
-            then(result.prompts()).hasSize(2);
+            then(result.prompts()).hasSize(3);
 
             var staticPrompt = result.prompts().stream()
                     .filter(p -> p.name().equals("greet-static"))
@@ -85,6 +97,12 @@ public abstract class PromptTestBase extends IntegrationTestBase {
                     .findFirst()
                     .orElseThrow();
             then(resolvedPrompt.description()).isEqualTo("Greet a user (backend resolved)");
+
+            var postResolvedPrompt = result.prompts().stream()
+                    .filter(p -> p.name().equals("summarize-resolved"))
+                    .findFirst()
+                    .orElseThrow();
+            then(postResolvedPrompt.description()).isEqualTo("Summarize API capabilities (POST)");
         });
     }
 
@@ -131,6 +149,27 @@ public abstract class PromptTestBase extends IntegrationTestBase {
             then(result.messages().get(1).role()).isEqualTo(McpSchema.Role.ASSISTANT);
             then(((McpSchema.TextContent) result.messages().get(1).content()).text())
                     .isEqualTo("Hello Alice, welcome!");
+        });
+    }
+
+    @Test
+    void shouldGetResolvedPromptViaPost() {
+        withInitializedMcpClient(givenClient -> {
+            // Given
+            var request = new McpSchema.GetPromptRequest("summarize-resolved", Map.of("format", "markdown"));
+
+            // When
+            var result = givenClient.getPrompt(request);
+
+            // Then
+            then(result.description()).isEqualTo("Summarize the API capabilities");
+            then(result.messages()).hasSize(2);
+
+            then(result.messages().getFirst().role()).isEqualTo(McpSchema.Role.USER);
+            then(((McpSchema.TextContent) result.messages().getFirst().content()).text())
+                    .isEqualTo("Summarize in markdown format.");
+
+            then(result.messages().get(1).role()).isEqualTo(McpSchema.Role.ASSISTANT);
         });
     }
 
@@ -206,6 +245,20 @@ public abstract class PromptTestBase extends IntegrationTestBase {
                             "resolve": {
                                 "path": "/prompts/greet-resolved",
                                 "method": "GET"
+                            }
+                        },
+                        {
+                            "name": "summarize-resolved",
+                            "description": "Summarize API capabilities (POST)",
+                            "arguments": [
+                                {
+                                    "name": "format",
+                                    "description": "Output format"
+                                }
+                            ],
+                            "resolve": {
+                                "path": "/prompts/summarize-resolved",
+                                "method": "POST"
                             }
                         }
                     ]

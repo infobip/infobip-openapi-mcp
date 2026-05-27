@@ -502,6 +502,9 @@ x-mcp-prompts:
       method: POST
 ```
 
+The `path` in the `resolve` block is resolved relative to the same base URL used for API tool calls (derived from
+the `servers` entry in the OpenAPI specification).
+
 For backend-resolved prompts, the endpoint must return a JSON response with the following structure:
 
 ```json
