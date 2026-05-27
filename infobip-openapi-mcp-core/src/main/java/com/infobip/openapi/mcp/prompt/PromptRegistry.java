@@ -62,6 +62,7 @@ public class PromptRegistry {
     public List<RegisteredPrompt> getPrompts() {
         var definitions = parseExtension();
         if (definitions.isEmpty()) {
+            LOGGER.info("No prompt definitions found in OpenAPI spec.");
             registeredPromptsCache = List.of();
             return registeredPromptsCache;
         }
@@ -72,6 +73,10 @@ public class PromptRegistry {
 
         registeredPromptsCache =
                 definitions.stream().map(this::buildRegisteredPrompt).toList();
+        LOGGER.info(
+                "Registered {} prompt(s): {}",
+                registeredPromptsCache.size(),
+                registeredPromptsCache.stream().map(p -> p.prompt().name()).toList());
         return registeredPromptsCache;
     }
 
@@ -85,14 +90,20 @@ public class PromptRegistry {
     private List<PromptExtensionDefinition> parseExtension() {
         var extensions = openApiRegistry.openApi().getExtensions();
         if (extensions == null) {
+            LOGGER.debug("OpenAPI spec has no extensions, skipping prompt parsing.");
             return List.of();
         }
 
         var promptsExtension = extensions.get(Spec.MCP_PROMPTS_EXTENSION);
         if (promptsExtension == null) {
+            LOGGER.debug(
+                    "OpenAPI spec has no '{}' extension. Available extensions: {}",
+                    Spec.MCP_PROMPTS_EXTENSION,
+                    extensions.keySet());
             return List.of();
         }
 
+        LOGGER.debug("Found '{}' extension, parsing prompt definitions.", Spec.MCP_PROMPTS_EXTENSION);
         return objectMapper.convertValue(promptsExtension, new TypeReference<>() {});
     }
 
