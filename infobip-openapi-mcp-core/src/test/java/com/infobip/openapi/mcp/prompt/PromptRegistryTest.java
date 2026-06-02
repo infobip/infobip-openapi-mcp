@@ -10,6 +10,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.infobip.openapi.mcp.McpRequestContext;
 import com.infobip.openapi.mcp.auth.CredentialProvider;
+import com.infobip.openapi.mcp.infrastructure.metrics.MetricService;
+import com.infobip.openapi.mcp.infrastructure.metrics.NoOpMetricService;
 import com.infobip.openapi.mcp.openapi.OpenApiRegistry;
 import io.modelcontextprotocol.spec.McpSchema;
 import io.swagger.v3.oas.models.OpenAPI;
@@ -38,6 +40,7 @@ class PromptRegistryTest {
     private WireMockServer wireMockServer;
     private RestClient restClient;
     private final CredentialProvider noOpCredentialProvider = context -> Optional.empty();
+    private final MetricService metricService = new NoOpMetricService();
 
     @BeforeEach
     void setUp() {
@@ -75,7 +78,8 @@ class PromptRegistryTest {
             var openApi = new OpenAPI();
             openApi.addExtension("x-other", "value");
             when(openApiRegistry.openApi()).thenReturn(openApi);
-            var registry = new PromptRegistry(openApiRegistry, restClient, OBJECT_MAPPER, noOpCredentialProvider);
+            var registry = new PromptRegistry(
+                    openApiRegistry, restClient, OBJECT_MAPPER, noOpCredentialProvider, metricService);
 
             // When
             var prompts = registry.getPrompts();
@@ -533,6 +537,6 @@ class PromptRegistryTest {
             openApi.addExtension("x-mcp-prompts", promptsExtension);
         }
         when(openApiRegistry.openApi()).thenReturn(openApi);
-        return new PromptRegistry(openApiRegistry, restClient, OBJECT_MAPPER, credentialProvider);
+        return new PromptRegistry(openApiRegistry, restClient, OBJECT_MAPPER, credentialProvider, metricService);
     }
 }

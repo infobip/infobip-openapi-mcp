@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.infobip.openapi.mcp.McpRequestContext;
 import com.infobip.openapi.mcp.auth.CredentialProvider;
+import com.infobip.openapi.mcp.infrastructure.metrics.MetricService;
 import com.infobip.openapi.mcp.openapi.OpenApiRegistry;
 import com.infobip.openapi.mcp.openapi.schema.Spec;
 import io.modelcontextprotocol.spec.McpSchema;
@@ -14,7 +15,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestClient;
 
 /**
@@ -37,6 +40,7 @@ public class PromptRegistry {
     private final RestClient restClient;
     private final ObjectMapper objectMapper;
     private final CredentialProvider credentialProvider;
+    private final MetricService metricService;
     private final MustacheTemplateRenderer templateRenderer = new MustacheTemplateRenderer();
 
     private volatile List<RegisteredPrompt> registeredPromptsCache = List.of();
@@ -45,11 +49,13 @@ public class PromptRegistry {
             OpenApiRegistry openApiRegistry,
             RestClient restClient,
             ObjectMapper objectMapper,
-            CredentialProvider credentialProvider) {
+            CredentialProvider credentialProvider,
+            MetricService metricService) {
         this.openApiRegistry = openApiRegistry;
         this.restClient = restClient;
         this.objectMapper = objectMapper;
         this.credentialProvider = credentialProvider;
+        this.metricService = metricService;
     }
 
     /**
@@ -144,31 +150,51 @@ public class PromptRegistry {
         templateRenderer.compileTemplates(definition.name(), messages);
 
         return new RegisteredPrompt(prompt, (context, request) -> {
-            var args = request.arguments() != null ? request.arguments() : Map.<String, Object>of();
+            metricService.recordPromptCall(definition.name());
+            var promptCallTimer = metricService.startPromptTimer();
 
-            var missingRequired = requiredArgNames.stream()
-                    .filter(name -> !args.containsKey(name) || args.get(name) == null)
-                    .toList();
-            if (!missingRequired.isEmpty()) {
-                throw new RuntimeException(
-                        "Missing required arguments for prompt '" + definition.name() + "': " + missingRequired);
+            try {
+                var args = request.arguments() != null ? request.arguments() : Map.<String, Object>of();
+
+                var missingRequired = requiredArgNames.stream()
+                        .filter(name -> !args.containsKey(name) || args.get(name) == null)
+                        .toList();
+                if (!missingRequired.isEmpty()) {
+                    throw new RuntimeException(
+                            "Missing required arguments for prompt '" + definition.name() + "': " + missingRequired);
+                }
+
+                var promptMessages = IntStream.range(0, messages.size())
+                        .mapToObj(i -> {
+                            var rendered = templateRenderer.render(definition.name(), i, args);
+                            return new McpSchema.PromptMessage(
+                                    toMcpRole(messages.get(i).role()), new McpSchema.TextContent(rendered));
+                        })
+                        .toList();
+
+                promptCallTimer.timePromptCall(definition.name(), false);
+                return new McpSchema.GetPromptResult(definition.description(), promptMessages);
+            } catch (RuntimeException e) {
+                promptCallTimer.timePromptCall(definition.name(), true);
+                throw e;
             }
-
-            var promptMessages = IntStream.range(0, messages.size())
-                    .mapToObj(i -> {
-                        var rendered = templateRenderer.render(definition.name(), i, args);
-                        return new McpSchema.PromptMessage(
-                                toMcpRole(messages.get(i).role()), new McpSchema.TextContent(rendered));
-                    })
-                    .toList();
-
-            return new McpSchema.GetPromptResult(definition.description(), promptMessages);
         });
     }
 
     private RegisteredPrompt buildResolvedPrompt(McpSchema.Prompt prompt, PromptExtensionDefinition definition) {
-        return new RegisteredPrompt(
-                prompt, (context, request) -> resolvePrompt(definition.name(), definition.resolve(), request, context));
+        return new RegisteredPrompt(prompt, (context, request) -> {
+            metricService.recordPromptCall(definition.name());
+            var promptCallTimer = metricService.startPromptTimer();
+
+            try {
+                var result = resolvePrompt(definition.name(), definition.resolve(), request, context);
+                promptCallTimer.timePromptCall(definition.name(), false);
+                return result;
+            } catch (RuntimeException e) {
+                promptCallTimer.timePromptCall(definition.name(), true);
+                throw e;
+            }
+        });
     }
 
     private McpSchema.GetPromptResult resolvePrompt(
@@ -197,10 +223,22 @@ public class PromptRegistry {
 
         credential.ifPresent(auth -> spec.header(HttpHeaders.AUTHORIZATION, auth));
 
+        var resolveCallTimer = metricService.startPromptTimer();
         String responseBody;
         try {
             responseBody = spec.retrieve().body(String.class);
+            resolveCallTimer.timeResolveCall(promptName, HttpStatus.OK);
+            metricService.recordPromptResolveCall(promptName, HttpStatus.OK);
+        } catch (HttpStatusCodeException e) {
+            resolveCallTimer.timeResolveCall(promptName, e.getStatusCode());
+            metricService.recordPromptResolveCall(promptName, e.getStatusCode());
+            throw new RuntimeException(
+                    "Failed to resolve prompt '" + promptName + "' via " + method + " " + resolveConfig.path() + ": "
+                            + e.getMessage(),
+                    e);
         } catch (Exception e) {
+            resolveCallTimer.timeResolveCall(promptName, HttpStatus.BAD_GATEWAY);
+            metricService.recordPromptResolveCall(promptName, HttpStatus.BAD_GATEWAY);
             throw new RuntimeException(
                     "Failed to resolve prompt '" + promptName + "' via " + method + " " + resolveConfig.path() + ": "
                             + e.getMessage(),

@@ -25,6 +25,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Prompt calls can be intercepted using the `PromptCallFilter` chain-of-responsibility pattern,
   mirroring the `ToolCallFilter` API. Register Spring beans implementing `PromptCallFilter` to
   add observability, authorization, caching, or other cross-cutting concerns to prompt resolution.
+  
+  Prompt call metrics are emitted via Micrometer when a `MeterRegistry` bean is available:
+  `com.infobip.openapi.prompt.call` (counter), `com.infobip.openapi.prompt.call.duration` (timer),
+  and for backend-resolved prompts `com.infobip.openapi.prompt.resolve.call` (counter) and
+  `com.infobip.openapi.prompt.resolve.call.duration` (timer).
 
 ## 0.1.15
 
