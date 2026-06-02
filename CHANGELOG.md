@@ -21,6 +21,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   
   Prompts are discoverable by clients via `listPrompts` and invocable via `getPrompt`. Live
   reload detects prompt additions and removals automatically.
+  
+  Prompt calls can be intercepted using the `PromptCallFilter` chain-of-responsibility pattern,
+  mirroring the `ToolCallFilter` API. Register Spring beans implementing `PromptCallFilter` to
+  add observability, authorization, caching, or other cross-cutting concerns to prompt resolution.
 
 ## 0.1.15
 

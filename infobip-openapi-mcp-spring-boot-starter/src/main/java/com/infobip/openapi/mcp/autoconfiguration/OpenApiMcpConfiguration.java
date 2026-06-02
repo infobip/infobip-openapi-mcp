@@ -29,6 +29,7 @@ import com.infobip.openapi.mcp.openapi.tool.naming.NamingStrategy;
 import com.infobip.openapi.mcp.openapi.tool.naming.NamingStrategyFactory;
 import com.infobip.openapi.mcp.progress.DefaultProgressUpdateProvider;
 import com.infobip.openapi.mcp.progress.ProgressUpdateProvider;
+import com.infobip.openapi.mcp.prompt.PromptCallFilter;
 import com.infobip.openapi.mcp.prompt.PromptRegistry;
 import com.infobip.openapi.mcp.prompt.PromptSpecBuilder;
 import com.infobip.openapi.mcp.util.OpenApiMapperFactory;
@@ -359,8 +360,9 @@ class OpenApiMcpConfiguration {
     }
 
     @Bean
-    public PromptSpecBuilder promptSpecBuilder(McpRequestContextFactory contextFactory) {
-        return new PromptSpecBuilder(contextFactory);
+    public PromptSpecBuilder promptSpecBuilder(
+            List<PromptCallFilter> filters, McpRequestContextFactory contextFactory) {
+        return new PromptSpecBuilder(filters, contextFactory);
     }
 
     @Bean

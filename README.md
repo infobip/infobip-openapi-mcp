@@ -332,6 +332,17 @@ The `com.infobip.openapi.mcp.openapi.tool.RegisteredTool` provides the default i
 makes the HTTP API call. It is registered with the lowest precedence, so you can preempt it by using any precedence
 higher than that.
 
+### PromptCallFilter
+
+You can implement and register beans of type `com.infobip.openapi.mcp.prompt.PromptCallFilter` to customize prompt
+call handling behavior. Prompt call filters can inspect or modify prompt requests before resolution, inspect or modify
+prompt results before returning them to the MCP client, and short-circuit the chain to prevent prompt resolution
+entirely. They are a good place to implement custom observability, authorization, or caching for prompt calls.
+
+The `com.infobip.openapi.mcp.prompt.RegisteredPrompt` provides the default implementation of a prompt filter which
+performs the actual prompt resolution (inline template rendering or backend HTTP call). It is registered with the lowest
+precedence, so you can preempt it by using any precedence higher than that.
+
 ### JSON serialization
 
 Both MCP client libraries and underlying LLMs can sometimes produce invalid JSON documents and send them to MCP server

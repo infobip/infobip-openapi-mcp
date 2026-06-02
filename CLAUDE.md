@@ -95,6 +95,10 @@ The framework follows this startup flow:
 `ToolSpecBuilder` → `ToolCallFilterChain` (ordered `ToolCallFilter` beans) → `RegisteredTool` (lowest precedence, makes
 HTTP call via `ToolHandler`) → optional `JsonDoubleSerializationCorrector` retry logic
 
+**Runtime prompt call flow:**
+`PromptSpecBuilder` → `PromptCallFilterChain` (ordered `PromptCallFilter` beans) → `RegisteredPrompt` (lowest
+precedence, resolves inline template or calls backend HTTP endpoint)
+
 ### Key Extension Points
 
 | Interface            | Purpose                                                                                                                  |
@@ -102,6 +106,7 @@ HTTP call via `ToolHandler`) → optional `JsonDoubleSerializationCorrector` ret
 | `OpenApiFilter`           | Transform the OpenAPI spec before tool metadata is built; disable via `infobip.openapi.mcp.filters.[filter-name]: false` |
 | `ApiRequestEnricher`      | Modify HTTP requests to the downstream API (headers, metadata); failures are swallowed                                   |
 | `ToolCallFilter`          | Intercept tool calls; can abort the chain unlike enrichers                                                               |
+| `PromptCallFilter`        | Intercept prompt calls; can abort the chain, add observability, or short-circuit resolution                              |
 | `NamingStrategy`          | Custom tool name generation; replace the default bean                                                                    |
 | `ErrorModelProvider`      | Custom error response format returned to MCP clients                                                                     |
 | `CredentialProvider`      | Supply credentials from any source (HTTP header, vault, env, etc.); replace the default bean                             |
