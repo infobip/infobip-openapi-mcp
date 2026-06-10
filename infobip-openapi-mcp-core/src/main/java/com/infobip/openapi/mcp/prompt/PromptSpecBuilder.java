@@ -1,9 +1,13 @@
 package com.infobip.openapi.mcp.prompt;
 
+import com.infobip.openapi.mcp.McpRequestContext;
 import com.infobip.openapi.mcp.McpRequestContextFactory;
 import io.modelcontextprotocol.server.McpServerFeatures;
 import io.modelcontextprotocol.server.McpStatelessServerFeatures;
+import io.modelcontextprotocol.spec.McpSchema;
 import java.util.List;
+import java.util.function.BiFunction;
+import java.util.function.Function;
 
 /**
  * Builds MCP prompt specifications from {@link RegisteredPrompt} instances for different
@@ -20,20 +24,19 @@ public class PromptSpecBuilder {
     }
 
     public McpServerFeatures.SyncPromptSpecification buildSyncPromptSpecification(RegisteredPrompt registeredPrompt) {
-        var chainFactory = new OrderingPromptCallFilterChainFactory(registeredPrompt, filters);
-        return new McpServerFeatures.SyncPromptSpecification(registeredPrompt.prompt(), (exchange, request) -> {
-            var context = contextFactory.forPromptStatefulTransport(exchange);
-            return chainFactory.get().doFilter(context, request);
-        });
+        return new McpServerFeatures.SyncPromptSpecification(
+                registeredPrompt.prompt(), buildHandler(registeredPrompt, contextFactory::forPromptStatefulTransport));
     }
 
     public McpStatelessServerFeatures.SyncPromptSpecification buildSyncStatelessPromptSpecification(
             RegisteredPrompt registeredPrompt) {
-        var chainFactory = new OrderingPromptCallFilterChainFactory(registeredPrompt, filters);
         return new McpStatelessServerFeatures.SyncPromptSpecification(
-                registeredPrompt.prompt(), (transportContext, request) -> {
-                    var context = contextFactory.forPromptStatelessTransport(transportContext);
-                    return chainFactory.get().doFilter(context, request);
-                });
+                registeredPrompt.prompt(), buildHandler(registeredPrompt, contextFactory::forPromptStatelessTransport));
+    }
+
+    private <T> BiFunction<T, McpSchema.GetPromptRequest, McpSchema.GetPromptResult> buildHandler(
+            RegisteredPrompt registeredPrompt, Function<T, McpRequestContext> contextResolver) {
+        var chainFactory = new OrderingPromptCallFilterChainFactory(registeredPrompt, filters);
+        return (transport, request) -> chainFactory.get().doFilter(contextResolver.apply(transport), request);
     }
 }

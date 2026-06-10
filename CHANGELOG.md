@@ -30,6 +30,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `com.infobip.openapi.prompt.call` (counter), `com.infobip.openapi.prompt.call.duration` (timer),
   and for backend-resolved prompts `com.infobip.openapi.prompt.resolve.call` (counter) and
   `com.infobip.openapi.prompt.resolve.call.duration` (timer).
+- `PromptExecutionException` with typed MCP error codes: `INVALID_PARAMS` for missing required
+  arguments, `INTERNAL_ERROR` for backend resolution failures.
+- `PromptResolveConfig` path validation: the `resolve.path` must be non-blank and either a
+  relative path starting with `/` or an absolute URL starting with `http://` or `https://`.
+- `PromptResolveResponse` response validation: the backend must return at least one message,
+  each with a non-null role and non-blank content.
 
 ## 0.1.15
 

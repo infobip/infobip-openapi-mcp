@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.infobip.openapi.mcp.McpRequestContext;
 import com.infobip.openapi.mcp.auth.CredentialProvider;
+import com.infobip.openapi.mcp.enricher.ApiRequestEnricherChain;
 import com.infobip.openapi.mcp.infrastructure.metrics.MetricService;
 import com.infobip.openapi.mcp.openapi.OpenApiRegistry;
 import com.infobip.openapi.mcp.openapi.schema.Spec;
@@ -14,11 +15,10 @@ import java.util.stream.IntStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.util.UriComponentsBuilder;
 
 /**
  * Registry for converting {@code x-mcp-prompts} OpenAPI vendor extension definitions
@@ -40,6 +40,7 @@ public class PromptRegistry {
     private final RestClient restClient;
     private final ObjectMapper objectMapper;
     private final CredentialProvider credentialProvider;
+    private final ApiRequestEnricherChain enricherChain;
     private final MetricService metricService;
     private final MustacheTemplateRenderer templateRenderer = new MustacheTemplateRenderer();
 
@@ -50,11 +51,13 @@ public class PromptRegistry {
             RestClient restClient,
             ObjectMapper objectMapper,
             CredentialProvider credentialProvider,
+            ApiRequestEnricherChain enricherChain,
             MetricService metricService) {
         this.openApiRegistry = openApiRegistry;
         this.restClient = restClient;
         this.objectMapper = objectMapper;
         this.credentialProvider = credentialProvider;
+        this.enricherChain = enricherChain;
         this.metricService = metricService;
     }
 
@@ -160,15 +163,14 @@ public class PromptRegistry {
                         .filter(name -> !args.containsKey(name) || args.get(name) == null)
                         .toList();
                 if (!missingRequired.isEmpty()) {
-                    throw new RuntimeException(
-                            "Missing required arguments for prompt '" + definition.name() + "': " + missingRequired);
+                    throw PromptExecutionException.becauseMissingRequiredArguments(definition.name(), missingRequired);
                 }
 
                 var promptMessages = IntStream.range(0, messages.size())
                         .mapToObj(i -> {
                             var rendered = templateRenderer.render(definition.name(), i, args);
                             return new McpSchema.PromptMessage(
-                                    toMcpRole(messages.get(i).role()), new McpSchema.TextContent(rendered));
+                                    messages.get(i).role(), new McpSchema.TextContent(rendered));
                         })
                         .toList();
 
@@ -203,46 +205,40 @@ public class PromptRegistry {
             McpSchema.GetPromptRequest request,
             McpRequestContext context) {
         var args = request.arguments() != null ? request.arguments() : Map.<String, Object>of();
-        var method = HttpMethod.valueOf(resolveConfig.method().toUpperCase(Locale.ROOT));
 
-        LOGGER.debug("Resolving prompt '{}' via {} {}", promptName, method, resolveConfig.path());
+        LOGGER.debug("Resolving prompt '{}' via GET {}", promptName, resolveConfig.path());
 
         var credential = credentialProvider.provide(context);
 
-        var spec = restClient.method(method).uri(uriBuilder -> {
-            var builder = uriBuilder.path(resolveConfig.path());
-            if (method == HttpMethod.GET) {
+        var spec = restClient.get().uri(uriBuilder -> {
+            if (resolveConfig.isAbsolute()) {
+                var builder = UriComponentsBuilder.fromUriString(resolveConfig.path());
                 args.forEach((key, value) -> builder.queryParam(key, value.toString()));
+                return builder.build().toUri();
             }
+            var builder = uriBuilder.path(resolveConfig.path());
+            args.forEach((key, value) -> builder.queryParam(key, value.toString()));
             return builder.build();
         });
 
-        if (method == HttpMethod.POST) {
-            spec.contentType(MediaType.APPLICATION_JSON).body(args);
-        }
-
         credential.ifPresent(auth -> spec.header(HttpHeaders.AUTHORIZATION, auth));
+
+        var enrichedSpec = enricherChain.enrich(spec, context);
 
         var resolveCallTimer = metricService.startPromptTimer();
         String responseBody;
         try {
-            responseBody = spec.retrieve().body(String.class);
+            responseBody = enrichedSpec.retrieve().body(String.class);
             resolveCallTimer.timeResolveCall(promptName, HttpStatus.OK);
             metricService.recordPromptResolveCall(promptName, HttpStatus.OK);
         } catch (HttpStatusCodeException e) {
             resolveCallTimer.timeResolveCall(promptName, e.getStatusCode());
             metricService.recordPromptResolveCall(promptName, e.getStatusCode());
-            throw new RuntimeException(
-                    "Failed to resolve prompt '" + promptName + "' via " + method + " " + resolveConfig.path() + ": "
-                            + e.getMessage(),
-                    e);
+            throw PromptExecutionException.becauseBackendCallFailed(promptName, resolveConfig.path(), e);
         } catch (Exception e) {
             resolveCallTimer.timeResolveCall(promptName, HttpStatus.BAD_GATEWAY);
             metricService.recordPromptResolveCall(promptName, HttpStatus.BAD_GATEWAY);
-            throw new RuntimeException(
-                    "Failed to resolve prompt '" + promptName + "' via " + method + " " + resolveConfig.path() + ": "
-                            + e.getMessage(),
-                    e);
+            throw PromptExecutionException.becauseBackendCallFailed(promptName, resolveConfig.path(), e);
         }
 
         return toGetPromptResult(promptName, responseBody);
@@ -252,20 +248,11 @@ public class PromptRegistry {
         try {
             var response = objectMapper.readValue(responseBody, PromptResolveResponse.class);
             var messages = response.messages().stream()
-                    .map(msg -> new McpSchema.PromptMessage(
-                            toMcpRole(msg.role()), new McpSchema.TextContent(msg.content())))
+                    .map(msg -> new McpSchema.PromptMessage(msg.role(), new McpSchema.TextContent(msg.content())))
                     .toList();
             return new McpSchema.GetPromptResult(response.description(), messages);
         } catch (Exception e) {
-            throw new RuntimeException("Failed to parse prompt resolve response for '" + promptName + "'", e);
+            throw PromptExecutionException.becauseBackendResponseInvalid(promptName, e);
         }
-    }
-
-    private McpSchema.Role toMcpRole(String role) {
-        return switch (role.toLowerCase(Locale.ROOT)) {
-            case "user" -> McpSchema.Role.USER;
-            case "assistant" -> McpSchema.Role.ASSISTANT;
-            default -> throw new IllegalArgumentException("Unknown prompt message role: " + role);
-        };
     }
 }

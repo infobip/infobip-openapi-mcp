@@ -1,5 +1,6 @@
 package com.infobip.openapi.mcp.prompt;
 
+import io.modelcontextprotocol.spec.McpSchema;
 import java.util.List;
 
 /**
@@ -22,11 +23,31 @@ import java.util.List;
  */
 record PromptResolveResponse(String description, List<PromptResolveMessage> messages) {
 
+    PromptResolveResponse {
+        if (messages == null || messages.isEmpty()) {
+            throw new IllegalArgumentException("prompt resolve response must contain at least one message");
+        }
+        for (int i = 0; i < messages.size(); i++) {
+            var msg = messages.get(i);
+            if (msg.content() == null || msg.content().isBlank()) {
+                throw new IllegalArgumentException(
+                        "prompt resolve response message at index " + i + " has blank content");
+            }
+        }
+    }
+
     /**
      * A single message in the prompt resolution response.
      *
-     * @param role    the message role ({@code "user"} or {@code "assistant"})
+     * @param role    the message role
      * @param content the message text content
      */
-    record PromptResolveMessage(String role, String content) {}
+    record PromptResolveMessage(McpSchema.Role role, String content) {
+
+        PromptResolveMessage {
+            if (role == null) {
+                throw new IllegalArgumentException("prompt resolve response message role must not be null");
+            }
+        }
+    }
 }

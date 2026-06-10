@@ -356,8 +356,10 @@ class OpenApiMcpConfiguration {
             @Qualifier(TOOL_HANDLER_REST_CLIENT_QUALIFIER) RestClient restClient,
             ObjectMapper objectMapper,
             CredentialProvider credentialProvider,
+            ApiRequestEnricherChain enricherChain,
             MetricService metricService) {
-        return new PromptRegistry(openApiRegistry, restClient, objectMapper, credentialProvider, metricService);
+        return new PromptRegistry(
+                openApiRegistry, restClient, objectMapper, credentialProvider, enricherChain, metricService);
     }
 
     @Bean

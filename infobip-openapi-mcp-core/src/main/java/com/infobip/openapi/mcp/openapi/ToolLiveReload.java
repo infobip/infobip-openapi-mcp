@@ -146,11 +146,12 @@ public class ToolLiveReload {
 
             var currentOpenApiVersion = openApiRegistry.openApi().getInfo().getVersion();
             var currentTools = toolRegistry.getRegisteredToolsCache();
+            var currentPrompts = promptRegistry.getRegisteredPromptsCache();
 
             var maxRetries = liveReloadConfig.maxRetries();
             for (int attempt = 1; attempt <= maxRetries; attempt++) {
                 try {
-                    var changed = reload(currentOpenApiVersion, currentTools);
+                    var changed = reload(currentOpenApiVersion, currentTools, currentPrompts);
                     status = changed ? Status.SUCCESS_TOOLS_UPDATED : Status.SUCCESS_NO_CHANGE;
                     break;
                 } catch (Exception e) {
@@ -185,10 +186,12 @@ public class ToolLiveReload {
      * Refreshes the OpenAPI specification and updates tools if needed.
      *
      * @param currentOpenApiVersion the current OpenAPI version
-     * @param currentTools   the current list of registered tools
-     * @return true if tools were updated, false if no changes detected
+     * @param currentTools          the current list of registered tools
+     * @param currentPrompts        the current list of registered prompts
+     * @return true if tools or prompts were updated, false if no changes detected
      */
-    public boolean reload(String currentOpenApiVersion, List<RegisteredTool> currentTools) {
+    public boolean reload(
+            String currentOpenApiVersion, List<RegisteredTool> currentTools, List<RegisteredPrompt> currentPrompts) {
         openApiRegistry.reload();
         var newOpenApiVersion = openApiRegistry.openApi().getInfo().getVersion();
         if (currentOpenApiVersion.equals(newOpenApiVersion)) {
@@ -201,59 +204,72 @@ public class ToolLiveReload {
         // Reload scopes - always discover as tools can stay the same but the scopes can change
         scopeDiscoveryService.ifPresent(ScopeDiscoveryService::discover);
 
-        var toolsUpdated = reloadTools(currentTools);
-        var promptsUpdated = reloadPrompts();
+        // Compute diffs before applying any changes so that a failure during diff computation
+        // leaves the server in a consistent state (either both are applied or neither is).
+        var toolDiff = computeToolDiff(currentTools);
+        var promptDiff = computePromptDiff(currentPrompts);
+
+        var toolsUpdated = applyToolDiff(toolDiff);
+        var promptsUpdated = applyPromptDiff(promptDiff);
 
         return toolsUpdated || promptsUpdated;
     }
 
-    private boolean reloadTools(List<RegisteredTool> currentTools) {
+    private record ToolDiff(
+            List<RegisteredTool> addedOrChanged,
+            List<RegisteredTool> deleted,
+            Map<String, RegisteredTool> currentToolMap) {}
+
+    private record PromptDiff(
+            List<RegisteredPrompt> addedOrChanged,
+            List<RegisteredPrompt> deleted,
+            Map<String, RegisteredPrompt> currentPromptMap) {}
+
+    private ToolDiff computeToolDiff(List<RegisteredTool> currentTools) {
         var registeredTools = toolRegistry.getTools();
         var registeredToolMap = getToolMap(registeredTools);
         var currentToolMap = getToolMap(currentTools);
-
-        var deletedTools = findDeletedTools(currentToolMap, registeredToolMap);
-        var addedOrChangedTools = findAddedOrChangedTools(currentToolMap, registeredTools);
-        if (addedOrChangedTools.isEmpty() && deletedTools.isEmpty()) {
-            return false;
-        }
-
-        mcpSyncServer.ifPresent(ignored -> registerStatefulTools(addedOrChangedTools, deletedTools, currentToolMap));
-        mcpStatelessSyncServer.ifPresent(
-                ignored -> registerStatelessTools(addedOrChangedTools, deletedTools, currentToolMap));
-
-        return true;
+        var deleted = findDeletedTools(currentToolMap, registeredToolMap);
+        var addedOrChanged = findAddedOrChangedTools(currentToolMap, registeredTools);
+        return new ToolDiff(addedOrChanged, deleted, currentToolMap);
     }
 
-    private boolean reloadPrompts() {
-        var currentPrompts = promptRegistry.getRegisteredPromptsCache();
+    private PromptDiff computePromptDiff(List<RegisteredPrompt> currentPrompts) {
         var currentPromptMap = getPromptMap(currentPrompts);
-
         var newPrompts = promptRegistry.getPrompts();
         var newPromptMap = getPromptMap(newPrompts);
-
-        var deletedPrompts = currentPrompts.stream()
+        var deleted = currentPrompts.stream()
                 .filter(p -> !newPromptMap.containsKey(p.prompt().name()))
                 .toList();
-
-        var addedOrChangedPrompts = newPrompts.stream()
+        var addedOrChanged = newPrompts.stream()
                 .filter(p -> {
                     var existing = currentPromptMap.get(p.prompt().name());
                     return existing == null || !existing.prompt().equals(p.prompt());
                 })
                 .toList();
+        return new PromptDiff(addedOrChanged, deleted, currentPromptMap);
+    }
 
-        if (deletedPrompts.isEmpty() && addedOrChangedPrompts.isEmpty()) {
+    private boolean applyToolDiff(ToolDiff diff) {
+        if (diff.addedOrChanged().isEmpty() && diff.deleted().isEmpty()) {
             return false;
         }
-
         mcpSyncServer.ifPresent(
-                ignored -> registerStatefulPrompts(addedOrChangedPrompts, deletedPrompts, currentPromptMap));
+                ignored -> registerStatefulTools(diff.addedOrChanged(), diff.deleted(), diff.currentToolMap()));
         mcpStatelessSyncServer.ifPresent(
-                ignored -> registerStatelessPrompts(addedOrChangedPrompts, deletedPrompts, currentPromptMap));
+                ignored -> registerStatelessTools(diff.addedOrChanged(), diff.deleted(), diff.currentToolMap()));
+        return true;
+    }
 
+    private boolean applyPromptDiff(PromptDiff diff) {
+        if (diff.addedOrChanged().isEmpty() && diff.deleted().isEmpty()) {
+            return false;
+        }
+        mcpSyncServer.ifPresent(
+                ignored -> registerStatefulPrompts(diff.addedOrChanged(), diff.deleted(), diff.currentPromptMap()));
+        mcpStatelessSyncServer.ifPresent(
+                ignored -> registerStatelessPrompts(diff.addedOrChanged(), diff.deleted(), diff.currentPromptMap()));
         mcpSyncServer.ifPresent(McpSyncServer::notifyPromptsListChanged);
-
         return true;
     }
 
