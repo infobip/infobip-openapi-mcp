@@ -80,6 +80,57 @@ public class MicrometerMetricService implements MetricService {
     }
 
     @Override
+    public void recordPromptCall(String promptName) {
+        try {
+            var tags = List.of(Tag.of("prompt_name", promptName));
+            meterRegistry.counter("com.infobip.openapi.prompt.call", tags).increment();
+        } catch (Exception e) {
+            LOGGER.error("Failed to record prompt call metric: {}", e.getMessage(), e);
+        }
+    }
+
+    @Override
+    public void recordPromptResolveCall(String promptName, HttpStatusCode httpStatusCode) {
+        try {
+            var tags = List.of(
+                    Tag.of("prompt_name", promptName), Tag.of("status_code", String.valueOf(httpStatusCode.value())));
+            meterRegistry
+                    .counter("com.infobip.openapi.prompt.resolve.call", tags)
+                    .increment();
+        } catch (Exception e) {
+            LOGGER.error("Failed to record prompt resolve call metric: {}", e.getMessage(), e);
+        }
+    }
+
+    @Override
+    public PromptTimer startPromptTimer() {
+        var sample = io.micrometer.core.instrument.Timer.start(meterRegistry);
+        return new PromptTimer() {
+            @Override
+            public void timePromptCall(String promptName, boolean isError) {
+                try {
+                    var tags = List.of(Tag.of("prompt_name", promptName), Tag.of("is_error", String.valueOf(isError)));
+                    sample.stop(meterRegistry.timer("com.infobip.openapi.prompt.call.duration", tags));
+                } catch (Exception e) {
+                    LOGGER.error("Failed to record prompt call duration metric: {}", e.getMessage(), e);
+                }
+            }
+
+            @Override
+            public void timeResolveCall(String promptName, HttpStatusCode httpStatusCode) {
+                try {
+                    var tags = List.of(
+                            Tag.of("prompt_name", promptName),
+                            Tag.of("status_code", String.valueOf(httpStatusCode.value())));
+                    sample.stop(meterRegistry.timer("com.infobip.openapi.prompt.resolve.call.duration", tags));
+                } catch (Exception e) {
+                    LOGGER.error("Failed to record prompt resolve call duration metric: {}", e.getMessage(), e);
+                }
+            }
+        };
+    }
+
+    @Override
     public void recordLiveReloadExecution(String status) {
         try {
             var tags = List.of(Tag.of("status", status));

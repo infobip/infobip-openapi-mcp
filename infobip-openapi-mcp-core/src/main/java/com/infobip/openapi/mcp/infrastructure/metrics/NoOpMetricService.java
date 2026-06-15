@@ -22,6 +22,23 @@ public class NoOpMetricService implements MetricService {
     }
 
     @Override
+    public void recordPromptCall(String promptName) {}
+
+    @Override
+    public void recordPromptResolveCall(String promptName, HttpStatusCode httpStatusCode) {}
+
+    @Override
+    public PromptTimer startPromptTimer() {
+        return new PromptTimer() {
+            @Override
+            public void timePromptCall(String promptName, boolean isError) {}
+
+            @Override
+            public void timeResolveCall(String promptName, HttpStatusCode httpStatusCode) {}
+        };
+    }
+
+    @Override
     public void recordLiveReloadExecution(String status) {}
 
     @Override

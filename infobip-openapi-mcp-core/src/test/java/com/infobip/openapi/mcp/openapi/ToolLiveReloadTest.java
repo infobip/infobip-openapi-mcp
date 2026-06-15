@@ -16,6 +16,9 @@ import com.infobip.openapi.mcp.openapi.tool.ToolAnnotationResolver;
 import com.infobip.openapi.mcp.openapi.tool.ToolHandler;
 import com.infobip.openapi.mcp.openapi.tool.ToolRegistry;
 import com.infobip.openapi.mcp.openapi.tool.naming.OperationIdStrategy;
+import com.infobip.openapi.mcp.prompt.PromptRegistry;
+import com.infobip.openapi.mcp.prompt.PromptSpecBuilder;
+import com.infobip.openapi.mcp.prompt.RegisteredPrompt;
 import com.infobip.openapi.mcp.util.OpenApiMapperFactory;
 import com.infobip.openapi.mcp.util.ToolSpecBuilder;
 import io.modelcontextprotocol.server.McpServerFeatures;
@@ -24,6 +27,7 @@ import io.modelcontextprotocol.spec.McpSchema;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.parser.OpenAPIV3Parser;
 import java.net.URI;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import org.assertj.core.api.BDDAssertions;
@@ -88,6 +92,12 @@ class ToolLiveReloadTest {
 
     @Mock
     private PropertyResolver propertyResolver;
+
+    @Mock
+    private PromptRegistry promptRegistry;
+
+    @Mock
+    private PromptSpecBuilder promptSpecBuilder;
 
     @Captor
     private ArgumentCaptor<McpServerFeatures.SyncToolSpecification> syncToolSpecCaptor;
@@ -606,6 +616,10 @@ class ToolLiveReloadTest {
     }
 
     private ToolLiveReload givenOpenApiLiveReload() {
+        org.mockito.Mockito.lenient()
+                .when(promptRegistry.getRegisteredPromptsCache())
+                .thenReturn(List.of());
+        org.mockito.Mockito.lenient().when(promptRegistry.getPrompts()).thenReturn(List.of());
         return new ToolLiveReload(
                 Optional.of(givenMcpSyncServer),
                 Optional.empty(),
@@ -613,9 +627,142 @@ class ToolLiveReloadTest {
                 givenOpenApiRegistry,
                 givenToolRegistry,
                 toolSpecBuilder,
+                promptRegistry,
+                promptSpecBuilder,
                 PROPERTIES,
                 metricService,
                 mcpServerMetaData);
+    }
+
+    @Nested
+    class PromptReload {
+
+        @Test
+        void shouldAddPromptWhenNewPromptAppears() throws InterruptedException {
+            // Given
+            var givenBaseOpenApi = loadOpenApi(BASE_SPEC);
+            var givenEditedOpenApi = loadOpenApi(WITH_ADDED_TOOL_SPEC);
+
+            given(givenOpenApiRegistry.openApi())
+                    .willReturn(givenBaseOpenApi)
+                    .willReturn(givenBaseOpenApi)
+                    .willReturn(givenEditedOpenApi);
+
+            givenToolRegistry.getTools();
+
+            var newPrompt =
+                    new RegisteredPrompt(new McpSchema.Prompt("greet", "Greet a user", List.of()), (ctx, req) -> null);
+
+            given(promptRegistry.getRegisteredPromptsCache()).willReturn(List.of());
+            given(promptRegistry.getPrompts()).willReturn(List.of(newPrompt));
+            given(promptSpecBuilder.buildSyncPromptSpecification(newPrompt))
+                    .willReturn(new McpServerFeatures.SyncPromptSpecification(
+                            newPrompt.prompt(), (exchange, request) -> null));
+
+            var givenOpenApiLiveReload = new ToolLiveReload(
+                    Optional.of(givenMcpSyncServer),
+                    Optional.empty(),
+                    Optional.of(scopeDiscoveryService),
+                    givenOpenApiRegistry,
+                    givenToolRegistry,
+                    toolSpecBuilder,
+                    promptRegistry,
+                    promptSpecBuilder,
+                    PROPERTIES,
+                    metricService,
+                    mcpServerMetaData);
+            setupToolSpecBuilderForNewTools();
+
+            // When
+            givenOpenApiLiveReload.reloadOnSchedule();
+
+            // Then
+            then(givenMcpSyncServer).should().addPrompt(any());
+            then(givenMcpSyncServer).should().notifyPromptsListChanged();
+        }
+
+        @Test
+        void shouldRemovePromptWhenPromptDisappears() throws InterruptedException {
+            // Given
+            var givenBaseOpenApi = loadOpenApi(BASE_SPEC);
+            var givenEditedOpenApi = loadOpenApi(WITH_ADDED_TOOL_SPEC);
+
+            given(givenOpenApiRegistry.openApi())
+                    .willReturn(givenBaseOpenApi)
+                    .willReturn(givenBaseOpenApi)
+                    .willReturn(givenEditedOpenApi);
+
+            givenToolRegistry.getTools();
+
+            var oldPrompt =
+                    new RegisteredPrompt(new McpSchema.Prompt("greet", "Greet a user", List.of()), (ctx, req) -> null);
+
+            given(promptRegistry.getRegisteredPromptsCache()).willReturn(List.of(oldPrompt));
+            given(promptRegistry.getPrompts()).willReturn(List.of());
+
+            var givenOpenApiLiveReload = new ToolLiveReload(
+                    Optional.of(givenMcpSyncServer),
+                    Optional.empty(),
+                    Optional.of(scopeDiscoveryService),
+                    givenOpenApiRegistry,
+                    givenToolRegistry,
+                    toolSpecBuilder,
+                    promptRegistry,
+                    promptSpecBuilder,
+                    PROPERTIES,
+                    metricService,
+                    mcpServerMetaData);
+            setupToolSpecBuilderForNewTools();
+
+            // When
+            givenOpenApiLiveReload.reloadOnSchedule();
+
+            // Then
+            then(givenMcpSyncServer).should().removePrompt("greet");
+            then(givenMcpSyncServer).should().notifyPromptsListChanged();
+        }
+
+        @Test
+        void shouldNotNotifyPromptsChangedWhenPromptsAreIdentical() throws InterruptedException {
+            // Given
+            var givenBaseOpenApi = loadOpenApi(BASE_SPEC);
+            var givenSameVersion = loadOpenApi(BASE_SPEC);
+            givenSameVersion.getInfo().setVersion("1.0.1");
+
+            given(givenOpenApiRegistry.openApi())
+                    .willReturn(givenBaseOpenApi)
+                    .willReturn(givenBaseOpenApi)
+                    .willReturn(givenSameVersion);
+
+            givenToolRegistry.getTools();
+
+            var existingPrompt =
+                    new RegisteredPrompt(new McpSchema.Prompt("greet", "Greet a user", List.of()), (ctx, req) -> null);
+
+            given(promptRegistry.getRegisteredPromptsCache()).willReturn(List.of(existingPrompt));
+            given(promptRegistry.getPrompts()).willReturn(List.of(existingPrompt));
+
+            var givenOpenApiLiveReload = new ToolLiveReload(
+                    Optional.of(givenMcpSyncServer),
+                    Optional.empty(),
+                    Optional.of(scopeDiscoveryService),
+                    givenOpenApiRegistry,
+                    givenToolRegistry,
+                    toolSpecBuilder,
+                    promptRegistry,
+                    promptSpecBuilder,
+                    PROPERTIES,
+                    metricService,
+                    mcpServerMetaData);
+
+            // When
+            givenOpenApiLiveReload.reloadOnSchedule();
+
+            // Then
+            then(givenMcpSyncServer).should(never()).addPrompt(any());
+            then(givenMcpSyncServer).should(never()).removePrompt(any());
+            then(givenMcpSyncServer).should(never()).notifyPromptsListChanged();
+        }
     }
 
     private OpenAPI loadOpenApi(String resourcePath) {

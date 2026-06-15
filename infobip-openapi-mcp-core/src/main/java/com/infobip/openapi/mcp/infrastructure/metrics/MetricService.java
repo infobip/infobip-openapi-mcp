@@ -12,6 +12,12 @@ public interface MetricService {
         void timeApiCall(FullOperation fullOperation, HttpStatusCode httpStatusCode);
     }
 
+    interface PromptTimer {
+        void timePromptCall(String promptName, boolean isError);
+
+        void timeResolveCall(String promptName, HttpStatusCode httpStatusCode);
+    }
+
     interface LiveReloadTimer {
         void record(String status);
     }
@@ -21,6 +27,12 @@ public interface MetricService {
     void recordApiCall(FullOperation fullOperation, HttpStatusCode httpStatusCode);
 
     Timer startTimer();
+
+    void recordPromptCall(String promptName);
+
+    void recordPromptResolveCall(String promptName, HttpStatusCode httpStatusCode);
+
+    PromptTimer startPromptTimer();
 
     void recordLiveReloadExecution(String status);
 

@@ -332,6 +332,17 @@ The `com.infobip.openapi.mcp.openapi.tool.RegisteredTool` provides the default i
 makes the HTTP API call. It is registered with the lowest precedence, so you can preempt it by using any precedence
 higher than that.
 
+### PromptCallFilter
+
+You can implement and register beans of type `com.infobip.openapi.mcp.prompt.PromptCallFilter` to customize prompt
+call handling behavior. Prompt call filters can inspect or modify prompt requests before resolution, inspect or modify
+prompt results before returning them to the MCP client, and short-circuit the chain to prevent prompt resolution
+entirely. They are a good place to implement custom observability, authorization, or caching for prompt calls.
+
+The `com.infobip.openapi.mcp.prompt.RegisteredPrompt` provides the default implementation of a prompt filter which
+performs the actual prompt resolution (inline template rendering or backend HTTP call). It is registered with the lowest
+precedence, so you can preempt it by using any precedence higher than that.
+
 ### JSON serialization
 
 Both MCP client libraries and underlying LLMs can sometimes produce invalid JSON documents and send them to MCP server
@@ -461,6 +472,66 @@ public ProgressUpdateProvider progressUpdateProvider() {
 The `total` value is resolved once before the first notification and stays constant throughout the tool call, so
 clients that display a progress fraction always receive a consistent value.
 
+### Prompts
+
+The framework supports [MCP prompts][17] — reusable prompt templates that MCP clients can discover and invoke. Prompts
+are defined using the `x-mcp-prompts` [vendor extension][7] on the root OpenAPI object as an array of prompt
+definitions. Two resolution modes are available:
+
+- **Static templates** — prompts with inline `messages` containing [Mustache][18] `{{placeholder}}` templates. Templates
+  are rendered server-side from the user-supplied arguments with no backend call. Missing required arguments fail the
+  request; missing optional arguments render as empty strings.
+- **Backend resolution** — prompts with a `resolve` block that delegates to a backend HTTP endpoint at runtime.
+  Arguments are forwarded as query parameters for `GET` or as a JSON request body for `POST`. Credentials are forwarded
+  using the configured `CredentialProvider`.
+
+Each prompt must use exactly one mode — defining both `messages` and `resolve` on the same prompt causes a startup
+error.
+
+```yaml
+# Top-level OpenAPI vendor extension (sibling to info, paths, components)
+x-mcp-prompts:
+  - name: greet
+    description: "Greet a user by name"
+    arguments:
+      - name: user_name
+        description: "User's name"
+        required: true
+    messages:
+      - role: user
+        content: "Hello {{user_name}}, welcome!"
+      - role: assistant
+        content: "Thanks! Glad to be here, {{user_name}}."
+
+  - name: summarize
+    description: "Summarize the API capabilities"
+    arguments:
+      - name: format
+        description: "Output format (markdown, plain, json)"
+    resolve:
+      path: /prompts/summarize
+      method: POST
+```
+
+The `path` in the `resolve` block is resolved relative to the same base URL used for API tool calls (derived from
+the `servers` entry in the OpenAPI specification).
+
+For backend-resolved prompts, the endpoint must return a JSON response with the following structure:
+
+```json
+{
+  "description": "Greet a user",
+  "messages": [
+    {"role": "user", "content": "Generate a greeting for Alice."},
+    {"role": "assistant", "content": "Hello Alice, welcome!"}
+  ]
+}
+```
+
+Messages support both `user` and `assistant` roles, enabling few-shot prompt patterns. Prompts are automatically
+included in live reload — when the OpenAPI specification changes, prompt additions and removals are detected and
+connected MCP clients are notified.
+
 ### Properties
 
 [External configuration properties][11] that can be used to configure framework behavior:
@@ -565,3 +636,7 @@ This project is licensed under the [MIT License](LICENSE).
 [15]: https://modelcontextprotocol.io/specification/2025-11-25/schema#toolannotations "Tool Annotations in MCP specification"
 
 [16]: https://modelcontextprotocol.io/specification/2025-11-25/basic/utilities/progress "Progress Notifications in MCP specification"
+
+[17]: https://modelcontextprotocol.io/specification/2025-11-25/basic/prompts "Prompts in MCP specification"
+
+[18]: https://mustache.github.io "Mustache — Logic-less templates"

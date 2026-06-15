@@ -29,6 +29,9 @@ import com.infobip.openapi.mcp.openapi.tool.naming.NamingStrategy;
 import com.infobip.openapi.mcp.openapi.tool.naming.NamingStrategyFactory;
 import com.infobip.openapi.mcp.progress.DefaultProgressUpdateProvider;
 import com.infobip.openapi.mcp.progress.ProgressUpdateProvider;
+import com.infobip.openapi.mcp.prompt.PromptCallFilter;
+import com.infobip.openapi.mcp.prompt.PromptRegistry;
+import com.infobip.openapi.mcp.prompt.PromptSpecBuilder;
 import com.infobip.openapi.mcp.util.OpenApiMapperFactory;
 import com.infobip.openapi.mcp.util.ToolSpecBuilder;
 import com.infobip.openapi.mcp.util.XForwardedForCalculator;
@@ -348,6 +351,67 @@ class OpenApiMcpConfiguration {
     }
 
     @Bean
+    public PromptRegistry promptRegistry(
+            OpenApiRegistry openApiRegistry,
+            @Qualifier(TOOL_HANDLER_REST_CLIENT_QUALIFIER) RestClient restClient,
+            ObjectMapper objectMapper,
+            CredentialProvider credentialProvider,
+            ApiRequestEnricherChain enricherChain,
+            MetricService metricService) {
+        return new PromptRegistry(
+                openApiRegistry, restClient, objectMapper, credentialProvider, enricherChain, metricService);
+    }
+
+    @Bean
+    public PromptSpecBuilder promptSpecBuilder(
+            List<PromptCallFilter> filters, McpRequestContextFactory contextFactory) {
+        return new PromptSpecBuilder(filters, contextFactory);
+    }
+
+    @Bean
+    @ConditionalOnProperty(prefix = McpServerProperties.CONFIG_PREFIX, name = "protocol", havingValue = "SSE")
+    @ConditionalOnProperty(
+            prefix = McpServerProperties.CONFIG_PREFIX,
+            name = "stdio",
+            havingValue = "false",
+            matchIfMissing = true)
+    public List<McpServerFeatures.SyncPromptSpecification> promptSpecificationsSSE(
+            PromptRegistry promptRegistry, PromptSpecBuilder promptSpecBuilder) {
+        return registerPrompts(promptRegistry, promptSpecBuilder);
+    }
+
+    @Bean
+    @ConditionalOnProperty(prefix = McpServerProperties.CONFIG_PREFIX, name = "protocol", havingValue = "STREAMABLE")
+    @ConditionalOnProperty(
+            prefix = McpServerProperties.CONFIG_PREFIX,
+            name = "stdio",
+            havingValue = "false",
+            matchIfMissing = true)
+    public List<McpServerFeatures.SyncPromptSpecification> promptSpecificationsStreamable(
+            PromptRegistry promptRegistry, PromptSpecBuilder promptSpecBuilder) {
+        return registerPrompts(promptRegistry, promptSpecBuilder);
+    }
+
+    @Bean
+    @ConditionalOnProperty(prefix = McpServerProperties.CONFIG_PREFIX, name = "protocol", havingValue = "STATELESS")
+    @ConditionalOnProperty(
+            prefix = McpServerProperties.CONFIG_PREFIX,
+            name = "stdio",
+            havingValue = "false",
+            matchIfMissing = true)
+    public List<McpStatelessServerFeatures.SyncPromptSpecification> promptSpecificationsStateless(
+            PromptRegistry promptRegistry, PromptSpecBuilder promptSpecBuilder) {
+        return registerStatelessPrompts(promptRegistry, promptSpecBuilder);
+    }
+
+    @Bean
+    @ConditionalOnProperty(prefix = McpServerProperties.CONFIG_PREFIX, name = "stdio", havingValue = "true")
+    public List<McpServerFeatures.SyncPromptSpecification> promptSpecificationsStdio(
+            PromptRegistry promptRegistry, PromptSpecBuilder promptSpecBuilder) {
+        return registerPrompts(promptRegistry, promptSpecBuilder);
+    }
+
+    @Bean
     @ConditionalOnProperty(prefix = OpenApiMcpProperties.LiveReload.PREFIX, name = "enabled", havingValue = "true")
     public ToolLiveReload openApiLiveReload(
             Optional<McpSyncServer> mcpSyncServer,
@@ -356,6 +420,8 @@ class OpenApiMcpConfiguration {
             OpenApiRegistry openApiRegistry,
             ToolRegistry toolRegistry,
             ToolSpecBuilder toolSpecBuilder,
+            PromptRegistry promptRegistry,
+            PromptSpecBuilder promptSpecBuilder,
             OpenApiMcpProperties properties,
             MetricService metricService,
             McpServerMetaData mcpServerMetaData) {
@@ -366,6 +432,8 @@ class OpenApiMcpConfiguration {
                 openApiRegistry,
                 toolRegistry,
                 toolSpecBuilder,
+                promptRegistry,
+                promptSpecBuilder,
                 properties,
                 metricService,
                 mcpServerMetaData);
@@ -401,5 +469,19 @@ class OpenApiMcpConfiguration {
     private List<McpStatelessServerFeatures.SyncToolSpecification> registerStatelessTools(
             ToolRegistry toolRegistry, ToolSpecBuilder toolSpecBuilder) {
         return registerAfterLoadingOpenApiRegistry(toolRegistry, toolSpecBuilder::buildSyncStatelessToolSpecification);
+    }
+
+    private List<McpServerFeatures.SyncPromptSpecification> registerPrompts(
+            PromptRegistry promptRegistry, PromptSpecBuilder promptSpecBuilder) {
+        return promptRegistry.getPrompts().stream()
+                .map(promptSpecBuilder::buildSyncPromptSpecification)
+                .toList();
+    }
+
+    private List<McpStatelessServerFeatures.SyncPromptSpecification> registerStatelessPrompts(
+            PromptRegistry promptRegistry, PromptSpecBuilder promptSpecBuilder) {
+        return promptRegistry.getPrompts().stream()
+                .map(promptSpecBuilder::buildSyncStatelessPromptSpecification)
+                .toList();
     }
 }

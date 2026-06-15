@@ -68,6 +68,26 @@ public class McpRequestContextFactory {
     }
 
     /**
+     * Creates an MCP request context for stateful prompt resolution (SSE, Streamable, Stdio).
+     *
+     * @param exchange the MCP server exchange for the current session
+     * @return a new context instance with the exchange and HTTP request, but no tool-specific data
+     */
+    public McpRequestContext forPromptStatefulTransport(McpSyncServerExchange exchange) {
+        return new McpRequestContext(getCurrentHttpServletRequest(), null, null, exchange, null);
+    }
+
+    /**
+     * Creates an MCP request context for stateless prompt resolution (HTTP).
+     *
+     * @param transportContext the MCP transport context (may be null)
+     * @return a new context instance with only the HTTP request
+     */
+    public McpRequestContext forPromptStatelessTransport(@Nullable McpTransportContext transportContext) {
+        return new McpRequestContext(getCurrentHttpServletRequest(), null, null, null, null);
+    }
+
+    /**
      * Creates an MCP request context for servlet filters.
      * <p>
      * Servlet filters have direct access to the {@link HttpServletRequest} and don't need

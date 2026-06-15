@@ -5,6 +5,9 @@ import com.infobip.openapi.mcp.config.OpenApiMcpProperties;
 import com.infobip.openapi.mcp.infrastructure.metrics.MetricService;
 import com.infobip.openapi.mcp.openapi.tool.RegisteredTool;
 import com.infobip.openapi.mcp.openapi.tool.ToolRegistry;
+import com.infobip.openapi.mcp.prompt.PromptRegistry;
+import com.infobip.openapi.mcp.prompt.PromptSpecBuilder;
+import com.infobip.openapi.mcp.prompt.RegisteredPrompt;
 import com.infobip.openapi.mcp.util.ToolSpecBuilder;
 import io.modelcontextprotocol.server.McpStatelessSyncServer;
 import io.modelcontextprotocol.server.McpSyncServer;
@@ -95,6 +98,8 @@ public class ToolLiveReload {
     private final OpenApiRegistry openApiRegistry;
     private final ToolRegistry toolRegistry;
     private final ToolSpecBuilder toolSpecBuilder;
+    private final PromptRegistry promptRegistry;
+    private final PromptSpecBuilder promptSpecBuilder;
     private final OpenApiMcpProperties.LiveReload liveReloadConfig;
     private final MetricService metricService;
     private final McpServerMetaData mcpServerMetaData;
@@ -108,6 +113,8 @@ public class ToolLiveReload {
             OpenApiRegistry openApiRegistry,
             ToolRegistry toolRegistry,
             ToolSpecBuilder toolSpecBuilder,
+            PromptRegistry promptRegistry,
+            PromptSpecBuilder promptSpecBuilder,
             OpenApiMcpProperties properties,
             MetricService metricService,
             McpServerMetaData mcpServerMetaData) {
@@ -117,6 +124,8 @@ public class ToolLiveReload {
         this.openApiRegistry = openApiRegistry;
         this.toolRegistry = toolRegistry;
         this.toolSpecBuilder = toolSpecBuilder;
+        this.promptRegistry = promptRegistry;
+        this.promptSpecBuilder = promptSpecBuilder;
         this.liveReloadConfig = properties.liveReload();
         this.metricService = metricService;
         this.mcpServerMetaData = mcpServerMetaData;
@@ -137,12 +146,13 @@ public class ToolLiveReload {
 
             var currentOpenApiVersion = openApiRegistry.openApi().getInfo().getVersion();
             var currentTools = toolRegistry.getRegisteredToolsCache();
+            var currentPrompts = promptRegistry.getRegisteredPromptsCache();
 
             var maxRetries = liveReloadConfig.maxRetries();
             for (int attempt = 1; attempt <= maxRetries; attempt++) {
                 try {
-                    var toolsUpdated = reload(currentOpenApiVersion, currentTools);
-                    status = toolsUpdated ? Status.SUCCESS_TOOLS_UPDATED : Status.SUCCESS_NO_CHANGE;
+                    var changed = reload(currentOpenApiVersion, currentTools, currentPrompts);
+                    status = changed ? Status.SUCCESS_TOOLS_UPDATED : Status.SUCCESS_NO_CHANGE;
                     break;
                 } catch (Exception e) {
                     LOGGER.error("Error refreshing OpenAPI (attempt {}/{}): {}", attempt, maxRetries, e.getMessage());
@@ -176,10 +186,12 @@ public class ToolLiveReload {
      * Refreshes the OpenAPI specification and updates tools if needed.
      *
      * @param currentOpenApiVersion the current OpenAPI version
-     * @param currentTools   the current list of registered tools
-     * @return true if tools were updated, false if no changes detected
+     * @param currentTools          the current list of registered tools
+     * @param currentPrompts        the current list of registered prompts
+     * @return true if tools or prompts were updated, false if no changes detected
      */
-    public boolean reload(String currentOpenApiVersion, List<RegisteredTool> currentTools) {
+    public boolean reload(
+            String currentOpenApiVersion, List<RegisteredTool> currentTools, List<RegisteredPrompt> currentPrompts) {
         openApiRegistry.reload();
         var newOpenApiVersion = openApiRegistry.openApi().getInfo().getVersion();
         if (currentOpenApiVersion.equals(newOpenApiVersion)) {
@@ -192,22 +204,72 @@ public class ToolLiveReload {
         // Reload scopes - always discover as tools can stay the same but the scopes can change
         scopeDiscoveryService.ifPresent(ScopeDiscoveryService::discover);
 
+        // Compute diffs before applying any changes so that a failure during diff computation
+        // leaves the server in a consistent state (either both are applied or neither is).
+        var toolDiff = computeToolDiff(currentTools);
+        var promptDiff = computePromptDiff(currentPrompts);
+
+        var toolsUpdated = applyToolDiff(toolDiff);
+        var promptsUpdated = applyPromptDiff(promptDiff);
+
+        return toolsUpdated || promptsUpdated;
+    }
+
+    private record ToolDiff(
+            List<RegisteredTool> addedOrChanged,
+            List<RegisteredTool> deleted,
+            Map<String, RegisteredTool> currentToolMap) {}
+
+    private record PromptDiff(
+            List<RegisteredPrompt> addedOrChanged,
+            List<RegisteredPrompt> deleted,
+            Map<String, RegisteredPrompt> currentPromptMap) {}
+
+    private ToolDiff computeToolDiff(List<RegisteredTool> currentTools) {
         var registeredTools = toolRegistry.getTools();
         var registeredToolMap = getToolMap(registeredTools);
         var currentToolMap = getToolMap(currentTools);
+        var deleted = findDeletedTools(currentToolMap, registeredToolMap);
+        var addedOrChanged = findAddedOrChangedTools(currentToolMap, registeredTools);
+        return new ToolDiff(addedOrChanged, deleted, currentToolMap);
+    }
 
-        // Check if tools changed
-        var deletedTools = findDeletedTools(currentToolMap, registeredToolMap);
-        var addedOrChangedTools = findAddedOrChangedTools(currentToolMap, registeredTools);
-        if (addedOrChangedTools.isEmpty() && deletedTools.isEmpty()) {
+    private PromptDiff computePromptDiff(List<RegisteredPrompt> currentPrompts) {
+        var currentPromptMap = getPromptMap(currentPrompts);
+        var newPrompts = promptRegistry.getPrompts();
+        var newPromptMap = getPromptMap(newPrompts);
+        var deleted = currentPrompts.stream()
+                .filter(p -> !newPromptMap.containsKey(p.prompt().name()))
+                .toList();
+        var addedOrChanged = newPrompts.stream()
+                .filter(p -> {
+                    var existing = currentPromptMap.get(p.prompt().name());
+                    return existing == null || !existing.prompt().equals(p.prompt());
+                })
+                .toList();
+        return new PromptDiff(addedOrChanged, deleted, currentPromptMap);
+    }
+
+    private boolean applyToolDiff(ToolDiff diff) {
+        if (diff.addedOrChanged().isEmpty() && diff.deleted().isEmpty()) {
             return false;
         }
-
-        // Reload tools
-        mcpSyncServer.ifPresent(ignored -> registerStateful(addedOrChangedTools, deletedTools, currentToolMap));
+        mcpSyncServer.ifPresent(
+                ignored -> registerStatefulTools(diff.addedOrChanged(), diff.deleted(), diff.currentToolMap()));
         mcpStatelessSyncServer.ifPresent(
-                ignored -> registerStateless(addedOrChangedTools, deletedTools, currentToolMap));
+                ignored -> registerStatelessTools(diff.addedOrChanged(), diff.deleted(), diff.currentToolMap()));
+        return true;
+    }
 
+    private boolean applyPromptDiff(PromptDiff diff) {
+        if (diff.addedOrChanged().isEmpty() && diff.deleted().isEmpty()) {
+            return false;
+        }
+        mcpSyncServer.ifPresent(
+                ignored -> registerStatefulPrompts(diff.addedOrChanged(), diff.deleted(), diff.currentPromptMap()));
+        mcpStatelessSyncServer.ifPresent(
+                ignored -> registerStatelessPrompts(diff.addedOrChanged(), diff.deleted(), diff.currentPromptMap()));
+        mcpSyncServer.ifPresent(McpSyncServer::notifyPromptsListChanged);
         return true;
     }
 
@@ -237,7 +299,7 @@ public class ToolLiveReload {
                 .toList();
     }
 
-    private void registerStateful(
+    private void registerStatefulTools(
             List<RegisteredTool> addedOrChangedTools,
             List<RegisteredTool> deletedTools,
             Map<String, RegisteredTool> currentToolMap) {
@@ -252,7 +314,7 @@ public class ToolLiveReload {
         });
     }
 
-    private void registerStateless(
+    private void registerStatelessTools(
             List<RegisteredTool> addedOrChangedTools,
             List<RegisteredTool> deletedTools,
             Map<String, RegisteredTool> currentToolMap) {
@@ -264,6 +326,38 @@ public class ToolLiveReload {
         addedOrChangedTools.forEach(changedTool -> {
             logToolAdditionOrChange(changedTool, currentToolMap);
             server.addTool(toolSpecBuilder.buildSyncStatelessToolSpecification(changedTool));
+        });
+    }
+
+    private void registerStatefulPrompts(
+            List<RegisteredPrompt> addedOrChanged,
+            List<RegisteredPrompt> deleted,
+            Map<String, RegisteredPrompt> currentPromptMap) {
+        var server = mcpSyncServer.get();
+        deleted.forEach(p -> {
+            LOGGER.info("Removing prompt {} from MCP server.", p.prompt().name());
+            server.removePrompt(p.prompt().name());
+        });
+        addedOrChanged.forEach(p -> {
+            var action = currentPromptMap.containsKey(p.prompt().name()) ? "Updating" : "Adding";
+            LOGGER.info("{} prompt {} in MCP server.", action, p.prompt().name());
+            server.addPrompt(promptSpecBuilder.buildSyncPromptSpecification(p));
+        });
+    }
+
+    private void registerStatelessPrompts(
+            List<RegisteredPrompt> addedOrChanged,
+            List<RegisteredPrompt> deleted,
+            Map<String, RegisteredPrompt> currentPromptMap) {
+        var server = mcpStatelessSyncServer.get();
+        deleted.forEach(p -> {
+            LOGGER.info("Removing prompt {} from MCP server.", p.prompt().name());
+            server.removePrompt(p.prompt().name());
+        });
+        addedOrChanged.forEach(p -> {
+            var action = currentPromptMap.containsKey(p.prompt().name()) ? "Updating" : "Adding";
+            LOGGER.info("{} prompt {} in MCP server.", action, p.prompt().name());
+            server.addPrompt(promptSpecBuilder.buildSyncStatelessPromptSpecification(p));
         });
     }
 
@@ -281,5 +375,9 @@ public class ToolLiveReload {
 
     private Map<String, RegisteredTool> getToolMap(List<RegisteredTool> tools) {
         return tools.stream().collect(Collectors.toMap(tool -> tool.tool().name(), Function.identity()));
+    }
+
+    private Map<String, RegisteredPrompt> getPromptMap(List<RegisteredPrompt> prompts) {
+        return prompts.stream().collect(Collectors.toMap(p -> p.prompt().name(), Function.identity()));
     }
 }

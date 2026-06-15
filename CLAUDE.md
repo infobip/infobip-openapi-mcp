@@ -84,11 +84,20 @@ The framework follows this startup flow:
    transform the spec
 3. `ToolRegistry` converts each API operation into a `RegisteredTool` using `InputSchemaComposer`,
    `InputExampleComposer`, `ToolAnnotationResolver`, and the configured `NamingStrategy`
-4. Tools are registered with the Spring AI MCP server (SSE, Streamable HTTP, Stateless HTTP, or stdio transport)
+4. `PromptRegistry` reads the `x-mcp-prompts` vendor extension from the OpenAPI spec and converts each entry into a
+   `RegisteredPrompt` with an `McpSchema.Prompt` and a handler. Two modes are supported: **inline mode**
+   where Mustache templates are compiled at startup and rendered server-side from user arguments, and **resolved mode**
+   where the handler calls a backend HTTP endpoint to resolve the prompt
+5. Tools and prompts are registered with the Spring AI MCP server (SSE, Streamable HTTP, Stateless HTTP, or stdio
+   transport)
 
 **Runtime tool call flow:**
 `ToolSpecBuilder` → `ToolCallFilterChain` (ordered `ToolCallFilter` beans) → `RegisteredTool` (lowest precedence, makes
 HTTP call via `ToolHandler`) → optional `JsonDoubleSerializationCorrector` retry logic
+
+**Runtime prompt call flow:**
+`PromptSpecBuilder` → `PromptCallFilterChain` (ordered `PromptCallFilter` beans) → `RegisteredPrompt` (lowest
+precedence, resolves inline template or calls backend HTTP endpoint)
 
 ### Key Extension Points
 
@@ -97,6 +106,7 @@ HTTP call via `ToolHandler`) → optional `JsonDoubleSerializationCorrector` ret
 | `OpenApiFilter`           | Transform the OpenAPI spec before tool metadata is built; disable via `infobip.openapi.mcp.filters.[filter-name]: false` |
 | `ApiRequestEnricher`      | Modify HTTP requests to the downstream API (headers, metadata); failures are swallowed                                   |
 | `ToolCallFilter`          | Intercept tool calls; can abort the chain unlike enrichers                                                               |
+| `PromptCallFilter`        | Intercept prompt calls; can abort the chain, add observability, or short-circuit resolution                              |
 | `NamingStrategy`          | Custom tool name generation; replace the default bean                                                                    |
 | `ErrorModelProvider`      | Custom error response format returned to MCP clients                                                                     |
 | `CredentialProvider`      | Supply credentials from any source (HTTP header, vault, env, etc.); replace the default bean                             |

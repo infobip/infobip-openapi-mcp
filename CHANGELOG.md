@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- MCP prompt support via the `x-mcp-prompts` vendor extension on the root OpenAPI object. Prompts
+  are defined as an array of objects, each with a `name`, `description`, and `arguments` list.
+  Two resolution modes are available:
+  - **Static templates** — prompts with inline `messages` containing Mustache `{{placeholder}}`
+    templates that are rendered server-side from user-supplied arguments. No backend call needed.
+    Missing required arguments fail the request; missing optional arguments render as empty strings.
+  - **Backend resolution** — prompts with a `resolve` block that delegates to a backend HTTP
+    endpoint. Arguments are forwarded as query parameters for `GET` or as a JSON body for `POST`.
+    Credentials are forwarded using the configured `CredentialProvider`.
+  
+  Prompts are discoverable by clients via `listPrompts` and invocable via `getPrompt`. Live
+  reload detects prompt additions and removals automatically.
+  
+  Prompt calls can be intercepted using the `PromptCallFilter` chain-of-responsibility pattern,
+  mirroring the `ToolCallFilter` API. Register Spring beans implementing `PromptCallFilter` to
+  add observability, authorization, caching, or other cross-cutting concerns to prompt resolution.
+  
+  Prompt call metrics are emitted via Micrometer when a `MeterRegistry` bean is available:
+  `com.infobip.openapi.prompt.call` (counter), `com.infobip.openapi.prompt.call.duration` (timer),
+  and for backend-resolved prompts `com.infobip.openapi.prompt.resolve.call` (counter) and
+  `com.infobip.openapi.prompt.resolve.call.duration` (timer).
+- `PromptExecutionException` with typed MCP error codes: `INVALID_PARAMS` for missing required
+  arguments, `INTERNAL_ERROR` for backend resolution failures.
+- `PromptResolveConfig` path validation: the `resolve.path` must be non-blank and either a
+  relative path starting with `/` or an absolute URL starting with `http://` or `https://`.
+- `PromptResolveResponse` response validation: the backend must return at least one message,
+  each with a non-null role and non-blank content.
+
 ## 0.1.15
 
 ### Changed
