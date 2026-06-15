@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## 0.1.16
+
 ### Added
 
 - MCP prompt support via the `x-mcp-prompts` vendor extension on the root OpenAPI object. Prompts
