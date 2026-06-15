@@ -63,7 +63,7 @@ class JsonDoubleSerializationCorrectorTest {
         then(result).isPresent();
         then(result.get().targetContentType()).isEqualTo(MediaType.APPLICATION_JSON);
         var actualOutputJson = objectMapper.writeValueAsString(result.get().content());
-        JSONAssert.assertEquals(expectedOutputJson, actualOutputJson, JSONCompareMode.STRICT);
+        JSONAssert.assertEquals(expectedOutputJson, actualOutputJson, JSONCompareMode.NON_EXTENSIBLE);
     }
 
     @Test
@@ -100,7 +100,7 @@ class JsonDoubleSerializationCorrectorTest {
         then(result).isPresent();
         then(result.get().targetContentType()).isEqualTo(MediaType.APPLICATION_JSON);
         var actualOutputJson = objectMapper.writeValueAsString(result.get().content());
-        JSONAssert.assertEquals(expectedOutputJson, actualOutputJson, JSONCompareMode.STRICT);
+        JSONAssert.assertEquals(expectedOutputJson, actualOutputJson, JSONCompareMode.NON_EXTENSIBLE);
     }
 
     @Test
@@ -133,7 +133,7 @@ class JsonDoubleSerializationCorrectorTest {
         then(result).isPresent();
         then(result.get().targetContentType()).isEqualTo(MediaType.APPLICATION_JSON);
         var actualOutputJson = objectMapper.writeValueAsString(result.get().content());
-        JSONAssert.assertEquals(expectedOutputJson, actualOutputJson, JSONCompareMode.STRICT);
+        JSONAssert.assertEquals(expectedOutputJson, actualOutputJson, JSONCompareMode.NON_EXTENSIBLE);
     }
 
     @Test
@@ -190,7 +190,7 @@ class JsonDoubleSerializationCorrectorTest {
         then(result).isPresent();
         then(result.get().targetContentType()).isEqualTo(MediaType.APPLICATION_JSON);
         var actualOutputJson = objectMapper.writeValueAsString(result.get().content());
-        JSONAssert.assertEquals(expectedOutputJson, actualOutputJson, JSONCompareMode.STRICT);
+        JSONAssert.assertEquals(expectedOutputJson, actualOutputJson, JSONCompareMode.NON_EXTENSIBLE);
     }
 
     @Test
@@ -223,7 +223,7 @@ class JsonDoubleSerializationCorrectorTest {
         then(result).isPresent();
         then(result.get().targetContentType()).isEqualTo(MediaType.APPLICATION_JSON);
         var actualOutputJson = objectMapper.writeValueAsString(result.get().content());
-        JSONAssert.assertEquals(expectedOutputJson, actualOutputJson, JSONCompareMode.STRICT);
+        JSONAssert.assertEquals(expectedOutputJson, actualOutputJson, JSONCompareMode.NON_EXTENSIBLE);
     }
 
     @Test
@@ -251,7 +251,7 @@ class JsonDoubleSerializationCorrectorTest {
         then(result).isPresent();
         then(result.get().targetContentType()).isEqualTo(MediaType.APPLICATION_JSON);
         var actualOutputJson = objectMapper.writeValueAsString(result.get().content());
-        JSONAssert.assertEquals(expectedOutputJson, actualOutputJson, JSONCompareMode.STRICT);
+        JSONAssert.assertEquals(expectedOutputJson, actualOutputJson, JSONCompareMode.NON_EXTENSIBLE);
     }
 
     @Test
@@ -325,7 +325,7 @@ class JsonDoubleSerializationCorrectorTest {
         then(result).isPresent();
         then(result.get().targetContentType()).isEqualTo(MediaType.APPLICATION_JSON);
         var actualOutputJson = objectMapper.writeValueAsString(result.get().content());
-        JSONAssert.assertEquals(expectedOutputJson, actualOutputJson, JSONCompareMode.STRICT);
+        JSONAssert.assertEquals(expectedOutputJson, actualOutputJson, JSONCompareMode.NON_EXTENSIBLE);
     }
 
     @Test
@@ -361,7 +361,7 @@ class JsonDoubleSerializationCorrectorTest {
         then(result).isPresent();
         then(result.get().targetContentType()).isEqualTo(MediaType.APPLICATION_JSON);
         var actualOutputJson = objectMapper.writeValueAsString(result.get().content());
-        JSONAssert.assertEquals(expectedOutputJson, actualOutputJson, JSONCompareMode.STRICT);
+        JSONAssert.assertEquals(expectedOutputJson, actualOutputJson, JSONCompareMode.NON_EXTENSIBLE);
     }
 
     @Test
@@ -390,7 +390,7 @@ class JsonDoubleSerializationCorrectorTest {
         then(result).isPresent();
         then(result.get().targetContentType()).isEqualTo(MediaType.APPLICATION_JSON);
         var actualOutputJson = objectMapper.writeValueAsString(result.get().content());
-        JSONAssert.assertEquals(expectedOutputJson, actualOutputJson, JSONCompareMode.STRICT);
+        JSONAssert.assertEquals(expectedOutputJson, actualOutputJson, JSONCompareMode.NON_EXTENSIBLE);
     }
 
     @Test

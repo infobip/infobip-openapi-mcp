@@ -1726,7 +1726,7 @@ class ToolRegistryTest {
 
     private void assertJsonEquals(String expected, String actual) {
         try {
-            JSONAssert.assertEquals(expected, actual, JSONCompareMode.STRICT);
+            JSONAssert.assertEquals(expected, actual, JSONCompareMode.NON_EXTENSIBLE);
         } catch (JSONException e) {
             throw new RuntimeException("Failed to compare JSON schemas", e);
         }

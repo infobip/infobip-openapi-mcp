@@ -50,9 +50,9 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
         <!-- Dependencies: -->
-        <jackson.version>2.21.3</jackson.version>
-        <spring-ai.version>1.1.6</spring-ai.version>
-        <spring-boot.version>3.5.14</spring-boot.version>
+        <jackson.version>2.22.0</jackson.version>
+        <spring-ai.version>1.1.8</spring-ai.version>
+        <spring-boot.version>3.5.15</spring-boot.version>
         <jspecify.version>1.0.0</jspecify.version>
         <junit.version>5.14.4</junit.version>
         <mockito.version>5.23.0</mockito.version>

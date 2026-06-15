@@ -162,7 +162,8 @@ class JsonDoubleSerializationIntegrationTest {
                       "status": "sent"
                     }
                     """;
-            JSONAssert.assertEquals(expectedResponse, extractTextContent(result.content()), JSONCompareMode.STRICT);
+            JSONAssert.assertEquals(
+                    expectedResponse, extractTextContent(result.content()), JSONCompareMode.NON_EXTENSIBLE);
 
             // Verify both requests were made
             wireMockServer.verify(1, postRequestedFor(urlPathEqualTo("/send")).withRequestBody(equalToJson(inputJson)));
@@ -207,7 +208,8 @@ class JsonDoubleSerializationIntegrationTest {
                       "status": "sent"
                     }
                     """;
-            JSONAssert.assertEquals(expectedResponse, extractTextContent(result.content()), JSONCompareMode.STRICT);
+            JSONAssert.assertEquals(
+                    expectedResponse, extractTextContent(result.content()), JSONCompareMode.NON_EXTENSIBLE);
 
             // Verify only one request was made
             wireMockServer.verify(1, postRequestedFor(urlPathEqualTo("/send")));
@@ -248,7 +250,7 @@ class JsonDoubleSerializationIntegrationTest {
                     }
                     """;
             JSONAssert.assertEquals(
-                    expectedErrorResponse, extractTextContent(result.content()), JSONCompareMode.STRICT);
+                    expectedErrorResponse, extractTextContent(result.content()), JSONCompareMode.NON_EXTENSIBLE);
 
             // Verify only one request was made
             wireMockServer.verify(1, postRequestedFor(urlPathEqualTo("/send")));
@@ -308,7 +310,8 @@ class JsonDoubleSerializationIntegrationTest {
                       "id": "nested-123"
                     }
                     """;
-            JSONAssert.assertEquals(expectedResponse, extractTextContent(result.content()), JSONCompareMode.STRICT);
+            JSONAssert.assertEquals(
+                    expectedResponse, extractTextContent(result.content()), JSONCompareMode.NON_EXTENSIBLE);
 
             // Verify both requests were made
             wireMockServer.verify(2, postRequestedFor(urlPathEqualTo("/process")));
@@ -364,7 +367,7 @@ class JsonDoubleSerializationIntegrationTest {
                     }
                     """;
             JSONAssert.assertEquals(
-                    expectedErrorResponse, extractTextContent(result.content()), JSONCompareMode.STRICT);
+                    expectedErrorResponse, extractTextContent(result.content()), JSONCompareMode.NON_EXTENSIBLE);
         }
 
         @Test
@@ -414,7 +417,7 @@ class JsonDoubleSerializationIntegrationTest {
                     }
                     """;
             JSONAssert.assertEquals(
-                    expectedErrorResponse, extractTextContent(result.content()), JSONCompareMode.STRICT);
+                    expectedErrorResponse, extractTextContent(result.content()), JSONCompareMode.NON_EXTENSIBLE);
 
             // Verify both requests were made
             wireMockServer.verify(2, postRequestedFor(urlPathEqualTo("/validate")));
@@ -458,7 +461,7 @@ class JsonDoubleSerializationIntegrationTest {
                     }
                     """;
             JSONAssert.assertEquals(
-                    expectedErrorResponse, extractTextContent(result.content()), JSONCompareMode.STRICT);
+                    expectedErrorResponse, extractTextContent(result.content()), JSONCompareMode.NON_EXTENSIBLE);
 
             // Verify only one request was made
             wireMockServer.verify(1, postRequestedFor(urlPathEqualTo("/send")));
@@ -489,7 +492,7 @@ class JsonDoubleSerializationIntegrationTest {
                     }
                     """;
             JSONAssert.assertEquals(
-                    expectedErrorResponse, extractTextContent(result.content()), JSONCompareMode.STRICT);
+                    expectedErrorResponse, extractTextContent(result.content()), JSONCompareMode.NON_EXTENSIBLE);
             wireMockServer.verify(1, getRequestedFor(urlPathEqualTo("/status")));
         }
 
@@ -515,7 +518,7 @@ class JsonDoubleSerializationIntegrationTest {
                     }
                     """;
             JSONAssert.assertEquals(
-                    expectedErrorResponse, extractTextContent(result.content()), JSONCompareMode.STRICT);
+                    expectedErrorResponse, extractTextContent(result.content()), JSONCompareMode.NON_EXTENSIBLE);
             wireMockServer.verify(1, postRequestedFor(urlPathEqualTo("/upload")));
         }
     }

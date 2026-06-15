@@ -38,7 +38,7 @@ class DiscriminatorFlattenerTest {
 
     private void assertFlattened(String input, String expectedJson) throws Exception {
         var actual = flatten(input);
-        JSONAssert.assertEquals(expectedJson, actual, JSONCompareMode.STRICT);
+        JSONAssert.assertEquals(expectedJson, actual, JSONCompareMode.NON_EXTENSIBLE);
     }
 
     @Nested

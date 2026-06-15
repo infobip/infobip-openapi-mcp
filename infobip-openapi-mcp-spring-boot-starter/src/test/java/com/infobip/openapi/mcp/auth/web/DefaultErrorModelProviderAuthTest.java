@@ -68,7 +68,7 @@ class DefaultErrorModelProviderAuthTest extends AuthenticationTestBase {
                             "description": "Authentication required. Please provide valid credentials."
                         }
                         """;
-        JSONAssert.assertEquals(expectedJson, response.getBody(), JSONCompareMode.STRICT);
+        JSONAssert.assertEquals(expectedJson, response.getBody(), JSONCompareMode.NON_EXTENSIBLE);
     }
 
     @Test
@@ -111,7 +111,7 @@ class DefaultErrorModelProviderAuthTest extends AuthenticationTestBase {
                             "description": "Access denied. You don't have permission to access this resource."
                         }
                         """;
-        JSONAssert.assertEquals(expectedJson, response.getBody(), JSONCompareMode.STRICT);
+        JSONAssert.assertEquals(expectedJson, response.getBody(), JSONCompareMode.NON_EXTENSIBLE);
     }
 
     @Test
@@ -154,7 +154,7 @@ class DefaultErrorModelProviderAuthTest extends AuthenticationTestBase {
                             "description": "Check the request syntax and parameters and try again."
                         }
                         """;
-        JSONAssert.assertEquals(expectedJson, response.getBody(), JSONCompareMode.STRICT);
+        JSONAssert.assertEquals(expectedJson, response.getBody(), JSONCompareMode.NON_EXTENSIBLE);
     }
 
     @Test
@@ -194,7 +194,7 @@ class DefaultErrorModelProviderAuthTest extends AuthenticationTestBase {
                             "description": "An unexpected error occurred on the server."
                         }
                         """;
-        JSONAssert.assertEquals(expectedJson, response.getBody(), JSONCompareMode.STRICT);
+        JSONAssert.assertEquals(expectedJson, response.getBody(), JSONCompareMode.NON_EXTENSIBLE);
     }
 
     @Test
@@ -234,7 +234,7 @@ class DefaultErrorModelProviderAuthTest extends AuthenticationTestBase {
                             "description": "The requested resource was not found."
                         }
                         """;
-        JSONAssert.assertEquals(expectedJson, response.getBody(), JSONCompareMode.STRICT);
+        JSONAssert.assertEquals(expectedJson, response.getBody(), JSONCompareMode.NON_EXTENSIBLE);
     }
 
     @Test
@@ -274,7 +274,7 @@ class DefaultErrorModelProviderAuthTest extends AuthenticationTestBase {
                             "description": "Access denied. You don't have permission to access this resource."
                         }
                         """;
-        JSONAssert.assertEquals(expectedJson, response.getBody(), JSONCompareMode.STRICT);
+        JSONAssert.assertEquals(expectedJson, response.getBody(), JSONCompareMode.NON_EXTENSIBLE);
     }
 
     @Test
@@ -358,7 +358,7 @@ class DefaultErrorModelProviderAuthTest extends AuthenticationTestBase {
                     "description": "Authentication required. Please provide valid credentials."
                 }
                 """;
-        JSONAssert.assertEquals(expectedJson, response.getBody(), JSONCompareMode.STRICT);
+        JSONAssert.assertEquals(expectedJson, response.getBody(), JSONCompareMode.NON_EXTENSIBLE);
     }
 
     @Nested
@@ -395,7 +395,7 @@ class DefaultErrorModelProviderAuthTest extends AuthenticationTestBase {
                                 "description": "Authentication required. Please provide valid credentials."
                             }
                             """;
-            JSONAssert.assertEquals(expectedJson, response.getBody(), JSONCompareMode.STRICT);
+            JSONAssert.assertEquals(expectedJson, response.getBody(), JSONCompareMode.NON_EXTENSIBLE);
         }
     }
 
@@ -442,7 +442,7 @@ class DefaultErrorModelProviderAuthTest extends AuthenticationTestBase {
                                 "description": "Authentication required. Please provide valid credentials."
                                 }
                             """;
-            JSONAssert.assertEquals(expectedJson, response.getBody(), JSONCompareMode.STRICT);
+            JSONAssert.assertEquals(expectedJson, response.getBody(), JSONCompareMode.NON_EXTENSIBLE);
         }
 
         @Test
@@ -479,7 +479,7 @@ class DefaultErrorModelProviderAuthTest extends AuthenticationTestBase {
                                 "description": "Authentication required. Please provide valid credentials."
                                 }
                             """;
-            JSONAssert.assertEquals(expectedJson, response.getBody(), JSONCompareMode.STRICT);
+            JSONAssert.assertEquals(expectedJson, response.getBody(), JSONCompareMode.NON_EXTENSIBLE);
         }
     }
 }

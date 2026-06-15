@@ -13,8 +13,8 @@
 
 	<properties>
         <jakarta-servlet.version>6.1.0</jakarta-servlet.version>
-		<swagger-parser.version>2.1.41</swagger-parser.version>
-        <nimbus-jwt.version>10.9</nimbus-jwt.version>
+		<swagger-parser.version>2.1.42</swagger-parser.version>
+        <nimbus-jwt.version>10.9.1</nimbus-jwt.version>
         <mustache.version>0.9.14</mustache.version>
 	</properties>
 
