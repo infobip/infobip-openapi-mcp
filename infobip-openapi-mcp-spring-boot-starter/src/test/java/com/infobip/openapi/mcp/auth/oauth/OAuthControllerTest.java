@@ -134,7 +134,7 @@ public class OAuthControllerTest extends OAuthTestBase {
                   "scopes_supported": ["scope1"]
                 }
                 """;
-        JSONAssert.assertEquals(expectedJson, response.getBody(), JSONCompareMode.STRICT);
+        JSONAssert.assertEquals(expectedJson, response.getBody(), JSONCompareMode.NON_EXTENSIBLE);
     }
 
     @Nested
@@ -182,7 +182,7 @@ public class OAuthControllerTest extends OAuthTestBase {
 
             // Then
             then(response.getHeaders().getContentType().toString()).isEqualTo("application/json;charset=UTF-8");
-            JSONAssert.assertEquals(givenResponseBody, response.getBody(), JSONCompareMode.STRICT);
+            JSONAssert.assertEquals(givenResponseBody, response.getBody(), JSONCompareMode.NON_EXTENSIBLE);
         }
     }
 

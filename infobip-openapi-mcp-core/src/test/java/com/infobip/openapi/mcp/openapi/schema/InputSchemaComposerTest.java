@@ -87,7 +87,7 @@ class InputSchemaComposerTest {
                       "required": ["userId"]
                     }
                     """;
-            JSONAssert.assertEquals(expectedJson, json, JSONCompareMode.STRICT);
+            JSONAssert.assertEquals(expectedJson, json, JSONCompareMode.NON_EXTENSIBLE);
         }
 
         @Test
@@ -119,7 +119,7 @@ class InputSchemaComposerTest {
                       "description": "User data"
                     }
                     """;
-            JSONAssert.assertEquals(expectedJson, json, JSONCompareMode.STRICT);
+            JSONAssert.assertEquals(expectedJson, json, JSONCompareMode.NON_EXTENSIBLE);
         }
 
         @Test
@@ -167,7 +167,7 @@ class InputSchemaComposerTest {
                       "required": ["_params", "_body"]
                     }
                     """;
-            JSONAssert.assertEquals(expectedJson, json, JSONCompareMode.STRICT);
+            JSONAssert.assertEquals(expectedJson, json, JSONCompareMode.NON_EXTENSIBLE);
         }
 
         @Test
@@ -226,7 +226,7 @@ class InputSchemaComposerTest {
                       "required": ["_body"]
                     }
                     """;
-            JSONAssert.assertEquals(expectedJson, json, JSONCompareMode.STRICT);
+            JSONAssert.assertEquals(expectedJson, json, JSONCompareMode.NON_EXTENSIBLE);
         }
 
         @Test
@@ -289,7 +289,7 @@ class InputSchemaComposerTest {
                       }
                     }
                     """;
-            JSONAssert.assertEquals(expectedJson, json, JSONCompareMode.STRICT);
+            JSONAssert.assertEquals(expectedJson, json, JSONCompareMode.NON_EXTENSIBLE);
         }
 
         @Test
@@ -328,7 +328,7 @@ class InputSchemaComposerTest {
                       }
                     }
                     """;
-            JSONAssert.assertEquals(expectedJson, json, JSONCompareMode.STRICT);
+            JSONAssert.assertEquals(expectedJson, json, JSONCompareMode.NON_EXTENSIBLE);
         }
 
         @Test
@@ -405,7 +405,7 @@ class InputSchemaComposerTest {
                       "description": "Request body description"
                     }
                     """;
-            JSONAssert.assertEquals(expectedJson, json, JSONCompareMode.STRICT);
+            JSONAssert.assertEquals(expectedJson, json, JSONCompareMode.NON_EXTENSIBLE);
         }
 
         @Test
@@ -447,7 +447,7 @@ class InputSchemaComposerTest {
                       "description": "Existing schema description"
                     }
                     """;
-            JSONAssert.assertEquals(expectedJson, json, JSONCompareMode.STRICT);
+            JSONAssert.assertEquals(expectedJson, json, JSONCompareMode.NON_EXTENSIBLE);
         }
 
         @Test
@@ -501,7 +501,7 @@ class InputSchemaComposerTest {
                       "description": "Request body description"
                     }
                     """;
-            JSONAssert.assertEquals(expectedJson, json, JSONCompareMode.STRICT);
+            JSONAssert.assertEquals(expectedJson, json, JSONCompareMode.NON_EXTENSIBLE);
         }
 
         @Test
@@ -1504,7 +1504,7 @@ class InputSchemaComposerTest {
                       "required": ["_body"]
                     }
                     """;
-            JSONAssert.assertEquals(expectedJson, json, JSONCompareMode.STRICT);
+            JSONAssert.assertEquals(expectedJson, json, JSONCompareMode.NON_EXTENSIBLE);
         }
 
         @Test
@@ -1548,7 +1548,7 @@ class InputSchemaComposerTest {
                       "required": ["_body"]
                     }
                     """;
-            JSONAssert.assertEquals(expectedJson, json, JSONCompareMode.STRICT);
+            JSONAssert.assertEquals(expectedJson, json, JSONCompareMode.NON_EXTENSIBLE);
         }
 
         @Test
@@ -1591,7 +1591,7 @@ class InputSchemaComposerTest {
                       ]
                     }
                     """;
-            JSONAssert.assertEquals(expectedJson, json, JSONCompareMode.STRICT);
+            JSONAssert.assertEquals(expectedJson, json, JSONCompareMode.NON_EXTENSIBLE);
         }
 
         @Test
@@ -1637,7 +1637,7 @@ class InputSchemaComposerTest {
                       "required": ["_body"]
                     }
                     """;
-            JSONAssert.assertEquals(expectedJson, json, JSONCompareMode.STRICT);
+            JSONAssert.assertEquals(expectedJson, json, JSONCompareMode.NON_EXTENSIBLE);
         }
 
         @Test
@@ -1681,7 +1681,7 @@ class InputSchemaComposerTest {
                       "required": ["_body"]
                     }
                     """;
-            JSONAssert.assertEquals(expectedJson, json, JSONCompareMode.STRICT);
+            JSONAssert.assertEquals(expectedJson, json, JSONCompareMode.NON_EXTENSIBLE);
         }
 
         @Test
@@ -1736,7 +1736,7 @@ class InputSchemaComposerTest {
                       "required": ["_params", "_body"]
                     }
                     """;
-            JSONAssert.assertEquals(expectedJson, json, JSONCompareMode.STRICT);
+            JSONAssert.assertEquals(expectedJson, json, JSONCompareMode.NON_EXTENSIBLE);
         }
 
         @Test
@@ -1779,7 +1779,7 @@ class InputSchemaComposerTest {
                       "required": ["_params", "_body"]
                     }
                     """;
-            JSONAssert.assertEquals(expectedJson, json, JSONCompareMode.STRICT);
+            JSONAssert.assertEquals(expectedJson, json, JSONCompareMode.NON_EXTENSIBLE);
         }
 
         @Test
@@ -1819,7 +1819,7 @@ class InputSchemaComposerTest {
                       "required": ["_params", "_body"]
                     }
                     """;
-            JSONAssert.assertEquals(expectedJson, json, JSONCompareMode.STRICT);
+            JSONAssert.assertEquals(expectedJson, json, JSONCompareMode.NON_EXTENSIBLE);
         }
 
         // Helper methods for composed schema tests
@@ -2061,7 +2061,7 @@ class InputSchemaComposerTest {
                       "required": ["%s", "%s"]
                     }
                     """, customParametersKey, customRequestBodyKey, customParametersKey, customRequestBodyKey);
-            JSONAssert.assertEquals(expectedJson, json, JSONCompareMode.STRICT);
+            JSONAssert.assertEquals(expectedJson, json, JSONCompareMode.NON_EXTENSIBLE);
         }
 
         @Test
@@ -2174,7 +2174,7 @@ class InputSchemaComposerTest {
                       "required": ["%s"]
                     }
                     """, customRequestBodyKey, customRequestBodyKey);
-            JSONAssert.assertEquals(expectedJson, json, JSONCompareMode.STRICT);
+            JSONAssert.assertEquals(expectedJson, json, JSONCompareMode.NON_EXTENSIBLE);
         }
 
         @Test

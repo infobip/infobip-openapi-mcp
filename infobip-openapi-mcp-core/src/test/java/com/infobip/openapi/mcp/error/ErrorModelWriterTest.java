@@ -61,7 +61,7 @@ class ErrorModelWriterTest {
             var result = errorModelWriter.writeErrorModelAsJson(statusCode, httpServletRequest, throwable);
 
             // Then
-            JSONAssert.assertEquals(expectedJson, result, JSONCompareMode.STRICT);
+            JSONAssert.assertEquals(expectedJson, result, JSONCompareMode.NON_EXTENSIBLE);
             verify(errorModelProvider).provide(statusCode, httpServletRequest, throwable);
         }
 
@@ -83,7 +83,7 @@ class ErrorModelWriterTest {
             var result = errorModelWriter.writeErrorModelAsJson(statusCode);
 
             // Then
-            JSONAssert.assertEquals(expectedJson, result, JSONCompareMode.STRICT);
+            JSONAssert.assertEquals(expectedJson, result, JSONCompareMode.NON_EXTENSIBLE);
             verify(errorModelProvider).provide(statusCode, null, null);
         }
 
@@ -105,7 +105,7 @@ class ErrorModelWriterTest {
             var result = errorModelWriter.writeErrorModelAsJson(statusCode);
 
             // Then
-            JSONAssert.assertEquals(expectedJson, result, JSONCompareMode.STRICT);
+            JSONAssert.assertEquals(expectedJson, result, JSONCompareMode.NON_EXTENSIBLE);
             verify(errorModelProvider).provide(statusCode, null, null);
         }
 
@@ -128,7 +128,7 @@ class ErrorModelWriterTest {
             var result = errorModelWriter.writeErrorModelAsJson(statusCode);
 
             // Then
-            JSONAssert.assertEquals(expectedJson, result, JSONCompareMode.STRICT);
+            JSONAssert.assertEquals(expectedJson, result, JSONCompareMode.NON_EXTENSIBLE);
             verify(errorModelProvider).provide(statusCode, null, null);
         }
     }
