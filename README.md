@@ -115,6 +115,27 @@ spring:
         protocol: STATELESS
 ```
 
+### Third-party API Example
+
+The framework can expose any trusted OpenAPI-described HTTP API. For example,
+this config points the framework at the [Xquik API][20] for X/Twitter social
+data, compose, monitor, webhook, and automation workflows:
+
+```yaml
+infobip:
+  openapi:
+    mcp:
+      open-api-url: https://xquik.com/openapi.yaml
+      api-base-url: https://xquik.com
+      tools:
+        naming:
+          strategy: SANITIZED_OPERATION_ID
+```
+
+When using an OAuth bearer token, the default `CredentialProvider` can forward
+the inbound `Authorization` header. When using an `x-api-key` credential,
+provide a custom `CredentialProvider` so keys stay server-side.
+
 ## Configuration
 
 ### OpenApiFilter
@@ -661,3 +682,5 @@ This project is licensed under the [MIT License](LICENSE).
 [18]: https://mustache.github.io "Mustache — Logic-less templates"
 
 [19]: https://swagger.io/docs/specification/v3_0/serialization/ "Parameter serialization in OpenAPI specification"
+
+[20]: https://xquik.com/openapi.yaml "Xquik OpenAPI specification"
