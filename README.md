@@ -115,6 +115,27 @@ spring:
         protocol: STATELESS
 ```
 
+### Third-party API Example
+
+The framework can expose any trusted OpenAPI-described HTTP API. For example,
+this config points the framework at the [Xquik API][19] for X/Twitter social
+data, compose, monitor, webhook, and automation workflows:
+
+```yaml
+infobip:
+  openapi:
+    mcp:
+      open-api-url: https://xquik.com/openapi.yaml
+      api-base-url: https://xquik.com/api/v1
+      tools:
+        naming:
+          strategy: SANITIZED_OPERATION_ID
+```
+
+When using an OAuth bearer token, the default `CredentialProvider` can forward
+the inbound `Authorization` header. When using an `x-api-key` credential,
+provide a custom `CredentialProvider` so keys stay server-side.
+
 ## Configuration
 
 ### OpenApiFilter
@@ -640,3 +661,5 @@ This project is licensed under the [MIT License](LICENSE).
 [17]: https://modelcontextprotocol.io/specification/2025-11-25/basic/prompts "Prompts in MCP specification"
 
 [18]: https://mustache.github.io "Mustache — Logic-less templates"
+
+[19]: https://xquik.com/openapi.yaml "Xquik OpenAPI specification"
