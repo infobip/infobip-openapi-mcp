@@ -32,7 +32,10 @@ class OrderingToolCallFilterChainFactoryTest {
                 @NonNull McpRequestContext ctx,
                 McpSchema.@NonNull CallToolRequest req,
                 @NonNull ToolCallFilterChain chain) {
-            return new McpSchema.CallToolResult("\"ok\"", false);
+            return McpSchema.CallToolResult.builder()
+                    .content(java.util.List.of(new McpSchema.TextContent("\"ok\"")))
+                    .isError(false)
+                    .build();
         }
 
         @Override

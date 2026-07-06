@@ -6,7 +6,6 @@ import static org.assertj.core.api.BDDAssertions.then;
 import static org.assertj.core.api.BDDAssertions.thenThrownBy;
 import static org.mockito.Mockito.when;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.infobip.openapi.mcp.McpRequestContext;
 import com.infobip.openapi.mcp.auth.CredentialProvider;
@@ -29,6 +28,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.RestClient;
+import tools.jackson.databind.ObjectMapper;
 
 @ExtendWith(MockitoExtension.class)
 class PromptRegistryTest {
@@ -542,6 +542,102 @@ class PromptRegistryTest {
         }
 
         @Test
+        void shouldDeserializeResponseWithUnicodeAndSpecialCharacters() {
+            // Given
+            wireMockServer.stubFor(get(urlPathEqualTo("/prompts/unicode")).willReturn(okJson("""
+                            {
+                                "description": "Unicode prompt — こんにちは 🎉",
+                                "messages": [
+                                    {"role": "user", "content": "Greet in Japanese: こんにちは"},
+                                    {"role": "assistant", "content": "Response with emoji 🚀 and special: <tag> & \\"quotes\\""}
+                                ]
+                            }
+                            """)));
+
+            var registry = givenRegistryWithExtension(List.of(Map.of(
+                    "name", "unicode",
+                    "description", "Unicode test",
+                    "resolve", Map.of("path", "/prompts/unicode"))));
+
+            var prompt = registry.getPrompts().getFirst();
+            var request = new McpSchema.GetPromptRequest("unicode", Map.of());
+
+            // When
+            var result = prompt.handler().apply(CONTEXT, request);
+
+            // Then
+            then(result.description()).isEqualTo("Unicode prompt — こんにちは 🎉");
+            then(result.messages()).hasSize(2);
+            then(((McpSchema.TextContent) result.messages().getFirst().content()).text())
+                    .isEqualTo("Greet in Japanese: こんにちは");
+            then(((McpSchema.TextContent) result.messages().get(1).content()).text())
+                    .isEqualTo("Response with emoji 🚀 and special: <tag> & \"quotes\"");
+        }
+
+        @Test
+        void shouldDeserializeResponseWithNestedJsonAndLargeNumbers() {
+            // Given
+            wireMockServer.stubFor(get(urlPathEqualTo("/prompts/complex")).willReturn(okJson("""
+                            {
+                                "description": "Complex data",
+                                "messages": [
+                                    {"role": "user", "content": "Process this data"},
+                                    {"role": "assistant", "content": "Acknowledged"}
+                                ]
+                            }
+                            """)));
+
+            var registry = givenRegistryWithExtension(List.of(Map.of(
+                    "name", "complex",
+                    "description", "Complex",
+                    "resolve", Map.of("path", "/prompts/complex"))));
+
+            var prompt = registry.getPrompts().getFirst();
+            var request = new McpSchema.GetPromptRequest("complex", Map.of());
+
+            // When
+            var result = prompt.handler().apply(CONTEXT, request);
+
+            // Then
+            then(result.description()).isEqualTo("Complex data");
+            then(result.messages()).hasSize(2);
+            then(result.messages().getFirst().role()).isEqualTo(McpSchema.Role.USER);
+            then(result.messages().get(1).role()).isEqualTo(McpSchema.Role.ASSISTANT);
+        }
+
+        @Test
+        void shouldDeserializeResponseWithNullDescriptionAndExtraFields() {
+            // Given — Jackson 3 should ignore unknown fields by default
+            wireMockServer.stubFor(get(urlPathEqualTo("/prompts/extra")).willReturn(okJson("""
+                            {
+                                "description": null,
+                                "messages": [
+                                    {"role": "user", "content": "Hello"}
+                                ],
+                                "unknown_field": "should be ignored",
+                                "extra_number": 42
+                            }
+                            """)));
+
+            var registry = givenRegistryWithExtension(List.of(Map.of(
+                    "name", "extra",
+                    "description", "Extra fields",
+                    "resolve", Map.of("path", "/prompts/extra"))));
+
+            var prompt = registry.getPrompts().getFirst();
+            var request = new McpSchema.GetPromptRequest("extra", Map.of());
+
+            // When
+            var result = prompt.handler().apply(CONTEXT, request);
+
+            // Then
+            then(result.description()).isNull();
+            then(result.messages()).hasSize(1);
+            then(((McpSchema.TextContent) result.messages().getFirst().content()).text())
+                    .isEqualTo("Hello");
+        }
+
+        @Test
         void shouldThrowWhenBackendIsUnreachable() {
             // Given — use a port with no server to simulate connection error
             var unreachableRestClient = RestClient.builder()
@@ -659,8 +755,10 @@ class PromptRegistryTest {
                                     "messages",
                                     List.of(Map.of("role", "user", "content", "Hello")))))
                             .getPrompts())
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("not both");
+                    .satisfies(ex -> org.assertj.core.api.Assertions.assertThat(
+                                    ex instanceof IllegalArgumentException ? ex : ex.getCause())
+                            .isInstanceOf(IllegalArgumentException.class)
+                            .hasMessageContaining("not both"));
         }
 
         @Test
@@ -668,8 +766,10 @@ class PromptRegistryTest {
             // Given / When / Then
             thenThrownBy(() -> givenRegistryWithExtension(List.of(Map.of("name", "invalid", "description", "Invalid")))
                             .getPrompts())
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("must define either");
+                    .satisfies(ex -> org.assertj.core.api.Assertions.assertThat(
+                                    ex instanceof IllegalArgumentException ? ex : ex.getCause())
+                            .isInstanceOf(IllegalArgumentException.class)
+                            .hasMessageContaining("must define either"));
         }
 
         @Test
@@ -680,8 +780,10 @@ class PromptRegistryTest {
                                     "description", "Invalid",
                                     "messages", List.of())))
                             .getPrompts())
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("empty");
+                    .satisfies(ex -> org.assertj.core.api.Assertions.assertThat(
+                                    ex instanceof IllegalArgumentException ? ex : ex.getCause())
+                            .isInstanceOf(IllegalArgumentException.class)
+                            .hasMessageContaining("empty"));
         }
     }
 

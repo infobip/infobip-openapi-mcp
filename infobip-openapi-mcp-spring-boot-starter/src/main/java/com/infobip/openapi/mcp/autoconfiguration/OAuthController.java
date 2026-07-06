@@ -5,9 +5,6 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.infobip.openapi.mcp.McpRequestContextFactory;
 import com.infobip.openapi.mcp.auth.OAuthProperties;
 import com.infobip.openapi.mcp.auth.scope.ScopeDiscoveryService;
@@ -34,6 +31,9 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.util.UriComponentsBuilder;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.node.ObjectNode;
 
 @RestController
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
@@ -133,7 +133,7 @@ public class OAuthController {
             var json = (ObjectNode) objectMapper.readTree(jsonResponse);
             json.putPOJO("scopes_supported", discoveredScopes);
             return ResponseEntity.ok().contentType(responseContentType).body(json.toString());
-        } catch (JsonProcessingException | RestClientException e) {
+        } catch (JacksonException | RestClientException e) {
             LOGGER.error("Error proxying well-known endpoint: {}", path, e);
             var errorResponse = errorModelWriter.writeErrorModelAsJson(HttpStatus.INTERNAL_SERVER_ERROR);
             return ResponseEntity.internalServerError()

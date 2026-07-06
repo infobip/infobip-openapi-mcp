@@ -1,10 +1,10 @@
 package com.infobip.openapi.mcp.openapi;
 
-import jakarta.annotation.PostConstruct;
 import org.jspecify.annotations.Nullable;
 import org.springframework.ai.mcp.server.common.autoconfigure.properties.McpServerProperties;
+import org.springframework.beans.factory.InitializingBean;
 
-public class OpenApiBasedMcpServerPropertiesCustomizer {
+public class OpenApiBasedMcpServerPropertiesCustomizer implements InitializingBean {
 
     @Nullable
     private final McpServerProperties properties;
@@ -17,8 +17,8 @@ public class OpenApiBasedMcpServerPropertiesCustomizer {
         this.metaData = metaData;
     }
 
-    @PostConstruct
-    public void customizeProperties() {
+    @Override
+    public void afterPropertiesSet() {
         if (properties == null) {
             return;
         }

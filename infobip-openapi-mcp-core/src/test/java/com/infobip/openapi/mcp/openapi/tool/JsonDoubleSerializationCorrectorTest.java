@@ -2,12 +2,12 @@ package com.infobip.openapi.mcp.openapi.tool;
 
 import static org.assertj.core.api.BDDAssertions.then;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.infobip.openapi.mcp.openapi.schema.DecomposedRequestData;
 import org.junit.jupiter.api.Test;
 import org.skyscreamer.jsonassert.JSONAssert;
 import org.skyscreamer.jsonassert.JSONCompareMode;
 import org.springframework.http.MediaType;
+import tools.jackson.databind.ObjectMapper;
 
 class JsonDoubleSerializationCorrectorTest {
 

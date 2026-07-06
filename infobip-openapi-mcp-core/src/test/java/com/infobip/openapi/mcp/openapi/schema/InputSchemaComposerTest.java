@@ -1304,7 +1304,7 @@ class InputSchemaComposerTest {
      * @return JSON string representation of the schema
      * @throws JsonProcessingException if JSON serialization fails
      */
-    private String jsonRepresentation(Schema<?> schema) throws JsonProcessingException {
+    private String jsonRepresentation(Schema<?> schema) throws com.fasterxml.jackson.core.JsonProcessingException {
         return Json31.mapper().writerWithDefaultPrettyPrinter().writeValueAsString(schema);
     }
 

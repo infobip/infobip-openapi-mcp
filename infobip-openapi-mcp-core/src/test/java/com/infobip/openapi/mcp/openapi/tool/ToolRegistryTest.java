@@ -7,7 +7,6 @@ import static org.assertj.core.api.BDDAssertions.thenThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.infobip.openapi.mcp.McpRequestContext;
 import com.infobip.openapi.mcp.config.OpenApiMcpProperties;
 import com.infobip.openapi.mcp.openapi.OpenApiRegistry;
@@ -26,6 +25,7 @@ import java.util.List;
 import java.util.Map;
 import org.json.JSONException;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -34,6 +34,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.skyscreamer.jsonassert.JSONAssert;
 import org.skyscreamer.jsonassert.JSONCompareMode;
+import tools.jackson.databind.ObjectMapper;
 
 @ExtendWith(MockitoExtension.class)
 class ToolRegistryTest {
@@ -1712,11 +1713,300 @@ class ToolRegistryTest {
         then(description).doesNotContain("validityPeriod");
     }
 
+    /**
+     * Tests that verify the Jackson 2 → Jackson 3 cross-version serialization round-trip.
+     * <p>
+     * swagger-core's {@code Json.mapper()} produces JSON using Jackson 2 ({@code com.fasterxml.jackson}),
+     * which is then deserialized by Jackson 3 ({@code tools.jackson}) into {@code McpSchema.JsonSchema}.
+     * These tests catch regressions in this cross-version path.
+     */
+    @Nested
+    class Jackson3SchemaRoundTrip {
+
+        @Test
+        void shouldRoundTripComplexSchemaWithOneOfAllOfAndNestedObjects() {
+            // Given
+            var openApi = parseOpenAPI("""
+                {
+                  "openapi": "3.1.0",
+                  "info": { "title": "Test API", "version": "1.0.0" },
+                  "paths": {
+                    "/events": {
+                      "post": {
+                        "operationId": "createEvent",
+                        "requestBody": {
+                          "content": {
+                            "application/json": {
+                              "schema": {
+                                "type": "object",
+                                "properties": {
+                                  "type": {
+                                    "type": "string",
+                                    "enum": ["click", "view", "purchase"]
+                                  },
+                                  "payload": {
+                                    "oneOf": [
+                                      {
+                                        "type": "object",
+                                        "properties": {
+                                          "elementId": { "type": "string" }
+                                        },
+                                        "required": ["elementId"]
+                                      },
+                                      {
+                                        "type": "object",
+                                        "properties": {
+                                          "pageUrl": { "type": "string", "format": "uri" }
+                                        }
+                                      }
+                                    ]
+                                  },
+                                  "metadata": {
+                                    "allOf": [
+                                      {
+                                        "type": "object",
+                                        "properties": {
+                                          "timestamp": { "type": "string", "format": "date-time" }
+                                        }
+                                      },
+                                      {
+                                        "type": "object",
+                                        "properties": {
+                                          "source": { "type": "string" }
+                                        }
+                                      }
+                                    ]
+                                  },
+                                  "tags": {
+                                    "type": "array",
+                                    "items": { "type": "string" },
+                                    "minItems": 1,
+                                    "maxItems": 10
+                                  }
+                                },
+                                "required": ["type", "payload"]
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+                """);
+            given(openApiRegistry.openApi()).willReturn(openApi);
+
+            // When
+            var result = toolRegistry.getTools();
+
+            // Then
+            then(result).hasSize(1);
+            var expectedSchema = """
+                {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "enum": ["click", "view", "purchase"]
+                    },
+                    "payload": {
+                      "oneOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "elementId": { "type": "string" }
+                          },
+                          "required": ["elementId"]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "pageUrl": { "type": "string", "format": "uri" }
+                          }
+                        }
+                      ]
+                    },
+                    "metadata": {
+                      "allOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "timestamp": { "type": "string", "format": "date-time" }
+                          }
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "source": { "type": "string" }
+                          }
+                        }
+                      ]
+                    },
+                    "tags": {
+                      "type": "array",
+                      "items": { "type": "string" },
+                      "minItems": 1,
+                      "maxItems": 10
+                    }
+                  },
+                  "required": ["type", "payload"]
+                }
+                """;
+            assertJsonEquals(
+                    expectedSchema, writeInputSchema(result.getFirst().tool().inputSchema()));
+        }
+
+        @Test
+        void shouldRoundTripSchemaWithUnicodeAndSpecialCharacters() {
+            // Given
+            var openApi = parseOpenAPI("""
+                {
+                  "openapi": "3.1.0",
+                  "info": { "title": "Test API", "version": "1.0.0" },
+                  "paths": {
+                    "/messages": {
+                      "post": {
+                        "operationId": "sendMessage",
+                        "requestBody": {
+                          "content": {
+                            "application/json": {
+                              "schema": {
+                                "type": "object",
+                                "properties": {
+                                  "greeting": {
+                                    "type": "string",
+                                    "description": "Greeting message — supports Unicode: こんにちは, привет, مرحبا"
+                                  },
+                                  "template": {
+                                    "type": "string",
+                                    "description": "Template with special chars: <b>bold</b>, line1\\nline2, tab\\there"
+                                  },
+                                  "emoji": {
+                                    "type": "string",
+                                    "description": "Emoji field 🎉🚀"
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+                """);
+            given(openApiRegistry.openApi()).willReturn(openApi);
+
+            // When
+            var result = toolRegistry.getTools();
+
+            // Then
+            then(result).hasSize(1);
+            var schemaJson = writeInputSchema(result.getFirst().tool().inputSchema());
+            then(schemaJson).contains("こんにちは");
+            then(schemaJson).contains("привет");
+            then(schemaJson).contains("مرحبا");
+            then(schemaJson).contains("🎉🚀");
+            then(schemaJson).contains("<b>bold</b>");
+        }
+
+        @Test
+        void shouldRoundTripSchemaWithNumericEdgeCases() {
+            // Given
+            var openApi = parseOpenAPI("""
+                {
+                  "openapi": "3.1.0",
+                  "info": { "title": "Test API", "version": "1.0.0" },
+                  "paths": {
+                    "/data": {
+                      "post": {
+                        "operationId": "submitData",
+                        "requestBody": {
+                          "content": {
+                            "application/json": {
+                              "schema": {
+                                "type": "object",
+                                "properties": {
+                                  "temperature": {
+                                    "type": "number",
+                                    "minimum": -273.15,
+                                    "maximum": 1000000.5,
+                                    "description": "Temperature in Celsius"
+                                  },
+                                  "count": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 2147483647,
+                                    "default": 100
+                                  },
+                                  "ratio": {
+                                    "type": "number",
+                                    "minimum": 0.0,
+                                    "maximum": 1.0
+                                  },
+                                  "negativeInt": {
+                                    "type": "integer",
+                                    "minimum": -9999,
+                                    "maximum": -1
+                                  }
+                                },
+                                "required": ["temperature"]
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+                """);
+            given(openApiRegistry.openApi()).willReturn(openApi);
+
+            // When
+            var result = toolRegistry.getTools();
+
+            // Then
+            then(result).hasSize(1);
+            var expectedSchema = """
+                {
+                  "type": "object",
+                  "properties": {
+                    "temperature": {
+                      "type": "number",
+                      "minimum": -273.15,
+                      "maximum": 1000000.5,
+                      "description": "Temperature in Celsius"
+                    },
+                    "count": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 2147483647,
+                      "default": 100
+                    },
+                    "ratio": {
+                      "type": "number",
+                      "minimum": 0.0,
+                      "maximum": 1.0
+                    },
+                    "negativeInt": {
+                      "type": "integer",
+                      "minimum": -9999,
+                      "maximum": -1
+                    }
+                  },
+                  "required": ["temperature"]
+                }
+                """;
+            assertJsonEquals(
+                    expectedSchema, writeInputSchema(result.getFirst().tool().inputSchema()));
+        }
+    }
+
     private OpenAPI parseOpenAPI(String jsonSpec) {
         return parser.readContents(jsonSpec).getOpenAPI();
     }
 
-    private String writeInputSchema(McpSchema.JsonSchema schema) {
+    private String writeInputSchema(Map<String, Object> schema) {
         try {
             return objectMapper.writeValueAsString(schema);
         } catch (Exception e) {

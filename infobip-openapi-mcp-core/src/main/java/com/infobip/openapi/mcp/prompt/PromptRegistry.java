@@ -1,7 +1,5 @@
 package com.infobip.openapi.mcp.prompt;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.infobip.openapi.mcp.McpRequestContext;
 import com.infobip.openapi.mcp.auth.CredentialProvider;
 import com.infobip.openapi.mcp.enricher.ApiRequestEnricherChain;
@@ -19,6 +17,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.util.UriComponentsBuilder;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * Registry for converting {@code x-mcp-prompts} OpenAPI vendor extension definitions

@@ -8,14 +8,20 @@ import org.springframework.test.context.TestPropertySource;
 
 public class InitializationTest {
 
+    private static final McpSchema.ServerCapabilities IGNORED_CAPABILITIES =
+            McpSchema.ServerCapabilities.builder().build();
+
     private static final McpSchema.InitializeResult INIT_RESULT_FROM_OPEN_API = new McpSchema.InitializeResult(
-            null,
-            null,
+            "not-compared",
+            IGNORED_CAPABILITIES,
             new McpSchema.Implementation("User management", null, "1.2.7"),
             "Fetch **paginated** list of multiple users or one by one.");
 
     private static final McpSchema.InitializeResult INIT_RESULT_FROM_ENVIRONMENT = new McpSchema.InitializeResult(
-            null, null, new McpSchema.Implementation("Name override", null, "1.0.0"), "Instructions override");
+            "not-compared",
+            IGNORED_CAPABILITIES,
+            new McpSchema.Implementation("Name override", null, "1.0.0"),
+            "Instructions override");
 
     @Nested
     @ActiveProfiles("integration")

@@ -65,8 +65,8 @@ There are more technical features that enable customizing various behaviors, lik
 
 ### Prerequisites
 
-OpenAPI MCP framework requires Java version 21 of newer, and is based on [Spring Boot][4] `3.5.x` and [Spring AI][3]
-`1.1.x`.
+OpenAPI MCP framework requires Java version 21 of newer, and is based on [Spring Boot][4] `4.1.x` and [Spring AI][3]
+`2.0.x`.
 
 ### Installation
 
@@ -606,10 +606,10 @@ The framework requires java versions 21 or newer and is compatible with followin
 
 | Dependency       | Version |
 |------------------|---------|
-| Spring Framework | 6.2.x   |
-| Spring Boot      | 3.5.x   |
-| Spring AI        | 1.1.x   |
-| MCP Java SDK     | 0.17.x  |
+| Spring Framework | 7.0.x   |
+| Spring Boot      | 4.1.x   |
+| Spring AI        | 2.0.x   |
+| MCP Java SDK     | 2.0.x   |
 
 For the complete list of dependencies you can consult the `pom.xml` files.
 
@@ -644,7 +644,7 @@ This project is licensed under the [MIT License](LICENSE).
 
 [10]: https://modelcontextprotocol.io/specification/2025-11-25/basic/transports#streamable-http "Streamable HTTP transport in MCP documentation"
 
-[11]: https://docs.spring.io/spring-boot/3.5/reference/features/external-config.html "Externalized Configuration section in Spring Boot documentation"
+[11]: https://docs.spring.io/spring-boot/4.1/reference/features/external-config.html "Externalized Configuration section in Spring Boot documentation"
 
 [12]: https://learn.openapis.org/overlay "OpenAPI Overlays specification"
 

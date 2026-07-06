@@ -1,7 +1,6 @@
 package com.infobip.openapi.mcp.openapi.tool;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.infobip.openapi.mcp.config.OpenApiMcpProperties;
 import com.infobip.openapi.mcp.openapi.OpenApiRegistry;
@@ -12,10 +11,13 @@ import com.infobip.openapi.mcp.openapi.tool.exception.ToolRegistrationException;
 import com.infobip.openapi.mcp.openapi.tool.naming.NamingStrategy;
 import com.infobip.openapi.mcp.util.OpenApiMapperFactory;
 import io.modelcontextprotocol.spec.McpSchema;
+import io.swagger.v3.core.util.Json;
 import java.util.List;
 import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.json.JsonMapper;
 
 /**
  * Registry for converting OpenAPI operations into MCP (Model Context Protocol) tool specifications.
@@ -49,8 +51,10 @@ public class ToolRegistry {
     private final ToolHandler toolHandler;
     private final OpenApiMapperFactory openApiMapperFactory;
     private final ToolAnnotationResolver toolAnnotationResolver;
-    private final ObjectMapper jsonSchemaMapper = new ObjectMapper();
-    private final ObjectMapper prettyPrintMapper = new ObjectMapper().enable(SerializationFeature.INDENT_OUTPUT);
+    private final JsonMapper jsonSchemaMapper = JsonMapper.builder().build();
+    // TODO: unify to Jackson 3 once swagger-core migrates from com.fasterxml.jackson
+    private final com.fasterxml.jackson.databind.ObjectMapper prettyPrintMapper =
+            Json.mapper().copy().enable(SerializationFeature.INDENT_OUTPUT);
     private final OpenApiMcpProperties properties;
 
     private List<RegisteredTool> registeredToolsCache = List.of();
@@ -174,7 +178,8 @@ public class ToolRegistry {
                     fullOperation.operation().getOperationId(),
                     stringSchemaRepresentation);
             return jsonSchemaMapper.readValue(stringSchemaRepresentation, McpSchema.JsonSchema.class);
-        } catch (JsonProcessingException exception) {
+            // TODO: catch only JacksonException once swagger-core migrates to Jackson 3
+        } catch (JacksonException | JsonProcessingException exception) {
             LOGGER.error(
                     "Failed to resolve JSON schema for operation: {}",
                     fullOperation.operation().getOperationId(),
@@ -292,7 +297,8 @@ public class ToolRegistry {
                 sb.append("\n\n```json\n").append(json).append("\n```");
             }
             return sb.toString();
-        } catch (JsonProcessingException exception) {
+            // TODO: catch only JacksonException once swagger-core migrates to Jackson 3
+        } catch (JacksonException | JsonProcessingException exception) {
             LOGGER.warn(
                     "Failed to serialize example for operation '{}': {},\n "
                             + "will leave the examples section of tool description blank",

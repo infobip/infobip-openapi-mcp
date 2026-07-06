@@ -1,10 +1,9 @@
 package com.infobip.openapi.mcp.openapi.tool;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.infobip.openapi.mcp.McpRequestContext;
 import com.infobip.openapi.mcp.config.OpenApiMcpProperties;
 import io.modelcontextprotocol.spec.McpSchema;
+import io.swagger.v3.core.util.Json;
 import io.swagger.v3.oas.models.Operation;
 import io.swagger.v3.oas.models.examples.Example;
 import io.swagger.v3.oas.models.media.Content;
@@ -12,6 +11,7 @@ import io.swagger.v3.oas.models.media.MediaType;
 import io.swagger.v3.oas.models.responses.ApiResponse;
 import io.swagger.v3.oas.models.responses.ApiResponses;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -23,6 +23,7 @@ import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.Ordered;
+import tools.jackson.core.JacksonException;
 
 @NullMarked
 public class ToolResultMocker implements ToolCallFilter, Ordered {
@@ -38,11 +39,9 @@ public class ToolResultMocker implements ToolCallFilter, Ordered {
     private static final Logger LOGGER = LoggerFactory.getLogger(ToolResultMocker.class);
     private static final String MISSING_EXAMPLE_ERR_MSG = "Missing OpenAPI example for mocking";
 
-    private final ObjectMapper objectMapper;
     private final OpenApiMcpProperties properties;
 
-    public ToolResultMocker(ObjectMapper objectMapper, OpenApiMcpProperties properties) {
-        this.objectMapper = objectMapper;
+    public ToolResultMocker(OpenApiMcpProperties properties) {
         this.properties = properties;
     }
 
@@ -63,7 +62,7 @@ public class ToolResultMocker implements ToolCallFilter, Ordered {
         var fullOperation = ctx.openApiOperation();
         if (fullOperation == null) {
             LOGGER.error("Missing OpenAPI operation for tool {}, returning MCP error response", req.name());
-            return new McpSchema.CallToolResult(MISSING_EXAMPLE_ERR_MSG, true);
+            return callToolResult(MISSING_EXAMPLE_ERR_MSG, true);
         }
 
         var responseBody = pickExample(fullOperation.operation());
@@ -73,11 +72,11 @@ public class ToolResultMocker implements ToolCallFilter, Ordered {
                     fullOperation.method(),
                     fullOperation.path(),
                     req.name());
-            return new McpSchema.CallToolResult(MISSING_EXAMPLE_ERR_MSG, true);
+            return callToolResult(MISSING_EXAMPLE_ERR_MSG, true);
         }
 
         LOGGER.trace("Returning mock to tool call {}:\n{}", req.name(), responseBody);
-        return new McpSchema.CallToolResult(responseBody, false);
+        return callToolResult(responseBody, false);
     }
 
     @Nullable
@@ -133,10 +132,18 @@ public class ToolResultMocker implements ToolCallFilter, Ordered {
         }
 
         try {
-            return objectMapper.writeValueAsString(exampleValue);
-        } catch (JsonProcessingException e) {
+            return Json.mapper().writeValueAsString(exampleValue);
+            // TODO: catch only JacksonException once swagger-core migrates to Jackson 3
+        } catch (com.fasterxml.jackson.core.JsonProcessingException | JacksonException e) {
             LOGGER.warn("Failed to serialize example into JSON. Example value: `{}`", exampleValue, e);
             return null;
         }
+    }
+
+    private static McpSchema.CallToolResult callToolResult(String text, boolean isError) {
+        return McpSchema.CallToolResult.builder()
+                .content(List.of(new McpSchema.TextContent(text)))
+                .isError(isError)
+                .build();
     }
 }

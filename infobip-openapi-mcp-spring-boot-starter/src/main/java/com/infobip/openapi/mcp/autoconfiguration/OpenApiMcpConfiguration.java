@@ -2,7 +2,6 @@ package com.infobip.openapi.mcp.autoconfiguration;
 
 import static com.infobip.openapi.mcp.autoconfiguration.Qualifiers.TOOL_HANDLER_REST_CLIENT_QUALIFIER;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.infobip.openapi.mcp.McpRequestContextFactory;
 import com.infobip.openapi.mcp.auth.CredentialProvider;
 import com.infobip.openapi.mcp.auth.HttpServletRequestCredentialProvider;
@@ -60,6 +59,7 @@ import org.springframework.context.annotation.Primary;
 import org.springframework.core.env.Environment;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.RestClient;
+import tools.jackson.databind.ObjectMapper;
 
 @AutoConfiguration
 @AutoConfigureBefore(McpServerAutoConfiguration.class)
@@ -177,8 +177,8 @@ class OpenApiMcpConfiguration {
     }
 
     @Bean
-    public ToolResultMocker toolResultMocker(ObjectMapper objectMapper, OpenApiMcpProperties properties) {
-        return new ToolResultMocker(objectMapper, properties);
+    public ToolResultMocker toolResultMocker(OpenApiMcpProperties properties) {
+        return new ToolResultMocker(properties);
     }
 
     @Bean

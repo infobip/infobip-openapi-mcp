@@ -1,11 +1,11 @@
 package com.infobip.openapi.mcp.error;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatusCode;
+import tools.jackson.databind.ObjectMapper;
 
 public class ErrorModelWriter {
 

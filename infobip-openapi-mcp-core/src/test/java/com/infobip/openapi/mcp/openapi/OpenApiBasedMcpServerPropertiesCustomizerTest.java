@@ -70,7 +70,7 @@ class OpenApiBasedMcpServerPropertiesCustomizerTest {
                 mcpServerProperties, new McpServerMetaData(environment, openApiRegistry));
 
         // when
-        customizer.customizeProperties();
+        customizer.afterPropertiesSet();
 
         // then
         then(mcpServerProperties)
@@ -96,7 +96,7 @@ class OpenApiBasedMcpServerPropertiesCustomizerTest {
                 mcpServerProperties, new McpServerMetaData(environment, openApiRegistry));
 
         // when
-        customizer.customizeProperties();
+        customizer.afterPropertiesSet();
 
         // then
         var expectedProperties = new McpServerProperties();
@@ -122,7 +122,7 @@ class OpenApiBasedMcpServerPropertiesCustomizerTest {
                 mcpServerProperties, new McpServerMetaData(environment, openApiRegistry));
 
         // when
-        customizer.customizeProperties();
+        customizer.afterPropertiesSet();
 
         // then
         var expectedProperties = custom(props -> {

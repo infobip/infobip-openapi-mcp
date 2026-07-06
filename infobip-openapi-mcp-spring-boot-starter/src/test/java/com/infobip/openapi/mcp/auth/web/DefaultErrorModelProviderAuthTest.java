@@ -20,7 +20,7 @@ import org.springframework.test.context.TestPropertySource;
 @TestPropertySource(properties = {"infobip.openapi.mcp.security.auth.override-external-response=true"})
 class DefaultErrorModelProviderAuthTest extends AuthenticationTestBase {
 
-    @Autowired
+    @Autowired(required = false)
     private ScopeDiscoveryService scopeDiscoveryService;
 
     @Autowired

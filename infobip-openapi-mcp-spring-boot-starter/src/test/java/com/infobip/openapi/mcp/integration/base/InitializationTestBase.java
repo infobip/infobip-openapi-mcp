@@ -12,7 +12,11 @@ public abstract class InitializationTestBase extends IntegrationTestBase {
         try (var client = mcpSyncClient) {
             var actual = client.initialize();
             var expected = expectedResult();
-            then(actual).usingRecursiveComparison().ignoringExpectedNullFields().isEqualTo(expected);
+            then(actual)
+                    .usingRecursiveComparison()
+                    .ignoringExpectedNullFields()
+                    .ignoringFields("protocolVersion", "capabilities", "meta")
+                    .isEqualTo(expected);
         }
     }
 

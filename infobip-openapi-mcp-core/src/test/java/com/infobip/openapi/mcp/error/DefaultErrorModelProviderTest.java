@@ -177,7 +177,7 @@ class DefaultErrorModelProviderTest {
 
         // Then
         then(result).isNotNull();
-        then(result.error()).isEqualTo("Unprocessable Entity");
+        then(result.error()).isEqualTo("Unprocessable Content");
         then(result.description()).isEqualTo("A client error occurred. Please check your request.");
     }
 

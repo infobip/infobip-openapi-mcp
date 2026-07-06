@@ -1,17 +1,16 @@
 package com.infobip.openapi.mcp.openapi.tool;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.fasterxml.jackson.databind.node.TextNode;
 import com.infobip.openapi.mcp.openapi.schema.DecomposedRequestData;
 import java.util.Optional;
 import org.jspecify.annotations.NullMarked;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.MediaType;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.node.ArrayNode;
+import tools.jackson.databind.node.ObjectNode;
+import tools.jackson.databind.node.StringNode;
 
 /**
  * Utility class for detecting and correcting JSON double serialization issues.
@@ -79,7 +78,7 @@ public class JsonDoubleSerializationCorrector {
             }
 
             return Optional.empty();
-        } catch (RuntimeException | JsonProcessingException e) {
+        } catch (RuntimeException e) {
             LOGGER.debug("Failed to process payload for double serialization detection: {}.", e.getMessage());
             return Optional.empty();
         }
@@ -94,7 +93,7 @@ public class JsonDoubleSerializationCorrector {
         } else if (node.isArray()) {
             return processArrayNode((ArrayNode) node);
         } else if (node.isTextual()) {
-            return processTextNode((TextNode) node);
+            return processStringNode((StringNode) node);
         }
         return node;
     }
@@ -126,7 +125,7 @@ public class JsonDoubleSerializationCorrector {
     /**
      * Processes text nodes to detect and unwrap double-serialized JSON.
      */
-    private JsonNode processTextNode(TextNode textNode) {
+    private JsonNode processStringNode(StringNode textNode) {
         var textValue = textNode.textValue();
 
         // Check if it looks like JSON (starts and ends with braces/brackets after trimming)
@@ -135,7 +134,7 @@ public class JsonDoubleSerializationCorrector {
             try {
                 var parsedNode = OBJECT_MAPPER.readTree(textValue);
                 return processNode(parsedNode);
-            } catch (JsonProcessingException e) {
+            } catch (RuntimeException e) {
                 // Not valid JSON, keep as string
                 return textNode;
             }

@@ -4,7 +4,6 @@ import static org.assertj.core.api.BDDAssertions.then;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 import static org.mockito.BDDMockito.given;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.infobip.openapi.mcp.McpRequestContext;
 import com.infobip.openapi.mcp.config.OpenApiMcpProperties;
 import io.modelcontextprotocol.spec.McpSchema;
@@ -31,11 +30,14 @@ class ToolResultMockerTest {
     @Test
     void shouldCallChainIfMockingIsDisabled() {
         // given
-        var mocker = new ToolResultMocker(new ObjectMapper(), givenDisabledMockProps());
+        var mocker = new ToolResultMocker(givenDisabledMockProps());
         var givenCtx = Mockito.mock(McpRequestContext.class);
         var givenReq = Mockito.mock(McpSchema.CallToolRequest.class);
         ToolCallFilterChain givenChain =
-                (McpRequestContext ctx, McpSchema.CallToolRequest req) -> new McpSchema.CallToolResult("OK", false);
+                (McpRequestContext ctx, McpSchema.CallToolRequest req) -> McpSchema.CallToolResult.builder()
+                        .content(java.util.List.of(new McpSchema.TextContent("OK")))
+                        .isError(false)
+                        .build();
 
         // when
         var actualResult = mocker.doFilter(givenCtx, givenReq, givenChain);
@@ -273,7 +275,7 @@ class ToolResultMockerTest {
     @MethodSource("testDataWithExamples")
     void shouldReturnExamples(Operation givenOperation, String expectedResContent) {
         // given
-        var mocker = new ToolResultMocker(new ObjectMapper(), givenEnabledMockProps());
+        var mocker = new ToolResultMocker(givenEnabledMockProps());
         var givenCtx = Mockito.mock(McpRequestContext.class);
         given(givenCtx.openApiOperation())
                 .willReturn(new FullOperation("/mock/path", PathItem.HttpMethod.GET, givenOperation, new OpenAPI()));
@@ -342,7 +344,7 @@ class ToolResultMockerTest {
     @MethodSource("testDataWithoutExamples")
     void shouldReturnMcpErrorResultIfNoExamplesAreFound(Operation givenOperation) {
         // given
-        var mocker = new ToolResultMocker(new ObjectMapper(), givenEnabledMockProps());
+        var mocker = new ToolResultMocker(givenEnabledMockProps());
         var givenCtx = Mockito.mock(McpRequestContext.class);
         given(givenCtx.openApiOperation())
                 .willReturn(new FullOperation("/mock/path", PathItem.HttpMethod.GET, givenOperation, new OpenAPI()));

@@ -15,6 +15,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Tool calls with a JSON object as a header parameter value (OpenAPI `simple` style, `explode: false`) now send comma-separated property/value pairs (e.g. `{"R":100,"G":200,"B":150}` becomes `R,100,G,200,B,150`) instead of an invalid header value.
 - Tool calls with a JSON object as a cookie parameter value now send one cookie per object property, named after the property (e.g. `{"R":100,"G":200,"B":150}` becomes cookies `R=100`, `G=200`, `B=150`) instead of an invalid cookie value. The OpenAPI specification leaves object serialization undefined for `form` style cookies with `explode: true`; this mirrors query parameter handling for consistency.
 
+### Added
+
+- Upgraded to **Spring Boot 4.1.0** and **Spring AI 2.0.0**, bringing Spring Framework 7, Jakarta EE 11,
+  Jackson 3 (via the `tools.jackson` package namespace), and MCP Java SDK 2.0.0.
+  Key behavioral changes from these upgrades:
+  - Jackson 3 uses the `tools.jackson` package namespace; `JsonProcessingException` is now unchecked
+    (`JacksonException` extends `RuntimeException`).
+  - MCP SDK 2.0.0 validates tool arguments against the tool's JSON schema before invoking the handler;
+    invalid arguments produce a `CallToolResult` with `isError=true` instead of calling the handler.
+    In practice, this means MCP clients must now send all required properties — for example, operations
+    with both parameters and a request body require both `_params` and `_body` keys to be present.
+  - `McpSchema.CallToolResult` no longer has a `(String, boolean)` convenience constructor; the builder
+    API (`McpSchema.CallToolResult.builder().content(...).isError(...).build()`) must be used.
+  - `McpSchema.Tool.inputSchema()` now returns `Map<String, Object>` instead of `McpSchema.JsonSchema`.
+  - Spring Boot 4 requires `spring-boot-resttestclient` and `spring-boot-restclient` as explicit test
+    dependencies when using `TestRestTemplate`; add `@AutoConfigureTestRestTemplate` to test classes.
+  - `TestRestTemplate` moved to the `org.springframework.boot.resttestclient` package.
+  - `HttpStatus.UNPROCESSABLE_ENTITY` reason phrase changed from "Unprocessable Entity" to
+    "Unprocessable Content".
+
 ## 0.1.16
 
 ### Added

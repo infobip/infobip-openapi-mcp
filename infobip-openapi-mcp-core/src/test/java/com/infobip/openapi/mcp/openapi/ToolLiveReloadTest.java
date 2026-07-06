@@ -326,7 +326,10 @@ class ToolLiveReloadTest {
             then(givenMcpSyncServer).should(never()).removeTool(any());
 
             var inputSchema = syncToolSpecCaptor.getValue().tool().inputSchema();
-            BDDAssertions.then(inputSchema.properties()).containsKeys("limit", "offset");
+            BDDAssertions.then(inputSchema).containsKey("properties");
+            @SuppressWarnings("unchecked")
+            var inputSchemaProperties = (java.util.Map<String, ?>) inputSchema.get("properties");
+            BDDAssertions.then(inputSchemaProperties).containsKeys("limit", "offset");
         }
 
         @Test
@@ -400,7 +403,10 @@ class ToolLiveReloadTest {
                     .filter(s -> s.tool().name().equals("getOrders"))
                     .findFirst()
                     .orElseThrow();
-            BDDAssertions.then(getOrdersSpec.tool().inputSchema().properties()).containsKeys("status", "customerId");
+            @SuppressWarnings("unchecked")
+            var ordersSchemaProperties = (java.util.Map<String, ?>)
+                    getOrdersSpec.tool().inputSchema().get("properties");
+            BDDAssertions.then(ordersSchemaProperties).containsKeys("status", "customerId");
 
             var getItemsSpec = capturedToolSpecs.stream()
                     .filter(s -> s.tool().name().equals("getItems"))
@@ -409,7 +415,10 @@ class ToolLiveReloadTest {
             BDDAssertions.then(getItemsSpec.tool().title()).isEqualTo("List All Items");
             BDDAssertions.then(getItemsSpec.tool().description())
                     .isEqualTo("# List All Items\n\nGet all items from inventory");
-            BDDAssertions.then(getItemsSpec.tool().inputSchema().properties()).containsKeys("type", "inStock");
+            @SuppressWarnings("unchecked")
+            var itemsSchemaProperties =
+                    (java.util.Map<String, ?>) getItemsSpec.tool().inputSchema().get("properties");
+            BDDAssertions.then(itemsSchemaProperties).containsKeys("type", "inStock");
         }
     }
 

@@ -4,8 +4,6 @@ import static org.assertj.core.api.BDDAssertions.then;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.verify;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import org.json.JSONException;
 import org.junit.jupiter.api.BeforeEach;
@@ -18,6 +16,8 @@ import org.skyscreamer.jsonassert.JSONAssert;
 import org.skyscreamer.jsonassert.JSONCompareMode;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 
 @ExtendWith(MockitoExtension.class)
 class ErrorModelWriterTest {
@@ -151,7 +151,7 @@ class ErrorModelWriterTest {
             // Given
             HttpStatusCode statusCode = HttpStatus.INTERNAL_SERVER_ERROR;
             var errorModel = new DefaultErrorModel("Internal Server Error", "Server error");
-            var jsonProcessingException = new JsonProcessingException("Serialization failed") {};
+            var jsonProcessingException = new JacksonException("Serialization failed") {};
 
             given(errorModelProvider.provide(statusCode, httpServletRequest, throwable))
                     .willReturn(errorModel);

@@ -24,18 +24,19 @@ public abstract class ParameterPackingTestBase extends IntegrationTestBase {
                     .extracting("name")
                     .containsExactlyInAnyOrder("test_operation_params_get", "test_operation_params_post");
             var getTool = findToolByName(actualResponse, "test_operation_params_get");
-            then(getTool.inputSchema().properties())
-                    .containsKeys("pathParam", "queryParam", "headerParam", "cookieParam");
+            @SuppressWarnings("unchecked")
+            var getToolProperties = (Map<String, ?>) getTool.inputSchema().get("properties");
+            then(getToolProperties).containsKeys("pathParam", "queryParam", "headerParam", "cookieParam");
             var postTool = findToolByName(actualResponse, "test_operation_params_post");
-            then(postTool.inputSchema().properties()).containsKeys("_params", "_body");
-            then(((Map<String, Map<String, ?>>)
-                                    postTool.inputSchema().properties().get("_params"))
-                            .get("properties"))
-                    .containsKeys("pathParam", "queryParam", "headerParam", "cookieParam");
-            then(((Map<String, Map<String, ?>>)
-                                    postTool.inputSchema().properties().get("_body"))
-                            .get("properties"))
-                    .containsKeys("bodyParam");
+            @SuppressWarnings("unchecked")
+            var postToolProperties = (Map<String, ?>) postTool.inputSchema().get("properties");
+            then(postToolProperties).containsKeys("_params", "_body");
+            @SuppressWarnings("unchecked")
+            var paramsProperties = ((Map<String, Map<String, ?>>) postToolProperties.get("_params")).get("properties");
+            then(paramsProperties).containsKeys("pathParam", "queryParam", "headerParam", "cookieParam");
+            @SuppressWarnings("unchecked")
+            var bodyProperties = ((Map<String, Map<String, ?>>) postToolProperties.get("_body")).get("properties");
+            then(bodyProperties).containsKeys("bodyParam");
         });
     }
 
@@ -110,7 +111,9 @@ public abstract class ParameterPackingTestBase extends IntegrationTestBase {
             // When
             var actualToolResponse = givenClient.callTool(McpSchema.CallToolRequest.builder()
                     .name("test_operation_params_post")
-                    .arguments(Map.of("_params", Map.of("pathParam", givenPathParam)))
+                    .arguments(Map.of(
+                            "_params", Map.of("pathParam", givenPathParam),
+                            "_body", Map.of()))
                     .build());
 
             // Then
@@ -155,6 +158,31 @@ public abstract class ParameterPackingTestBase extends IntegrationTestBase {
 
             // Then
             thenTollResponseMatchesApiResponse(actualToolResponse, givenApiResponse);
+        });
+    }
+
+    @Test
+    void shouldRejectPostToolCallWhenRequiredBodyIsMissing() {
+        withInitializedMcpClient(givenClient -> {
+            // Given
+            givenOpenAPISpecification("/openapi/parameters.json");
+
+            // When — omit _body, which is required by the combined schema
+            var actualToolResponse = givenClient.callTool(McpSchema.CallToolRequest.builder()
+                    .name("test_operation_params_post")
+                    .arguments(Map.of("_params", Map.of("pathParam", "value")))
+                    .build());
+
+            // Then — MCP SDK 2.0 validates arguments against the schema before invoking the handler
+            then(actualToolResponse.isError()).isTrue();
+            then(actualToolResponse.content()).isNotEmpty();
+            then(actualToolResponse.content().getFirst()).isInstanceOf(McpSchema.TextContent.class);
+            var errorText =
+                    ((McpSchema.TextContent) actualToolResponse.content().getFirst()).text();
+            then(errorText).containsIgnoringCase("_body");
+
+            // Verify the downstream API was NOT called
+            getStaticWireMockServer().verify(0, postRequestedFor(urlMatching("/test/.*")));
         });
     }
 
