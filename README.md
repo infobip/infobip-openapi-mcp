@@ -140,6 +140,22 @@ built-in filter that removes regex pattern property from OpenAPI schemas set
 >
 > Both approaches can be combined.
 
+### Parameter handling
+
+OpenAPI allows parameters to be serialized in different [styles][19], with or without `explode`. The framework
+currently only supports the OpenAPI default: `form` style with `explode: true` for query and cookie parameters, and
+`simple` style with `explode: false` for header parameters. Given a parameter named `color`:
+
+| Value                        | Query (`form`, `explode: true`)      | Header (`simple`, `explode: false`) |
+|-------------------------------|---------------------------------------|----------------------------------------|
+| `"blue"`                      | `color=blue`                          | `color: blue`                           |
+| `["blue","black","brown"]`    | `color=blue&color=black&color=brown`  | `color: blue,black,brown`               |
+| `{"R":100,"G":200,"B":150}`  | `R=100&G=200&B=150`                   | not supported                           |
+
+Note that an object value is exploded into one parameter per property, named after the property rather than `color`,
+matching the OpenAPI specification for `form` style with `explode: true`. Other styles and explode combinations are
+not currently supported.
+
 ### Tool NamingStrategy
 
 MCP servers expose functionalities to AI agents as tools. Each tool is identified by a name which is accompanied by a
@@ -640,3 +656,5 @@ This project is licensed under the [MIT License](LICENSE).
 [17]: https://modelcontextprotocol.io/specification/2025-11-25/basic/prompts "Prompts in MCP specification"
 
 [18]: https://mustache.github.io "Mustache — Logic-less templates"
+
+[19]: https://swagger.io/docs/specification/v3_0/serialization/ "Parameter serialization in OpenAPI specification"

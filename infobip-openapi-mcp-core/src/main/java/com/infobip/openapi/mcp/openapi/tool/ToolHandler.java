@@ -9,6 +9,7 @@ import com.infobip.openapi.mcp.infrastructure.metrics.MetricService;
 import com.infobip.openapi.mcp.openapi.schema.DecomposedRequestData;
 import com.infobip.openapi.mcp.progress.ProgressUpdateProvider;
 import io.modelcontextprotocol.spec.McpSchema;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import org.jspecify.annotations.NullMarked;
@@ -380,9 +381,23 @@ public class ToolHandler {
     /**
      * Adds a query parameter to the URI builder.
      * Currently only OpenAPI default "form" style query parameters are supported with "explode" set to true.
+     * Given a parameter named {@code color}:
+     * <ul>
+     *   <li>a string value {@code "blue"} is sent as {@code color=blue}</li>
+     *   <li>an array value {@code ["blue","black","brown"]} is sent as
+     *   {@code color=blue&color=black&color=brown}</li>
+     *   <li>an object value {@code {"R":100,"G":200,"B":150}} is exploded into one query parameter per
+     *   property, named after the property rather than {@code color}: {@code R=100&G=200&B=150}</li>
+     * </ul>
      */
     private void addQueryParameter(UriBuilder uriBuilder, String name, Object value) {
-        if (value instanceof Iterable<?> iterableValue) {
+        if (value instanceof Map<?, ?> mapValue) {
+            mapValue.forEach((propertyName, propertyValue) -> {
+                if (propertyValue != null) {
+                    uriBuilder.queryParam(propertyName.toString(), propertyValue.toString());
+                }
+            });
+        } else if (value instanceof Iterable<?> iterableValue) {
             for (var item : iterableValue) {
                 if (item != null) {
                     uriBuilder.queryParam(name, item.toString());

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Tool calls with a JSON object as a query parameter value (OpenAPI `form` style, `explode: true`) now send one query parameter per object property (e.g. `{"R":100,"G":200,"B":150}` becomes `R=100&G=200&B=150`) instead of failing with a URI expansion error.
+
 ## 0.1.16
 
 ### Added
