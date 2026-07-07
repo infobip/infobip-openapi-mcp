@@ -150,11 +150,14 @@ currently only supports the OpenAPI default: `form` style with `explode: true` f
 |-------------------------------|---------------------------------------|----------------------------------------|
 | `"blue"`                      | `color=blue`                          | `color: blue`                           |
 | `["blue","black","brown"]`    | `color=blue&color=black&color=brown`  | `color: blue,black,brown`               |
-| `{"R":100,"G":200,"B":150}`  | `R=100&G=200&B=150`                   | not supported                           |
+| `{"R":100,"G":200,"B":150}`  | `R=100&G=200&B=150`                   | `color: R,100,G,200,B,150`              |
 
-Note that an object value is exploded into one parameter per property, named after the property rather than `color`,
-matching the OpenAPI specification for `form` style with `explode: true`. Other styles and explode combinations are
-not currently supported.
+Note that a query object value is exploded into one parameter per property, named after the property rather than
+`color`, matching the OpenAPI specification for `form` style with `explode: true`. A header object value instead keeps
+the single `color` header name and lists each property name and value as comma-separated pairs, matching `simple`
+style with `explode: false`. Cookie parameters do not support object values: the specification leaves object
+serialization undefined for `form` style cookies with `explode: true`. Other styles and explode combinations are not
+currently supported.
 
 ### Tool NamingStrategy
 

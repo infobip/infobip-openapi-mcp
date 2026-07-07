@@ -411,9 +411,30 @@ public class ToolHandler {
     /**
      * Adds a header parameter to the request specification.
      * Currently only OpenAPI default "simple" style header parameters are supported with "explode" set to false.
-     * The values are comma-separated if multiple values are provided.
+     * Given a parameter named {@code color}:
+     * <ul>
+     *   <li>a string value {@code "blue"} is sent as {@code color: blue}</li>
+     *   <li>an array value {@code ["blue","black","brown"]} is sent as {@code color: blue,black,brown}</li>
+     *   <li>an object value {@code {"R":100,"G":200,"B":150}} is sent as {@code color: R,100,G,200,B,150}</li>
+     * </ul>
      */
     private void addHeaderParameter(RestClient.RequestHeadersSpec<?> spec, String name, Object value) {
+        if (value instanceof Map<?, ?> mapValue) {
+            var combinedValue = new StringBuilder();
+            mapValue.forEach((propertyName, propertyValue) -> {
+                if (propertyValue != null) {
+                    if (!combinedValue.isEmpty()) {
+                        combinedValue.append(",");
+                    }
+                    combinedValue.append(propertyName).append(",").append(propertyValue);
+                }
+            });
+            if (combinedValue.isEmpty()) {
+                return;
+            }
+            spec.header(name, combinedValue.toString());
+            return;
+        }
         if (value instanceof Iterable<?> iterableValue) {
             var combinedValue = new StringBuilder();
             for (var item : iterableValue) {

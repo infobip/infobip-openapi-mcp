@@ -371,6 +371,33 @@ class ToolHandlerTest {
         }
 
         @Test
+        void shouldHandleRequestWithObjectHeaderValueAsCommaSeparatedPairs() {
+            // Given
+            var fullOperation = new FullOperation("/users", PathItem.HttpMethod.GET, new Operation(), new OpenAPI());
+            var colorHeader = new LinkedHashMap<String, Object>();
+            colorHeader.put("R", 100);
+            colorHeader.put("G", 200);
+            colorHeader.put("B", 150);
+            var decomposedSchema = new DecomposedRequestData(
+                    new DecomposedRequestData.ParametersByType(
+                            Map.of(), Map.of(), Map.of("X-Color", colorHeader), Map.of()),
+                    null);
+            var responseBody = "Response with object header value";
+
+            wireMockServer.stubFor(get(urlPathEqualTo("/users"))
+                    .withHeader("X-Color", equalTo("R,100,G,200,B,150"))
+                    .withHeader("Accept", equalTo("application/json"))
+                    .willReturn(aResponse().withStatus(200).withBody(responseBody)));
+
+            // When
+            var result = toolHandler.handleToolCall(fullOperation, decomposedSchema, createTestContext());
+
+            // Then
+            then(extractTextContent(result.content())).isEqualTo(responseBody);
+            then(result.isError()).isFalse();
+        }
+
+        @Test
         void shouldHandleRequestWithCookies() {
             // Given
             var fullOperation = new FullOperation("/users", PathItem.HttpMethod.GET, new Operation(), new OpenAPI());
