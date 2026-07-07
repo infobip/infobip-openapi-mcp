@@ -457,9 +457,25 @@ public class ToolHandler {
     /**
      * Adds a cookie parameter to the URI request specification.
      * Currently only OpenAPI default "form" style cookie parameters are supported with "explode" set to true.
+     * Given a parameter named {@code color}:
+     * <ul>
+     *   <li>a string value {@code "blue"} is sent as a single cookie {@code color=blue}</li>
+     *   <li>an array value {@code ["blue","black","brown"]} is sent as three cookies named
+     *   {@code color}</li>
+     *   <li>an object value {@code {"R":100,"G":200,"B":150}} is sent as one cookie per property,
+     *   named after the property rather than {@code color}, mirroring query parameter handling since
+     *   the OpenAPI specification leaves object serialization undefined for "form" style cookies with
+     *   "explode" set to true</li>
+     * </ul>
      */
     private void addCookieParameter(RestClient.RequestHeadersSpec<?> spec, String name, Object value) {
-        if (value instanceof Iterable<?> iterableValue) {
+        if (value instanceof Map<?, ?> mapValue) {
+            mapValue.forEach((propertyName, propertyValue) -> {
+                if (propertyValue != null) {
+                    spec.cookie(propertyName.toString(), propertyValue.toString());
+                }
+            });
+        } else if (value instanceof Iterable<?> iterableValue) {
             for (var item : iterableValue) {
                 if (item != null) {
                     spec.cookie(name, item.toString());

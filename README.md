@@ -146,18 +146,18 @@ OpenAPI allows parameters to be serialized in different [styles][19], with or wi
 currently only supports the OpenAPI default: `form` style with `explode: true` for query and cookie parameters, and
 `simple` style with `explode: false` for header parameters. Given a parameter named `color`:
 
-| Value                        | Query (`form`, `explode: true`)      | Header (`simple`, `explode: false`) |
-|-------------------------------|---------------------------------------|----------------------------------------|
-| `"blue"`                      | `color=blue`                          | `color: blue`                           |
-| `["blue","black","brown"]`    | `color=blue&color=black&color=brown`  | `color: blue,black,brown`               |
-| `{"R":100,"G":200,"B":150}`  | `R=100&G=200&B=150`                   | `color: R,100,G,200,B,150`              |
+| Value                        | Query (`form`, `explode: true`)      | Header (`simple`, `explode: false`) | Cookie (`form`, `explode: true`)      |
+|-------------------------------|---------------------------------------|----------------------------------------|---------------------------------------|
+| `"blue"`                      | `color=blue`                          | `color: blue`                           | `color=blue`                          |
+| `["blue","black","brown"]`    | `color=blue&color=black&color=brown`  | `color: blue,black,brown`               | `color=blue; color=black; color=brown`|
+| `{"R":100,"G":200,"B":150}`  | `R=100&G=200&B=150`                   | `color: R,100,G,200,B,150`              | `R=100; G=200; B=150`                 |
 
-Note that a query object value is exploded into one parameter per property, named after the property rather than
-`color`, matching the OpenAPI specification for `form` style with `explode: true`. A header object value instead keeps
-the single `color` header name and lists each property name and value as comma-separated pairs, matching `simple`
-style with `explode: false`. Cookie parameters do not support object values: the specification leaves object
-serialization undefined for `form` style cookies with `explode: true`. Other styles and explode combinations are not
-currently supported.
+Note that a query or cookie object value is exploded into one parameter per property, named after the property rather
+than `color`, matching the OpenAPI specification for `form` style with `explode: true`. A header object value instead
+keeps the single `color` header name and lists each property name and value as comma-separated pairs, matching
+`simple` style with `explode: false`. The specification leaves object serialization undefined for `form` style
+cookies with `explode: true`; the framework mirrors query parameter handling for consistency, but this is not a
+spec-mandated behavior. Other styles and explode combinations are not currently supported.
 
 ### Tool NamingStrategy
 

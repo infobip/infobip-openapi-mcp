@@ -446,6 +446,35 @@ class ToolHandlerTest {
         }
 
         @Test
+        void shouldHandleRequestWithObjectCookieValueExplodedAsSeparateCookies() {
+            // Given
+            var fullOperation = new FullOperation("/users", PathItem.HttpMethod.GET, new Operation(), new OpenAPI());
+            var colorCookie = new LinkedHashMap<String, Object>();
+            colorCookie.put("R", 100);
+            colorCookie.put("G", 200);
+            colorCookie.put("B", 150);
+            var decomposedSchema = new DecomposedRequestData(
+                    new DecomposedRequestData.ParametersByType(
+                            Map.of(), Map.of(), Map.of(), Map.of("color", colorCookie)),
+                    null);
+            var responseBody = "Response with object cookie value";
+
+            wireMockServer.stubFor(get(urlPathEqualTo("/users"))
+                    .withCookie("R", equalTo("100"))
+                    .withCookie("G", equalTo("200"))
+                    .withCookie("B", equalTo("150"))
+                    .withHeader("Accept", equalTo("application/json"))
+                    .willReturn(aResponse().withStatus(200).withBody(responseBody)));
+
+            // When
+            var result = toolHandler.handleToolCall(fullOperation, decomposedSchema, createTestContext());
+
+            // Then
+            then(extractTextContent(result.content())).isEqualTo(responseBody);
+            then(result.isError()).isFalse();
+        }
+
+        @Test
         void shouldHandleRequestWithAuthenticationHeader() {
             // Given
             var fullOperation = new FullOperation("/users", PathItem.HttpMethod.GET, new Operation(), new OpenAPI());
