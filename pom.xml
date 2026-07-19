@@ -3,7 +3,7 @@
 
     <groupId>com.infobip.openapi.mcp</groupId>
     <artifactId>infobip-openapi-mcp</artifactId>
-    <version>0.1.17-SNAPSHOT</version>
+    <version>0.1.18-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <name>Infobip OpenAPI MCP framework</name>

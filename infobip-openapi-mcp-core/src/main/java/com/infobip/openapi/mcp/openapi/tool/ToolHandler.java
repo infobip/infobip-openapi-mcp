@@ -9,6 +9,7 @@ import com.infobip.openapi.mcp.infrastructure.metrics.MetricService;
 import com.infobip.openapi.mcp.openapi.schema.DecomposedRequestData;
 import com.infobip.openapi.mcp.progress.ProgressUpdateProvider;
 import io.modelcontextprotocol.spec.McpSchema;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import org.jspecify.annotations.NullMarked;
@@ -380,9 +381,23 @@ public class ToolHandler {
     /**
      * Adds a query parameter to the URI builder.
      * Currently only OpenAPI default "form" style query parameters are supported with "explode" set to true.
+     * Given a parameter named {@code color}:
+     * <ul>
+     *   <li>a string value {@code "blue"} is sent as {@code color=blue}</li>
+     *   <li>an array value {@code ["blue","black","brown"]} is sent as
+     *   {@code color=blue&color=black&color=brown}</li>
+     *   <li>an object value {@code {"R":100,"G":200,"B":150}} is exploded into one query parameter per
+     *   property, named after the property rather than {@code color}: {@code R=100&G=200&B=150}</li>
+     * </ul>
      */
     private void addQueryParameter(UriBuilder uriBuilder, String name, Object value) {
-        if (value instanceof Iterable<?> iterableValue) {
+        if (value instanceof Map<?, ?> mapValue) {
+            mapValue.forEach((propertyName, propertyValue) -> {
+                if (propertyValue != null) {
+                    uriBuilder.queryParam(propertyName.toString(), propertyValue.toString());
+                }
+            });
+        } else if (value instanceof Iterable<?> iterableValue) {
             for (var item : iterableValue) {
                 if (item != null) {
                     uriBuilder.queryParam(name, item.toString());
@@ -396,9 +411,30 @@ public class ToolHandler {
     /**
      * Adds a header parameter to the request specification.
      * Currently only OpenAPI default "simple" style header parameters are supported with "explode" set to false.
-     * The values are comma-separated if multiple values are provided.
+     * Given a parameter named {@code color}:
+     * <ul>
+     *   <li>a string value {@code "blue"} is sent as {@code color: blue}</li>
+     *   <li>an array value {@code ["blue","black","brown"]} is sent as {@code color: blue,black,brown}</li>
+     *   <li>an object value {@code {"R":100,"G":200,"B":150}} is sent as {@code color: R,100,G,200,B,150}</li>
+     * </ul>
      */
     private void addHeaderParameter(RestClient.RequestHeadersSpec<?> spec, String name, Object value) {
+        if (value instanceof Map<?, ?> mapValue) {
+            var combinedValue = new StringBuilder();
+            mapValue.forEach((propertyName, propertyValue) -> {
+                if (propertyValue != null) {
+                    if (!combinedValue.isEmpty()) {
+                        combinedValue.append(",");
+                    }
+                    combinedValue.append(propertyName).append(",").append(propertyValue);
+                }
+            });
+            if (combinedValue.isEmpty()) {
+                return;
+            }
+            spec.header(name, combinedValue.toString());
+            return;
+        }
         if (value instanceof Iterable<?> iterableValue) {
             var combinedValue = new StringBuilder();
             for (var item : iterableValue) {
@@ -421,9 +457,25 @@ public class ToolHandler {
     /**
      * Adds a cookie parameter to the URI request specification.
      * Currently only OpenAPI default "form" style cookie parameters are supported with "explode" set to true.
+     * Given a parameter named {@code color}:
+     * <ul>
+     *   <li>a string value {@code "blue"} is sent as a single cookie {@code color=blue}</li>
+     *   <li>an array value {@code ["blue","black","brown"]} is sent as three cookies named
+     *   {@code color}</li>
+     *   <li>an object value {@code {"R":100,"G":200,"B":150}} is sent as one cookie per property,
+     *   named after the property rather than {@code color}, mirroring query parameter handling since
+     *   the OpenAPI specification leaves object serialization undefined for "form" style cookies with
+     *   "explode" set to true</li>
+     * </ul>
      */
     private void addCookieParameter(RestClient.RequestHeadersSpec<?> spec, String name, Object value) {
-        if (value instanceof Iterable<?> iterableValue) {
+        if (value instanceof Map<?, ?> mapValue) {
+            mapValue.forEach((propertyName, propertyValue) -> {
+                if (propertyValue != null) {
+                    spec.cookie(propertyName.toString(), propertyValue.toString());
+                }
+            });
+        } else if (value instanceof Iterable<?> iterableValue) {
             for (var item : iterableValue) {
                 if (item != null) {
                     spec.cookie(name, item.toString());

@@ -12,6 +12,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Documentation showing how to configure the framework against the Xquik OpenAPI spec,
   including API base URL and credential guidance.
 
+### Fixed
+
+- Standalone example applications now use the latest released framework version.
+
+## 0.1.17
+
+### Fixed
+
+- Tool calls with a JSON object as a query parameter value (OpenAPI `form` style, `explode: true`) now send one query parameter per object property (e.g. `{"R":100,"G":200,"B":150}` becomes `R=100&G=200&B=150`) instead of failing with a URI expansion error.
+- Tool calls with a JSON object as a header parameter value (OpenAPI `simple` style, `explode: false`) now send comma-separated property/value pairs (e.g. `{"R":100,"G":200,"B":150}` becomes `R,100,G,200,B,150`) instead of an invalid header value.
+- Tool calls with a JSON object as a cookie parameter value now send one cookie per object property, named after the property (e.g. `{"R":100,"G":200,"B":150}` becomes cookies `R=100`, `G=200`, `B=150`) instead of an invalid cookie value. The OpenAPI specification leaves object serialization undefined for `form` style cookies with `explode: true`; this mirrors query parameter handling for consistency.
+
 ## 0.1.16
 
 ### Added

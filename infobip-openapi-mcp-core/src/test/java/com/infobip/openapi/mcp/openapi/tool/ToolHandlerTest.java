@@ -32,6 +32,7 @@ import io.modelcontextprotocol.spec.McpSchema;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.Operation;
 import io.swagger.v3.oas.models.PathItem;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Semaphore;
@@ -158,6 +159,35 @@ class ToolHandlerTest {
             wireMockServer.stubFor(get(urlPathEqualTo("/users"))
                     .withQueryParam("role", equalTo("admin"))
                     .withQueryParam("role", equalTo("user"))
+                    .withHeader("Accept", equalTo("application/json"))
+                    .willReturn(aResponse().withStatus(200).withBody(responseBody)));
+
+            // When
+            var result = toolHandler.handleToolCall(fullOperation, decomposedSchema, createTestContext());
+
+            // Then
+            then(extractTextContent(result.content())).isEqualTo(responseBody);
+            then(result.isError()).isFalse();
+        }
+
+        @Test
+        void shouldHandleGetRequestWithObjectQueryParameterExplodedAsFormStyle() {
+            // Given
+            var fullOperation = new FullOperation("/users", PathItem.HttpMethod.GET, new Operation(), new OpenAPI());
+            var colorParameter = new LinkedHashMap<String, Object>();
+            colorParameter.put("R", 100);
+            colorParameter.put("G", 200);
+            colorParameter.put("B", 150);
+            var decomposedSchema = new DecomposedRequestData(
+                    new DecomposedRequestData.ParametersByType(
+                            Map.of(), Map.of("color", colorParameter), Map.of(), Map.of()),
+                    null);
+            var responseBody = "{\"users\":[]}";
+
+            wireMockServer.stubFor(get(urlPathEqualTo("/users"))
+                    .withQueryParam("R", equalTo("100"))
+                    .withQueryParam("G", equalTo("200"))
+                    .withQueryParam("B", equalTo("150"))
                     .withHeader("Accept", equalTo("application/json"))
                     .willReturn(aResponse().withStatus(200).withBody(responseBody)));
 
@@ -341,6 +371,33 @@ class ToolHandlerTest {
         }
 
         @Test
+        void shouldHandleRequestWithObjectHeaderValueAsCommaSeparatedPairs() {
+            // Given
+            var fullOperation = new FullOperation("/users", PathItem.HttpMethod.GET, new Operation(), new OpenAPI());
+            var colorHeader = new LinkedHashMap<String, Object>();
+            colorHeader.put("R", 100);
+            colorHeader.put("G", 200);
+            colorHeader.put("B", 150);
+            var decomposedSchema = new DecomposedRequestData(
+                    new DecomposedRequestData.ParametersByType(
+                            Map.of(), Map.of(), Map.of("X-Color", colorHeader), Map.of()),
+                    null);
+            var responseBody = "Response with object header value";
+
+            wireMockServer.stubFor(get(urlPathEqualTo("/users"))
+                    .withHeader("X-Color", equalTo("R,100,G,200,B,150"))
+                    .withHeader("Accept", equalTo("application/json"))
+                    .willReturn(aResponse().withStatus(200).withBody(responseBody)));
+
+            // When
+            var result = toolHandler.handleToolCall(fullOperation, decomposedSchema, createTestContext());
+
+            // Then
+            then(extractTextContent(result.content())).isEqualTo(responseBody);
+            then(result.isError()).isFalse();
+        }
+
+        @Test
         void shouldHandleRequestWithCookies() {
             // Given
             var fullOperation = new FullOperation("/users", PathItem.HttpMethod.GET, new Operation(), new OpenAPI());
@@ -377,6 +434,35 @@ class ToolHandlerTest {
             wireMockServer.stubFor(get(urlPathEqualTo("/users"))
                     .withCookie("multiCookie", equalTo("value1"))
                     .withCookie("multiCookie", equalTo("value2"))
+                    .withHeader("Accept", equalTo("application/json"))
+                    .willReturn(aResponse().withStatus(200).withBody(responseBody)));
+
+            // When
+            var result = toolHandler.handleToolCall(fullOperation, decomposedSchema, createTestContext());
+
+            // Then
+            then(extractTextContent(result.content())).isEqualTo(responseBody);
+            then(result.isError()).isFalse();
+        }
+
+        @Test
+        void shouldHandleRequestWithObjectCookieValueExplodedAsSeparateCookies() {
+            // Given
+            var fullOperation = new FullOperation("/users", PathItem.HttpMethod.GET, new Operation(), new OpenAPI());
+            var colorCookie = new LinkedHashMap<String, Object>();
+            colorCookie.put("R", 100);
+            colorCookie.put("G", 200);
+            colorCookie.put("B", 150);
+            var decomposedSchema = new DecomposedRequestData(
+                    new DecomposedRequestData.ParametersByType(
+                            Map.of(), Map.of(), Map.of(), Map.of("color", colorCookie)),
+                    null);
+            var responseBody = "Response with object cookie value";
+
+            wireMockServer.stubFor(get(urlPathEqualTo("/users"))
+                    .withCookie("R", equalTo("100"))
+                    .withCookie("G", equalTo("200"))
+                    .withCookie("B", equalTo("150"))
                     .withHeader("Accept", equalTo("application/json"))
                     .willReturn(aResponse().withStatus(200).withBody(responseBody)));
 
