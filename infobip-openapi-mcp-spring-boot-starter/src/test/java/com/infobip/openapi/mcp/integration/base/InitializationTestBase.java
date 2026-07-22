@@ -15,7 +15,7 @@ public abstract class InitializationTestBase extends IntegrationTestBase {
             then(actual)
                     .usingRecursiveComparison()
                     .ignoringExpectedNullFields()
-                    .ignoringFields("protocolVersion", "capabilities", "meta")
+                    .ignoringFields("protocolVersion", "capabilities")
                     .isEqualTo(expected);
         }
     }

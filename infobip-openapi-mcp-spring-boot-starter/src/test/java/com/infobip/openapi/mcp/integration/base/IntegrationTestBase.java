@@ -81,15 +81,18 @@ abstract class IntegrationTestBase extends AuthenticationTestBase {
             requestBuilder = requestBuilder.header("Authorization", authHeaderValue);
         }
 
-        var baseUrl = "http://localhost:" + port + "/mcp";
+        // Streamable/stateless transports connect to the "/mcp" endpoint. The SSE transport appends its own
+        // endpoint (default "/sse") to the base URI, and the Spring AI SSE server registers that endpoint at
+        // the servlet root, so the SSE client must connect to the root URL rather than the "/mcp" path.
+        var rootUrl = "http://localhost:" + port;
         var transport =
                 switch (mcpServerProperties.getProtocol()) {
                     case STREAMABLE, STATELESS ->
-                        HttpClientStreamableHttpTransport.builder(baseUrl)
+                        HttpClientStreamableHttpTransport.builder(rootUrl + "/mcp")
                                 .requestBuilder(requestBuilder)
                                 .build();
                     case SSE ->
-                        HttpClientSseClientTransport.builder(baseUrl)
+                        HttpClientSseClientTransport.builder(rootUrl)
                                 .requestBuilder(requestBuilder)
                                 .build();
                 };

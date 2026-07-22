@@ -11,7 +11,6 @@ import com.infobip.openapi.mcp.openapi.tool.exception.ToolRegistrationException;
 import com.infobip.openapi.mcp.openapi.tool.naming.NamingStrategy;
 import com.infobip.openapi.mcp.util.OpenApiMapperFactory;
 import io.modelcontextprotocol.spec.McpSchema;
-import io.swagger.v3.core.util.Json;
 import java.util.List;
 import java.util.Map;
 import org.slf4j.Logger;
@@ -54,9 +53,6 @@ public class ToolRegistry {
     private final OpenApiMapperFactory openApiMapperFactory;
     private final ToolAnnotationResolver toolAnnotationResolver;
     private final JsonMapper jsonSchemaMapper = JsonMapper.builder().build();
-    // TODO: unify to Jackson 3 once swagger-core migrates from com.fasterxml.jackson
-    private final com.fasterxml.jackson.databind.ObjectMapper prettyPrintMapper =
-            Json.mapper().copy().enable(SerializationFeature.INDENT_OUTPUT);
     private final OpenApiMcpProperties properties;
 
     private List<RegisteredTool> registeredToolsCache = List.of();
@@ -278,6 +274,9 @@ public class ToolRegistry {
         if (examples.isEmpty()) {
             return null;
         }
+
+        var prettyPrintMapper =
+                openApiMapperFactory.mapper(fullOperation.openApi()).copy().enable(SerializationFeature.INDENT_OUTPUT);
 
         try {
             if (examples.size() == 1 && examples.getFirst().title() == null) {

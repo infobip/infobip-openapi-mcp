@@ -2038,6 +2038,16 @@ class ToolRegistryTest {
 
             // Then
             then(result).hasSize(1);
+            var expectedSchema = """
+                    {
+                      "type": ["object", "null"],
+                      "properties": {
+                        "name": { "type": "string" }
+                      }
+                    }
+                    """;
+            assertJsonEquals(
+                    expectedSchema, writeInputSchema(result.getFirst().tool().inputSchema()));
         }
 
         @Test
@@ -2078,6 +2088,17 @@ class ToolRegistryTest {
 
             // Then
             then(result).hasSize(1);
+            var expectedSchema = """
+                    {
+                      "type": "object",
+                      "properties": {
+                        "name": { "type": "string" }
+                      },
+                      "additionalProperties": { "type": "string" }
+                    }
+                    """;
+            assertJsonEquals(
+                    expectedSchema, writeInputSchema(result.getFirst().tool().inputSchema()));
         }
     }
 

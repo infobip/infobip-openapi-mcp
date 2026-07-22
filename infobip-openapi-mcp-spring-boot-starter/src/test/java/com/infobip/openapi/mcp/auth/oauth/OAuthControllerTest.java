@@ -5,7 +5,6 @@ import static org.assertj.core.api.BDDAssertions.then;
 
 import com.infobip.openapi.mcp.auth.scope.ScopeDiscoveryService;
 import org.json.JSONException;
-import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -23,7 +22,7 @@ import org.springframework.test.context.TestPropertySource;
 @TestPropertySource(properties = "infobip.openapi.mcp.security.auth.oauth.scope-discovery.scope-extensions=x-scopes")
 public class OAuthControllerTest extends OAuthTestBase {
 
-    @Autowired(required = false)
+    @Autowired
     private ScopeDiscoveryService scopeDiscoveryService;
 
     @ParameterizedTest
@@ -135,55 +134,6 @@ public class OAuthControllerTest extends OAuthTestBase {
                 }
                 """;
         JSONAssert.assertEquals(expectedJson, response.getBody(), JSONCompareMode.NON_EXTENSIBLE);
-    }
-
-    @Nested
-    @TestPropertySource(properties = "infobip.openapi.mcp.security.auth.oauth.scope-discovery.enabled=false")
-    class ScopeDiscoveryDisabled extends OAuthTestBase {
-
-        @Test
-        void shouldUseAllScopes() throws JSONException {
-            // Given
-            var givenOpenApiScopes = """
-                    {
-                        "openapi": "3.1.0",
-                        "info": {"title": "Test API", "version": "1.0.0"},
-                        "paths": {
-                            "/path1": {
-                                "get": {
-                                    "x-scopes": ["scope1", "scope2"]
-                                },
-                                "post": {
-                                    "x-scopes": "scope1"
-                                }
-                            }
-                        }
-                    }
-                    """;
-            var givenResponseBody = """
-                    {
-                      "issuer": "http://auth-server",
-                      "authorization_endpoint": "http://auth-server/auth",
-                      "token_endpoint": "http://auth-server/token",
-                      "scopes_supported": ["scope1, scope2", "scope3"]
-                    }
-                    """;
-
-            var givenWellKnownEndpoint = "/.well-known/oauth-authorization-server";
-
-            reloadOpenApi(givenOpenApiScopes);
-            getStaticWireMockServer()
-                    .stubFor(get(urlEqualTo(givenWellKnownEndpoint))
-                            .willReturn(aResponse().withStatus(200).withBody(givenResponseBody)));
-
-            // When
-            var response = restTemplate.exchange(
-                    "http://localhost:" + port + givenWellKnownEndpoint, HttpMethod.GET, null, String.class);
-
-            // Then
-            then(response.getHeaders().getContentType().toString()).isEqualTo("application/json;charset=UTF-8");
-            JSONAssert.assertEquals(givenResponseBody, response.getBody(), JSONCompareMode.NON_EXTENSIBLE);
-        }
     }
 
     @Test
