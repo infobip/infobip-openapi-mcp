@@ -2000,6 +2000,85 @@ class ToolRegistryTest {
             assertJsonEquals(
                     expectedSchema, writeInputSchema(result.getFirst().tool().inputSchema()));
         }
+
+        @Test
+        void shouldRegisterToolWhenRequestBodyRootSchemaIsNullableObjectTypeArray() {
+            // Given: OpenAPI 3.1 allows a multi-value "type" array (e.g. ["object", "null"]) at the
+            // schema root. Json31.mapper() serializes this as a JSON array, but McpSchema.JsonSchema.type()
+            // is a plain String, so the Jackson 3 readValue() call in ToolRegistry.resolveJsonSchema fails.
+            var openApi = parseOpenAPI("""
+                    {
+                      "openapi": "3.1.0",
+                      "info": { "title": "Test API", "version": "1.0.0" },
+                      "paths": {
+                        "/users": {
+                          "post": {
+                            "operationId": "createUser",
+                            "requestBody": {
+                              "content": {
+                                "application/json": {
+                                  "schema": {
+                                    "type": ["object", "null"],
+                                    "properties": {
+                                      "name": { "type": "string" }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                    """);
+            given(openApiRegistry.openApi()).willReturn(openApi);
+
+            // When
+            var result = toolRegistry.getTools();
+
+            // Then
+            then(result).hasSize(1);
+        }
+
+        @Test
+        void shouldRegisterToolWhenRequestBodyRootSchemaHasSchemaValuedAdditionalProperties() {
+            // Given: JSON Schema allows "additionalProperties" to be a sub-schema, not just a boolean.
+            // Json31.mapper() serializes this as a JSON object, but McpSchema.JsonSchema.additionalProperties()
+            // is a plain Boolean, so the Jackson 3 readValue() call in ToolRegistry.resolveJsonSchema fails.
+            var openApi = parseOpenAPI("""
+                    {
+                      "openapi": "3.1.0",
+                      "info": { "title": "Test API", "version": "1.0.0" },
+                      "paths": {
+                        "/users": {
+                          "post": {
+                            "operationId": "createUser",
+                            "requestBody": {
+                              "content": {
+                                "application/json": {
+                                  "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                      "name": { "type": "string" }
+                                    },
+                                    "additionalProperties": { "type": "string" }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                    """);
+            given(openApiRegistry.openApi()).willReturn(openApi);
+
+            // When
+            var result = toolRegistry.getTools();
+
+            // Then
+            then(result).hasSize(1);
+        }
     }
 
     private OpenAPI parseOpenAPI(String jsonSpec) {

@@ -6,6 +6,7 @@ import static org.mockito.BDDMockito.given;
 
 import com.infobip.openapi.mcp.McpRequestContext;
 import com.infobip.openapi.mcp.config.OpenApiMcpProperties;
+import com.infobip.openapi.mcp.util.OpenApiMapperFactory;
 import io.modelcontextprotocol.spec.McpSchema;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.Operation;
@@ -27,10 +28,12 @@ import org.mockito.Mockito;
 @NullMarked
 class ToolResultMockerTest {
 
+    private final OpenApiMapperFactory mapperFactory = new OpenApiMapperFactory();
+
     @Test
     void shouldCallChainIfMockingIsDisabled() {
         // given
-        var mocker = new ToolResultMocker(givenDisabledMockProps());
+        var mocker = new ToolResultMocker(givenDisabledMockProps(), mapperFactory);
         var givenCtx = Mockito.mock(McpRequestContext.class);
         var givenReq = Mockito.mock(McpSchema.CallToolRequest.class);
         ToolCallFilterChain givenChain =
@@ -275,7 +278,7 @@ class ToolResultMockerTest {
     @MethodSource("testDataWithExamples")
     void shouldReturnExamples(Operation givenOperation, String expectedResContent) {
         // given
-        var mocker = new ToolResultMocker(givenEnabledMockProps());
+        var mocker = new ToolResultMocker(givenEnabledMockProps(), mapperFactory);
         var givenCtx = Mockito.mock(McpRequestContext.class);
         given(givenCtx.openApiOperation())
                 .willReturn(new FullOperation("/mock/path", PathItem.HttpMethod.GET, givenOperation, new OpenAPI()));
@@ -344,7 +347,7 @@ class ToolResultMockerTest {
     @MethodSource("testDataWithoutExamples")
     void shouldReturnMcpErrorResultIfNoExamplesAreFound(Operation givenOperation) {
         // given
-        var mocker = new ToolResultMocker(givenEnabledMockProps());
+        var mocker = new ToolResultMocker(givenEnabledMockProps(), mapperFactory);
         var givenCtx = Mockito.mock(McpRequestContext.class);
         given(givenCtx.openApiOperation())
                 .willReturn(new FullOperation("/mock/path", PathItem.HttpMethod.GET, givenOperation, new OpenAPI()));

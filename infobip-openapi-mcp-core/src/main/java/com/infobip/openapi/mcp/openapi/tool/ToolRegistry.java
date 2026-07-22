@@ -17,6 +17,7 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import tools.jackson.core.JacksonException;
+import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
@@ -43,6 +44,7 @@ import tools.jackson.databind.json.JsonMapper;
 public class ToolRegistry {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ToolRegistry.class);
+    private static final TypeReference<Map<String, Object>> JSON_SCHEMA_MAP_TYPE = new TypeReference<>() {};
 
     private final OpenApiRegistry openApiRegistry;
     private final NamingStrategy namingStrategy;
@@ -161,13 +163,13 @@ public class ToolRegistry {
      * The schema is generated based on the OpenAPI specification version.
      *
      * @param fullOperation the OpenAPI operation to create a schema for
-     * @return a JSON string representing the input schema, or "{}" if resolution fails
+     * @return a map representing the input JSON schema, or an empty object schema if resolution fails
      */
-    private McpSchema.JsonSchema resolveJsonSchema(FullOperation fullOperation) {
+    private Map<String, Object> resolveJsonSchema(FullOperation fullOperation) {
         var composedSchema = inputSchemaComposer.compose(fullOperation);
         if (composedSchema == null) {
             // Due to the way how the underlying framework works, we need to explicitly provide an empty object schema
-            return new McpSchema.JsonSchema("object", Map.of(), null, null, null, null);
+            return Map.of("type", "object", "properties", Map.of());
         }
 
         try {
@@ -177,7 +179,11 @@ public class ToolRegistry {
                     "Resolved JSON schema for operation {}: {}",
                     fullOperation.operation().getOperationId(),
                     stringSchemaRepresentation);
-            return jsonSchemaMapper.readValue(stringSchemaRepresentation, McpSchema.JsonSchema.class);
+            // Deserialized into a Map rather than McpSchema.JsonSchema: that record narrows fields like
+            // `type` to String and `additionalProperties` to Boolean, which cannot represent valid
+            // OpenAPI 3.1 / JSON Schema constructs such as `"type": ["object", "null"]` or a schema-valued
+            // `additionalProperties`.
+            return jsonSchemaMapper.readValue(stringSchemaRepresentation, JSON_SCHEMA_MAP_TYPE);
             // TODO: catch only JacksonException once swagger-core migrates to Jackson 3
         } catch (JacksonException | JsonProcessingException exception) {
             LOGGER.error(

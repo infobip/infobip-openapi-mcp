@@ -177,8 +177,9 @@ class OpenApiMcpConfiguration {
     }
 
     @Bean
-    public ToolResultMocker toolResultMocker(OpenApiMcpProperties properties) {
-        return new ToolResultMocker(properties);
+    public ToolResultMocker toolResultMocker(
+            OpenApiMcpProperties properties, OpenApiMapperFactory openApiMapperFactory) {
+        return new ToolResultMocker(properties, openApiMapperFactory);
     }
 
     @Bean

@@ -2,8 +2,9 @@ package com.infobip.openapi.mcp.openapi.tool;
 
 import com.infobip.openapi.mcp.McpRequestContext;
 import com.infobip.openapi.mcp.config.OpenApiMcpProperties;
+import com.infobip.openapi.mcp.util.OpenApiMapperFactory;
 import io.modelcontextprotocol.spec.McpSchema;
-import io.swagger.v3.core.util.Json;
+import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.Operation;
 import io.swagger.v3.oas.models.examples.Example;
 import io.swagger.v3.oas.models.media.Content;
@@ -40,9 +41,11 @@ public class ToolResultMocker implements ToolCallFilter, Ordered {
     private static final String MISSING_EXAMPLE_ERR_MSG = "Missing OpenAPI example for mocking";
 
     private final OpenApiMcpProperties properties;
+    private final OpenApiMapperFactory openApiMapperFactory;
 
-    public ToolResultMocker(OpenApiMcpProperties properties) {
+    public ToolResultMocker(OpenApiMcpProperties properties, OpenApiMapperFactory openApiMapperFactory) {
         this.properties = properties;
+        this.openApiMapperFactory = openApiMapperFactory;
     }
 
     @Override
@@ -65,7 +68,7 @@ public class ToolResultMocker implements ToolCallFilter, Ordered {
             return callToolResult(MISSING_EXAMPLE_ERR_MSG, true);
         }
 
-        var responseBody = pickExample(fullOperation.operation());
+        var responseBody = pickExample(fullOperation.operation(), fullOperation.openApi());
         if (responseBody == null) {
             LOGGER.error(
                     "Missing examples in OpenAPI operation {}: {} for tool {}, returning MCP error response",
@@ -80,7 +83,7 @@ public class ToolResultMocker implements ToolCallFilter, Ordered {
     }
 
     @Nullable
-    private String pickExample(Operation operation) {
+    private String pickExample(Operation operation, OpenAPI openApi) {
         var responses = operation.getResponses();
         if (responses == null || responses.isEmpty()) {
             return null;
@@ -92,7 +95,7 @@ public class ToolResultMocker implements ToolCallFilter, Ordered {
                 .map(ApiResponse::getContent)
                 .map(this::extractSupportedMediaType)
                 .map(this::extractExampleValue)
-                .map(this::serializeToString)
+                .map(exampleValue -> serializeToString(exampleValue, openApi))
                 .filter(Objects::nonNull)
                 .findFirst()
                 .orElse(null);
@@ -126,13 +129,13 @@ public class ToolResultMocker implements ToolCallFilter, Ordered {
                 .orElse(null);
     }
 
-    private @Nullable String serializeToString(@Nullable Object exampleValue) {
+    private @Nullable String serializeToString(@Nullable Object exampleValue, OpenAPI openApi) {
         if (exampleValue == null) {
             return null;
         }
 
         try {
-            return Json.mapper().writeValueAsString(exampleValue);
+            return openApiMapperFactory.mapper(openApi).writeValueAsString(exampleValue);
             // TODO: catch only JacksonException once swagger-core migrates to Jackson 3
         } catch (com.fasterxml.jackson.core.JsonProcessingException | JacksonException e) {
             LOGGER.warn("Failed to serialize example into JSON. Example value: `{}`", exampleValue, e);
