@@ -27,6 +27,7 @@ import java.util.function.Consumer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.ai.mcp.server.common.autoconfigure.properties.McpServerProperties;
+import org.springframework.ai.mcp.server.common.autoconfigure.properties.McpServerStreamableHttpProperties;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.annotation.DirtiesContext;
 
@@ -50,6 +51,9 @@ abstract class IntegrationTestBase extends AuthenticationTestBase {
 
     @Autowired
     McpServerProperties mcpServerProperties;
+
+    @Autowired(required = false)
+    McpServerStreamableHttpProperties mcpServerStreamableHttpProperties;
 
     @Autowired(required = false)
     List<ToolCallFilter> toolCallFilters;
@@ -81,14 +85,16 @@ abstract class IntegrationTestBase extends AuthenticationTestBase {
             requestBuilder = requestBuilder.header("Authorization", authHeaderValue);
         }
 
-        // Streamable/stateless transports connect to the "/mcp" endpoint. The SSE transport appends its own
-        // endpoint (default "/sse") to the base URI, and the Spring AI SSE server registers that endpoint at
-        // the servlet root, so the SSE client must connect to the root URL rather than the "/mcp" path.
+        // Streamable/stateless transports connect to the configured MCP endpoint (default "/mcp"). The SSE
+        // transport appends its own endpoint (default "/sse") to the base URI, and the Spring AI SSE server
+        // registers that endpoint at the servlet root, so the SSE client must connect to the root URL rather
+        // than the MCP endpoint path.
         var rootUrl = "http://localhost:" + port;
         var transport =
                 switch (mcpServerProperties.getProtocol()) {
                     case STREAMABLE, STATELESS ->
-                        HttpClientStreamableHttpTransport.builder(rootUrl + "/mcp")
+                        HttpClientStreamableHttpTransport.builder(
+                                        rootUrl + mcpServerStreamableHttpProperties.getMcpEndpoint())
                                 .requestBuilder(requestBuilder)
                                 .build();
                     case SSE ->
