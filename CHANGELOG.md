@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Documentation showing how to configure the framework against the Xquik OpenAPI spec,
+  including API base URL and credential guidance.
+
+### Fixed
+
+- Standalone example applications now use the latest released framework version.
+
 ## 0.1.17
 
 ### Fixed
