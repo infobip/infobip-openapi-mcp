@@ -135,6 +135,12 @@ descriptions.
 `DiscriminatorFlattener` resolves OpenAPI discriminator patterns into JSON Schema–compatible `oneOf`/`allOf` structures
 since MCP does not support OpenAPI discriminators natively.
 
+`NullableTypeNormalizer` collapses OpenAPI 3.1 nullable union types (e.g. `"type": ["array", "null"]`) into a single
+scalar type (`"type": "array"`) by walking every schema via `SchemaWalker` and removing the `"null"` member. This is
+needed because the MCP SDK's JSON Schema validator (and many MCP clients) cannot handle an array-valued `type` keyword
+and fail with a coercion error at tool-call time. When more than one non-null type remains, the first is kept and the
+rest are dropped with a warning.
+
 `ToolAnnotationResolver` infers MCP tool annotations (`readOnlyHint`, `destructiveHint`, `idempotentHint`,
 `openWorldHint`) from HTTP method semantics, then merges overrides from `x-mcp-annotations` vendor
 extension on the Operation and from YAML config properties (`infobip.openapi.mcp.tools.annotations.<tool-name>.*`).

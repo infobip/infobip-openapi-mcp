@@ -1,0 +1,50 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Test API",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/traffic": {
+      "get": {
+        "operationId": "get-traffic-performance-metrics",
+        "parameters": [
+          {
+            "name": "metrics",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": [
+                "array",
+                "null"
+              ],
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "result": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    }
+  }
+}

@@ -18,6 +18,7 @@ import com.infobip.openapi.mcp.infrastructure.metrics.MicrometerMetricService;
 import com.infobip.openapi.mcp.infrastructure.metrics.NoOpMetricService;
 import com.infobip.openapi.mcp.openapi.*;
 import com.infobip.openapi.mcp.openapi.filter.DiscriminatorFlattener;
+import com.infobip.openapi.mcp.openapi.filter.NullableTypeNormalizer;
 import com.infobip.openapi.mcp.openapi.filter.OpenApiFilter;
 import com.infobip.openapi.mcp.openapi.filter.OpenApiFilterChain;
 import com.infobip.openapi.mcp.openapi.filter.PatternPropertyRemover;
@@ -278,6 +279,11 @@ class OpenApiMcpConfiguration {
     @Bean
     public PatternPropertyRemover patternPropertyRemover() {
         return new PatternPropertyRemover();
+    }
+
+    @Bean
+    public NullableTypeNormalizer nullableTypeNormalizer() {
+        return new NullableTypeNormalizer();
     }
 
     @Bean

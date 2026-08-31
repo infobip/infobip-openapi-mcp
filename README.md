@@ -125,6 +125,15 @@ externalized configuration with the `infobip.openapi.mcp.filters.[filter-name]` 
 built-in filter that removes regex pattern property from OpenAPI schemas set
 `infobip.openapi.mcp.filters.PatternPropertyRemover: false`.
 
+The framework ships with several built-in filters that are enabled by default:
+
+- `DiscriminatorFlattener` resolves OpenAPI discriminators into plain `oneOf`/`allOf` schemas, since MCP does not
+  support discriminators natively.
+- `PatternPropertyRemover` strips regex `pattern` constraints that some MCP clients cannot validate.
+- `NullableTypeNormalizer` collapses OpenAPI 3.1 nullable union types (such as `["array", "null"]`) into a single
+  scalar type, so tools with nullable parameters can be called without validation errors on MCP clients that cannot
+  validate an array-valued `type`. Disable it with `infobip.openapi.mcp.filters.NullableTypeNormalizer: false`.
+
 > [!TIP]
 > AI agents perform best with smaller, focused MCP servers. On the contrast, HTTP APIs are ofter large and full of
 > different features. This means we usually need to pick a subset of API operations that will be included as tools.

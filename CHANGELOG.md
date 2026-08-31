@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- OpenAPI 3.1 nullable parameters and properties (declared as a union type such as `["array", "null"]`) are now
+  automatically normalized to a single scalar type so that tools relying on these parameters can be called without
+  validation errors. Previously, calling such a tool could fail because many MCP clients cannot validate an
+  array-valued `type`. This normalization is enabled by default and can be turned off with
+  `infobip.openapi.mcp.filters.NullableTypeNormalizer: false`.
+
 ## 1.0.0
 
 ### Changed
