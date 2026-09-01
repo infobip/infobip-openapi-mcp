@@ -57,10 +57,24 @@
         <mockito.version>5.23.0</mockito.version>
         <assertj.version>3.27.7</assertj.version>
         <wiremock.version>3.13.2</wiremock.version>
+        <jackson2.version>2.21.5</jackson2.version>
+        <jackson3.version>3.1.5</jackson3.version>
     </properties>
 
     <dependencyManagement>
         <dependencies>
+            <!-- Jackson: pinned above the versions pulled in transitively by the BOMs below to
+                 patch CVE-2026-59889 (Incorrect Authorization) ahead of upstream releases. -->
+            <dependency>
+                <groupId>com.fasterxml.jackson.core</groupId>
+                <artifactId>jackson-databind</artifactId>
+                <version>${jackson2.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>tools.jackson.core</groupId>
+                <artifactId>jackson-databind</artifactId>
+                <version>${jackson3.version}</version>
+            </dependency>
             <!-- Frameworks -->
             <dependency>
                 <groupId>org.springframework.ai</groupId>
