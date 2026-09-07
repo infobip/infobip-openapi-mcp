@@ -19,6 +19,9 @@ import com.infobip.openapi.mcp.openapi.tool.naming.OperationIdStrategy;
 import com.infobip.openapi.mcp.prompt.PromptRegistry;
 import com.infobip.openapi.mcp.prompt.PromptSpecBuilder;
 import com.infobip.openapi.mcp.prompt.RegisteredPrompt;
+import com.infobip.openapi.mcp.resource.RegisteredResource;
+import com.infobip.openapi.mcp.resource.ResourceRegistry;
+import com.infobip.openapi.mcp.resource.ResourceSpecBuilder;
 import com.infobip.openapi.mcp.util.OpenApiMapperFactory;
 import com.infobip.openapi.mcp.util.ToolSpecBuilder;
 import io.modelcontextprotocol.server.McpServerFeatures;
@@ -98,6 +101,12 @@ class ToolLiveReloadTest {
 
     @Mock
     private PromptSpecBuilder promptSpecBuilder;
+
+    @Mock
+    private ResourceRegistry resourceRegistry;
+
+    @Mock
+    private ResourceSpecBuilder resourceSpecBuilder;
 
     @Captor
     private ArgumentCaptor<McpServerFeatures.SyncToolSpecification> syncToolSpecCaptor;
@@ -629,6 +638,10 @@ class ToolLiveReloadTest {
                 .when(promptRegistry.getRegisteredPromptsCache())
                 .thenReturn(List.of());
         org.mockito.Mockito.lenient().when(promptRegistry.getPrompts()).thenReturn(List.of());
+        org.mockito.Mockito.lenient()
+                .when(resourceRegistry.getRegisteredResourcesCache())
+                .thenReturn(List.of());
+        org.mockito.Mockito.lenient().when(resourceRegistry.getResources()).thenReturn(List.of());
         return new ToolLiveReload(
                 Optional.of(givenMcpSyncServer),
                 Optional.empty(),
@@ -638,6 +651,8 @@ class ToolLiveReloadTest {
                 toolSpecBuilder,
                 promptRegistry,
                 promptSpecBuilder,
+                resourceRegistry,
+                resourceSpecBuilder,
                 PROPERTIES,
                 metricService,
                 mcpServerMetaData);
@@ -667,6 +682,8 @@ class ToolLiveReloadTest {
             given(promptSpecBuilder.buildSyncPromptSpecification(newPrompt))
                     .willReturn(new McpServerFeatures.SyncPromptSpecification(
                             newPrompt.prompt(), (exchange, request) -> null));
+            given(resourceRegistry.getRegisteredResourcesCache()).willReturn(List.of());
+            given(resourceRegistry.getResources()).willReturn(List.of());
 
             var givenOpenApiLiveReload = new ToolLiveReload(
                     Optional.of(givenMcpSyncServer),
@@ -677,6 +694,8 @@ class ToolLiveReloadTest {
                     toolSpecBuilder,
                     promptRegistry,
                     promptSpecBuilder,
+                    resourceRegistry,
+                    resourceSpecBuilder,
                     PROPERTIES,
                     metricService,
                     mcpServerMetaData);
@@ -708,6 +727,8 @@ class ToolLiveReloadTest {
 
             given(promptRegistry.getRegisteredPromptsCache()).willReturn(List.of(oldPrompt));
             given(promptRegistry.getPrompts()).willReturn(List.of());
+            given(resourceRegistry.getRegisteredResourcesCache()).willReturn(List.of());
+            given(resourceRegistry.getResources()).willReturn(List.of());
 
             var givenOpenApiLiveReload = new ToolLiveReload(
                     Optional.of(givenMcpSyncServer),
@@ -718,6 +739,8 @@ class ToolLiveReloadTest {
                     toolSpecBuilder,
                     promptRegistry,
                     promptSpecBuilder,
+                    resourceRegistry,
+                    resourceSpecBuilder,
                     PROPERTIES,
                     metricService,
                     mcpServerMetaData);
@@ -750,6 +773,8 @@ class ToolLiveReloadTest {
 
             given(promptRegistry.getRegisteredPromptsCache()).willReturn(List.of(existingPrompt));
             given(promptRegistry.getPrompts()).willReturn(List.of(existingPrompt));
+            given(resourceRegistry.getRegisteredResourcesCache()).willReturn(List.of());
+            given(resourceRegistry.getResources()).willReturn(List.of());
 
             var givenOpenApiLiveReload = new ToolLiveReload(
                     Optional.of(givenMcpSyncServer),
@@ -760,6 +785,8 @@ class ToolLiveReloadTest {
                     toolSpecBuilder,
                     promptRegistry,
                     promptSpecBuilder,
+                    resourceRegistry,
+                    resourceSpecBuilder,
                     PROPERTIES,
                     metricService,
                     mcpServerMetaData);
@@ -771,6 +798,149 @@ class ToolLiveReloadTest {
             then(givenMcpSyncServer).should(never()).addPrompt(any());
             then(givenMcpSyncServer).should(never()).removePrompt(any());
             then(givenMcpSyncServer).should(never()).notifyPromptsListChanged();
+        }
+    }
+
+    @Nested
+    class ResourceReload {
+
+        @Test
+        void shouldAddResourceWhenNewResourceAppears() throws InterruptedException {
+            // Given
+            var givenBaseOpenApi = loadOpenApi(BASE_SPEC);
+            var givenEditedOpenApi = loadOpenApi(WITH_ADDED_TOOL_SPEC);
+
+            given(givenOpenApiRegistry.openApi())
+                    .willReturn(givenBaseOpenApi)
+                    .willReturn(givenBaseOpenApi)
+                    .willReturn(givenEditedOpenApi);
+
+            givenToolRegistry.getTools();
+
+            var newResource = new RegisteredResource(
+                    McpSchema.Resource.builder("res://greet", "greet").build(), null, (ctx, req) -> null);
+
+            given(promptRegistry.getRegisteredPromptsCache()).willReturn(List.of());
+            given(promptRegistry.getPrompts()).willReturn(List.of());
+            given(resourceRegistry.getRegisteredResourcesCache()).willReturn(List.of());
+            given(resourceRegistry.getResources()).willReturn(List.of(newResource));
+            given(resourceSpecBuilder.buildSyncResourceSpecification(newResource))
+                    .willReturn(new McpServerFeatures.SyncResourceSpecification(
+                            newResource.resource(), (exchange, request) -> null));
+
+            var givenOpenApiLiveReload = new ToolLiveReload(
+                    Optional.of(givenMcpSyncServer),
+                    Optional.empty(),
+                    Optional.of(scopeDiscoveryService),
+                    givenOpenApiRegistry,
+                    givenToolRegistry,
+                    toolSpecBuilder,
+                    promptRegistry,
+                    promptSpecBuilder,
+                    resourceRegistry,
+                    resourceSpecBuilder,
+                    PROPERTIES,
+                    metricService,
+                    mcpServerMetaData);
+            setupToolSpecBuilderForNewTools();
+
+            // When
+            givenOpenApiLiveReload.reloadOnSchedule();
+
+            // Then
+            then(givenMcpSyncServer).should().addResource(any());
+            then(givenMcpSyncServer).should().notifyResourcesListChanged();
+        }
+
+        @Test
+        void shouldRemoveResourceWhenResourceDisappears() throws InterruptedException {
+            // Given
+            var givenBaseOpenApi = loadOpenApi(BASE_SPEC);
+            var givenEditedOpenApi = loadOpenApi(WITH_ADDED_TOOL_SPEC);
+
+            given(givenOpenApiRegistry.openApi())
+                    .willReturn(givenBaseOpenApi)
+                    .willReturn(givenBaseOpenApi)
+                    .willReturn(givenEditedOpenApi);
+
+            givenToolRegistry.getTools();
+
+            var oldResource = new RegisteredResource(
+                    McpSchema.Resource.builder("res://greet", "greet").build(), null, (ctx, req) -> null);
+
+            given(promptRegistry.getRegisteredPromptsCache()).willReturn(List.of());
+            given(promptRegistry.getPrompts()).willReturn(List.of());
+            given(resourceRegistry.getRegisteredResourcesCache()).willReturn(List.of(oldResource));
+            given(resourceRegistry.getResources()).willReturn(List.of());
+
+            var givenOpenApiLiveReload = new ToolLiveReload(
+                    Optional.of(givenMcpSyncServer),
+                    Optional.empty(),
+                    Optional.of(scopeDiscoveryService),
+                    givenOpenApiRegistry,
+                    givenToolRegistry,
+                    toolSpecBuilder,
+                    promptRegistry,
+                    promptSpecBuilder,
+                    resourceRegistry,
+                    resourceSpecBuilder,
+                    PROPERTIES,
+                    metricService,
+                    mcpServerMetaData);
+            setupToolSpecBuilderForNewTools();
+
+            // When
+            givenOpenApiLiveReload.reloadOnSchedule();
+
+            // Then
+            then(givenMcpSyncServer).should().removeResource("res://greet");
+            then(givenMcpSyncServer).should().notifyResourcesListChanged();
+        }
+
+        @Test
+        void shouldNotNotifyResourcesChangedWhenResourcesAreIdentical() throws InterruptedException {
+            // Given
+            var givenBaseOpenApi = loadOpenApi(BASE_SPEC);
+            var givenSameVersion = loadOpenApi(BASE_SPEC);
+            givenSameVersion.getInfo().setVersion("1.0.1");
+
+            given(givenOpenApiRegistry.openApi())
+                    .willReturn(givenBaseOpenApi)
+                    .willReturn(givenBaseOpenApi)
+                    .willReturn(givenSameVersion);
+
+            givenToolRegistry.getTools();
+
+            var existingResource = new RegisteredResource(
+                    McpSchema.Resource.builder("res://greet", "greet").build(), null, (ctx, req) -> null);
+
+            given(promptRegistry.getRegisteredPromptsCache()).willReturn(List.of());
+            given(promptRegistry.getPrompts()).willReturn(List.of());
+            given(resourceRegistry.getRegisteredResourcesCache()).willReturn(List.of(existingResource));
+            given(resourceRegistry.getResources()).willReturn(List.of(existingResource));
+
+            var givenOpenApiLiveReload = new ToolLiveReload(
+                    Optional.of(givenMcpSyncServer),
+                    Optional.empty(),
+                    Optional.of(scopeDiscoveryService),
+                    givenOpenApiRegistry,
+                    givenToolRegistry,
+                    toolSpecBuilder,
+                    promptRegistry,
+                    promptSpecBuilder,
+                    resourceRegistry,
+                    resourceSpecBuilder,
+                    PROPERTIES,
+                    metricService,
+                    mcpServerMetaData);
+
+            // When
+            givenOpenApiLiveReload.reloadOnSchedule();
+
+            // Then
+            then(givenMcpSyncServer).should(never()).addResource(any());
+            then(givenMcpSyncServer).should(never()).removeResource(any());
+            then(givenMcpSyncServer).should(never()).notifyResourcesListChanged();
         }
     }
 

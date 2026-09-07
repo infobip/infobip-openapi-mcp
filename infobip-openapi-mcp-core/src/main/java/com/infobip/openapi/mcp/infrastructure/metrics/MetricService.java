@@ -22,6 +22,12 @@ public interface MetricService {
         void record(String status);
     }
 
+    interface ResourceTimer {
+        void timeResourceRead(String resourceUri, boolean isError);
+
+        void timeResolveCall(String resourceUri, HttpStatusCode httpStatusCode);
+    }
+
     void recordToolCall(FullOperation fullOperation);
 
     void recordApiCall(FullOperation fullOperation, HttpStatusCode httpStatusCode);
@@ -37,4 +43,10 @@ public interface MetricService {
     void recordLiveReloadExecution(String status);
 
     LiveReloadTimer startLiveReloadTimer();
+
+    void recordResourceRead(String resourceUri);
+
+    void recordResourceResolveCall(String resourceUri, HttpStatusCode httpStatusCode);
+
+    ResourceTimer startResourceTimer();
 }

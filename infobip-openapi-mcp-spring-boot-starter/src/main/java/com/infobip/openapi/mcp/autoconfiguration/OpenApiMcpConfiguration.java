@@ -32,6 +32,10 @@ import com.infobip.openapi.mcp.progress.ProgressUpdateProvider;
 import com.infobip.openapi.mcp.prompt.PromptCallFilter;
 import com.infobip.openapi.mcp.prompt.PromptRegistry;
 import com.infobip.openapi.mcp.prompt.PromptSpecBuilder;
+import com.infobip.openapi.mcp.resource.RegisteredResource;
+import com.infobip.openapi.mcp.resource.ResourceCallFilter;
+import com.infobip.openapi.mcp.resource.ResourceRegistry;
+import com.infobip.openapi.mcp.resource.ResourceSpecBuilder;
 import com.infobip.openapi.mcp.util.OpenApiMapperFactory;
 import com.infobip.openapi.mcp.util.ToolSpecBuilder;
 import com.infobip.openapi.mcp.util.XForwardedForCalculator;
@@ -419,6 +423,110 @@ class OpenApiMcpConfiguration {
     }
 
     @Bean
+    public ResourceRegistry resourceRegistry(
+            OpenApiRegistry openApiRegistry,
+            @Qualifier(TOOL_HANDLER_REST_CLIENT_QUALIFIER) RestClient restClient,
+            ObjectMapper objectMapper,
+            CredentialProvider credentialProvider,
+            ApiRequestEnricherChain enricherChain,
+            MetricService metricService) {
+        return new ResourceRegistry(
+                openApiRegistry, restClient, objectMapper, credentialProvider, enricherChain, metricService);
+    }
+
+    @Bean
+    public ResourceSpecBuilder resourceSpecBuilder(
+            List<ResourceCallFilter> filters, McpRequestContextFactory contextFactory) {
+        return new ResourceSpecBuilder(filters, contextFactory);
+    }
+
+    @Bean
+    @ConditionalOnProperty(prefix = McpServerProperties.CONFIG_PREFIX, name = "protocol", havingValue = "SSE")
+    @ConditionalOnProperty(
+            prefix = McpServerProperties.CONFIG_PREFIX,
+            name = "stdio",
+            havingValue = "false",
+            matchIfMissing = true)
+    public List<McpServerFeatures.SyncResourceSpecification> resourceSpecificationsSSE(
+            ResourceRegistry resourceRegistry, ResourceSpecBuilder resourceSpecBuilder) {
+        return registerResources(resourceRegistry, resourceSpecBuilder);
+    }
+
+    @Bean
+    @ConditionalOnProperty(prefix = McpServerProperties.CONFIG_PREFIX, name = "protocol", havingValue = "SSE")
+    @ConditionalOnProperty(
+            prefix = McpServerProperties.CONFIG_PREFIX,
+            name = "stdio",
+            havingValue = "false",
+            matchIfMissing = true)
+    public List<McpServerFeatures.SyncResourceTemplateSpecification> resourceTemplateSpecificationsSSE(
+            ResourceRegistry resourceRegistry, ResourceSpecBuilder resourceSpecBuilder) {
+        return registerResourceTemplates(resourceRegistry, resourceSpecBuilder);
+    }
+
+    @Bean
+    @ConditionalOnProperty(prefix = McpServerProperties.CONFIG_PREFIX, name = "protocol", havingValue = "STREAMABLE")
+    @ConditionalOnProperty(
+            prefix = McpServerProperties.CONFIG_PREFIX,
+            name = "stdio",
+            havingValue = "false",
+            matchIfMissing = true)
+    public List<McpServerFeatures.SyncResourceSpecification> resourceSpecificationsStreamable(
+            ResourceRegistry resourceRegistry, ResourceSpecBuilder resourceSpecBuilder) {
+        return registerResources(resourceRegistry, resourceSpecBuilder);
+    }
+
+    @Bean
+    @ConditionalOnProperty(prefix = McpServerProperties.CONFIG_PREFIX, name = "protocol", havingValue = "STREAMABLE")
+    @ConditionalOnProperty(
+            prefix = McpServerProperties.CONFIG_PREFIX,
+            name = "stdio",
+            havingValue = "false",
+            matchIfMissing = true)
+    public List<McpServerFeatures.SyncResourceTemplateSpecification> resourceTemplateSpecificationsStreamable(
+            ResourceRegistry resourceRegistry, ResourceSpecBuilder resourceSpecBuilder) {
+        return registerResourceTemplates(resourceRegistry, resourceSpecBuilder);
+    }
+
+    @Bean
+    @ConditionalOnProperty(prefix = McpServerProperties.CONFIG_PREFIX, name = "protocol", havingValue = "STATELESS")
+    @ConditionalOnProperty(
+            prefix = McpServerProperties.CONFIG_PREFIX,
+            name = "stdio",
+            havingValue = "false",
+            matchIfMissing = true)
+    public List<McpStatelessServerFeatures.SyncResourceSpecification> resourceSpecificationsStateless(
+            ResourceRegistry resourceRegistry, ResourceSpecBuilder resourceSpecBuilder) {
+        return registerStatelessResources(resourceRegistry, resourceSpecBuilder);
+    }
+
+    @Bean
+    @ConditionalOnProperty(prefix = McpServerProperties.CONFIG_PREFIX, name = "protocol", havingValue = "STATELESS")
+    @ConditionalOnProperty(
+            prefix = McpServerProperties.CONFIG_PREFIX,
+            name = "stdio",
+            havingValue = "false",
+            matchIfMissing = true)
+    public List<McpStatelessServerFeatures.SyncResourceTemplateSpecification> resourceTemplateSpecificationsStateless(
+            ResourceRegistry resourceRegistry, ResourceSpecBuilder resourceSpecBuilder) {
+        return registerStatelessResourceTemplates(resourceRegistry, resourceSpecBuilder);
+    }
+
+    @Bean
+    @ConditionalOnProperty(prefix = McpServerProperties.CONFIG_PREFIX, name = "stdio", havingValue = "true")
+    public List<McpServerFeatures.SyncResourceSpecification> resourceSpecificationsStdio(
+            ResourceRegistry resourceRegistry, ResourceSpecBuilder resourceSpecBuilder) {
+        return registerResources(resourceRegistry, resourceSpecBuilder);
+    }
+
+    @Bean
+    @ConditionalOnProperty(prefix = McpServerProperties.CONFIG_PREFIX, name = "stdio", havingValue = "true")
+    public List<McpServerFeatures.SyncResourceTemplateSpecification> resourceTemplateSpecificationsStdio(
+            ResourceRegistry resourceRegistry, ResourceSpecBuilder resourceSpecBuilder) {
+        return registerResourceTemplates(resourceRegistry, resourceSpecBuilder);
+    }
+
+    @Bean
     @ConditionalOnProperty(prefix = OpenApiMcpProperties.LiveReload.PREFIX, name = "enabled", havingValue = "true")
     public ToolLiveReload openApiLiveReload(
             Optional<McpSyncServer> mcpSyncServer,
@@ -429,6 +537,8 @@ class OpenApiMcpConfiguration {
             ToolSpecBuilder toolSpecBuilder,
             PromptRegistry promptRegistry,
             PromptSpecBuilder promptSpecBuilder,
+            ResourceRegistry resourceRegistry,
+            ResourceSpecBuilder resourceSpecBuilder,
             OpenApiMcpProperties properties,
             MetricService metricService,
             McpServerMetaData mcpServerMetaData) {
@@ -441,6 +551,8 @@ class OpenApiMcpConfiguration {
                 toolSpecBuilder,
                 promptRegistry,
                 promptSpecBuilder,
+                resourceRegistry,
+                resourceSpecBuilder,
                 properties,
                 metricService,
                 mcpServerMetaData);
@@ -489,6 +601,38 @@ class OpenApiMcpConfiguration {
             PromptRegistry promptRegistry, PromptSpecBuilder promptSpecBuilder) {
         return promptRegistry.getPrompts().stream()
                 .map(promptSpecBuilder::buildSyncStatelessPromptSpecification)
+                .toList();
+    }
+
+    private List<McpServerFeatures.SyncResourceSpecification> registerResources(
+            ResourceRegistry resourceRegistry, ResourceSpecBuilder resourceSpecBuilder) {
+        return resourceRegistry.getResources().stream()
+                .filter(resource -> !resource.isTemplate())
+                .map(resourceSpecBuilder::buildSyncResourceSpecification)
+                .toList();
+    }
+
+    private List<McpServerFeatures.SyncResourceTemplateSpecification> registerResourceTemplates(
+            ResourceRegistry resourceRegistry, ResourceSpecBuilder resourceSpecBuilder) {
+        return resourceRegistry.getResources().stream()
+                .filter(RegisteredResource::isTemplate)
+                .map(resourceSpecBuilder::buildSyncResourceTemplateSpecification)
+                .toList();
+    }
+
+    private List<McpStatelessServerFeatures.SyncResourceSpecification> registerStatelessResources(
+            ResourceRegistry resourceRegistry, ResourceSpecBuilder resourceSpecBuilder) {
+        return resourceRegistry.getResources().stream()
+                .filter(resource -> !resource.isTemplate())
+                .map(resourceSpecBuilder::buildSyncStatelessResourceSpecification)
+                .toList();
+    }
+
+    private List<McpStatelessServerFeatures.SyncResourceTemplateSpecification> registerStatelessResourceTemplates(
+            ResourceRegistry resourceRegistry, ResourceSpecBuilder resourceSpecBuilder) {
+        return resourceRegistry.getResources().stream()
+                .filter(RegisteredResource::isTemplate)
+                .map(resourceSpecBuilder::buildSyncStatelessResourceTemplateSpecification)
                 .toList();
     }
 }

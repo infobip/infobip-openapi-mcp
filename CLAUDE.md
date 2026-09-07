@@ -88,8 +88,19 @@ The framework follows this startup flow:
    `RegisteredPrompt` with an `McpSchema.Prompt` and a handler. Two modes are supported: **inline mode**
    where Mustache templates are compiled at startup and rendered server-side from user arguments, and **resolved mode**
    where the handler calls a backend HTTP endpoint to resolve the prompt
-5. Tools and prompts are registered with the Spring AI MCP server (SSE, Streamable HTTP, Stateless HTTP, or stdio
-   transport)
+5. `ResourceRegistry` reads the `x-mcp-resources` vendor extension from the OpenAPI spec and converts each entry into a
+   `RegisteredResource` backed by either a fixed `uri` (surfaced via `resources/list`) or an RFC 6570 `uriTemplate`
+   (surfaced via `resources/templates/list`). As with prompts, two modes are supported: **inline mode** where static
+   `text`/`blob` content is served verbatim, and **resolved mode** where reading the resource calls a backend HTTP `GET`
+   endpoint whose response body becomes the resource content verbatim (raw passthrough, no JSON envelope); the MIME type
+   comes from the `x-mcp-resources` definition, falling back to the response's `Content-Type` header. For templates,
+   each variable extracted from the requested URI is forwarded to the backend based on where its name appears: a
+   variable whose name matches a `{placeholder}` in the `resolve.path` is substituted into the path, and any variable
+   not named in the path is appended as a query parameter (so a template can target a path-parameter endpoint, a
+   query-parameter endpoint, or a combination). Resource subscriptions are not supported — only
+   `notifications/resources/list_changed` on spec reload
+6. Tools, prompts, and resources are registered with the Spring AI MCP server (SSE, Streamable HTTP, Stateless HTTP, or
+   stdio transport)
 
 **Runtime tool call flow:**
 `ToolSpecBuilder` → `ToolCallFilterChain` (ordered `ToolCallFilter` beans) → `RegisteredTool` (lowest precedence, makes
@@ -98,6 +109,10 @@ HTTP call via `ToolHandler`) → optional `JsonDoubleSerializationCorrector` ret
 **Runtime prompt call flow:**
 `PromptSpecBuilder` → `PromptCallFilterChain` (ordered `PromptCallFilter` beans) → `RegisteredPrompt` (lowest
 precedence, resolves inline template or calls backend HTTP endpoint)
+
+**Runtime resource read flow:**
+`resources/read` request → `ResourceRegistry` looks up the matching concrete resource or resource template → resolves
+inline content or makes an HTTP `GET` call to the backend for resolved-mode resources
 
 ### Key Extension Points
 

@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- MCP Resources support: servers built with this framework can now expose resources (`resources/list`,
+  `resources/templates/list`, `resources/read`), backed by a new `x-mcp-resources` OpenAPI vendor extension,
+  mirroring the existing prompts support. Two modes are available per resource:
+  - **Inline mode** — static text or binary content served verbatim from the definition itself.
+  - **Resolved mode** — content fetched from a backend HTTP endpoint at read time; the backend response body
+    becomes the resource content verbatim, with the MIME type coming from the `x-mcp-resources` definition or,
+    if not specified, from the backend response's `Content-Type` header.
+
+  Both concrete resources (fixed `uri`) and resource templates (RFC 6570 `uriTemplate`, e.g. `res://greet/{name}`)
+  are supported. In resolved mode, each template variable is substituted into the backend `path` when its name matches
+  a `{placeholder}` there, and otherwise forwarded as a query parameter — so a template can target a path-parameter
+  endpoint, a query-parameter endpoint, or a combination of both. Clients are notified of resource additions or removals
+  via `notifications/resources/list_changed` when the OpenAPI spec is reloaded; resource subscriptions are not supported.
+
 ## 1.0.1
 
 ### Added

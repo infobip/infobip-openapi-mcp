@@ -8,6 +8,9 @@ import com.infobip.openapi.mcp.openapi.tool.ToolRegistry;
 import com.infobip.openapi.mcp.prompt.PromptRegistry;
 import com.infobip.openapi.mcp.prompt.PromptSpecBuilder;
 import com.infobip.openapi.mcp.prompt.RegisteredPrompt;
+import com.infobip.openapi.mcp.resource.RegisteredResource;
+import com.infobip.openapi.mcp.resource.ResourceRegistry;
+import com.infobip.openapi.mcp.resource.ResourceSpecBuilder;
 import com.infobip.openapi.mcp.util.ToolSpecBuilder;
 import io.modelcontextprotocol.server.McpStatelessSyncServer;
 import io.modelcontextprotocol.server.McpSyncServer;
@@ -100,6 +103,8 @@ public class ToolLiveReload {
     private final ToolSpecBuilder toolSpecBuilder;
     private final PromptRegistry promptRegistry;
     private final PromptSpecBuilder promptSpecBuilder;
+    private final ResourceRegistry resourceRegistry;
+    private final ResourceSpecBuilder resourceSpecBuilder;
     private final OpenApiMcpProperties.LiveReload liveReloadConfig;
     private final MetricService metricService;
     private final McpServerMetaData mcpServerMetaData;
@@ -115,6 +120,8 @@ public class ToolLiveReload {
             ToolSpecBuilder toolSpecBuilder,
             PromptRegistry promptRegistry,
             PromptSpecBuilder promptSpecBuilder,
+            ResourceRegistry resourceRegistry,
+            ResourceSpecBuilder resourceSpecBuilder,
             OpenApiMcpProperties properties,
             MetricService metricService,
             McpServerMetaData mcpServerMetaData) {
@@ -126,6 +133,8 @@ public class ToolLiveReload {
         this.toolSpecBuilder = toolSpecBuilder;
         this.promptRegistry = promptRegistry;
         this.promptSpecBuilder = promptSpecBuilder;
+        this.resourceRegistry = resourceRegistry;
+        this.resourceSpecBuilder = resourceSpecBuilder;
         this.liveReloadConfig = properties.liveReload();
         this.metricService = metricService;
         this.mcpServerMetaData = mcpServerMetaData;
@@ -147,11 +156,12 @@ public class ToolLiveReload {
             var currentOpenApiVersion = openApiRegistry.openApi().getInfo().getVersion();
             var currentTools = toolRegistry.getRegisteredToolsCache();
             var currentPrompts = promptRegistry.getRegisteredPromptsCache();
+            var currentResources = resourceRegistry.getRegisteredResourcesCache();
 
             var maxRetries = liveReloadConfig.maxRetries();
             for (int attempt = 1; attempt <= maxRetries; attempt++) {
                 try {
-                    var changed = reload(currentOpenApiVersion, currentTools, currentPrompts);
+                    var changed = reload(currentOpenApiVersion, currentTools, currentPrompts, currentResources);
                     status = changed ? Status.SUCCESS_TOOLS_UPDATED : Status.SUCCESS_NO_CHANGE;
                     break;
                 } catch (Exception e) {
@@ -188,10 +198,14 @@ public class ToolLiveReload {
      * @param currentOpenApiVersion the current OpenAPI version
      * @param currentTools          the current list of registered tools
      * @param currentPrompts        the current list of registered prompts
-     * @return true if tools or prompts were updated, false if no changes detected
+     * @param currentResources      the current list of registered resources
+     * @return true if tools, prompts, or resources were updated, false if no changes detected
      */
     public boolean reload(
-            String currentOpenApiVersion, List<RegisteredTool> currentTools, List<RegisteredPrompt> currentPrompts) {
+            String currentOpenApiVersion,
+            List<RegisteredTool> currentTools,
+            List<RegisteredPrompt> currentPrompts,
+            List<RegisteredResource> currentResources) {
         openApiRegistry.reload();
         var newOpenApiVersion = openApiRegistry.openApi().getInfo().getVersion();
         if (currentOpenApiVersion.equals(newOpenApiVersion)) {
@@ -208,11 +222,13 @@ public class ToolLiveReload {
         // leaves the server in a consistent state (either both are applied or neither is).
         var toolDiff = computeToolDiff(currentTools);
         var promptDiff = computePromptDiff(currentPrompts);
+        var resourceDiff = computeResourceDiff(currentResources);
 
         var toolsUpdated = applyToolDiff(toolDiff);
         var promptsUpdated = applyPromptDiff(promptDiff);
+        var resourcesUpdated = applyResourceDiff(resourceDiff);
 
-        return toolsUpdated || promptsUpdated;
+        return toolsUpdated || promptsUpdated || resourcesUpdated;
     }
 
     private record ToolDiff(
@@ -224,6 +240,11 @@ public class ToolLiveReload {
             List<RegisteredPrompt> addedOrChanged,
             List<RegisteredPrompt> deleted,
             Map<String, RegisteredPrompt> currentPromptMap) {}
+
+    private record ResourceDiff(
+            List<RegisteredResource> addedOrChanged,
+            List<RegisteredResource> deleted,
+            Map<String, RegisteredResource> currentResourceMap) {}
 
     private ToolDiff computeToolDiff(List<RegisteredTool> currentTools) {
         var registeredTools = toolRegistry.getTools();
@@ -250,6 +271,22 @@ public class ToolLiveReload {
         return new PromptDiff(addedOrChanged, deleted, currentPromptMap);
     }
 
+    private ResourceDiff computeResourceDiff(List<RegisteredResource> currentResources) {
+        var currentResourceMap = getResourceMap(currentResources);
+        var newResources = resourceRegistry.getResources();
+        var newResourceMap = getResourceMap(newResources);
+        var deleted = currentResources.stream()
+                .filter(r -> !newResourceMap.containsKey(resourceKey(r)))
+                .toList();
+        var addedOrChanged = newResources.stream()
+                .filter(r -> {
+                    var existing = currentResourceMap.get(resourceKey(r));
+                    return existing == null || !resourceDefinitionEquals(existing, r);
+                })
+                .toList();
+        return new ResourceDiff(addedOrChanged, deleted, currentResourceMap);
+    }
+
     private boolean applyToolDiff(ToolDiff diff) {
         if (diff.addedOrChanged().isEmpty() && diff.deleted().isEmpty()) {
             return false;
@@ -270,6 +307,18 @@ public class ToolLiveReload {
         mcpStatelessSyncServer.ifPresent(
                 ignored -> registerStatelessPrompts(diff.addedOrChanged(), diff.deleted(), diff.currentPromptMap()));
         mcpSyncServer.ifPresent(McpSyncServer::notifyPromptsListChanged);
+        return true;
+    }
+
+    private boolean applyResourceDiff(ResourceDiff diff) {
+        if (diff.addedOrChanged().isEmpty() && diff.deleted().isEmpty()) {
+            return false;
+        }
+        mcpSyncServer.ifPresent(
+                ignored -> registerStatefulResources(diff.addedOrChanged(), diff.deleted(), diff.currentResourceMap()));
+        mcpStatelessSyncServer.ifPresent(ignored ->
+                registerStatelessResources(diff.addedOrChanged(), diff.deleted(), diff.currentResourceMap()));
+        mcpSyncServer.ifPresent(McpSyncServer::notifyResourcesListChanged);
         return true;
     }
 
@@ -361,6 +410,54 @@ public class ToolLiveReload {
         });
     }
 
+    private void registerStatefulResources(
+            List<RegisteredResource> addedOrChanged,
+            List<RegisteredResource> deleted,
+            Map<String, RegisteredResource> currentResourceMap) {
+        var server = mcpSyncServer.get();
+        deleted.forEach(r -> {
+            LOGGER.info("Removing resource {} from MCP server.", resourceKey(r));
+            if (r.isTemplate()) {
+                server.removeResourceTemplate(r.template().uriTemplate());
+            } else {
+                server.removeResource(r.resource().uri());
+            }
+        });
+        addedOrChanged.forEach(r -> {
+            var action = currentResourceMap.containsKey(resourceKey(r)) ? "Updating" : "Adding";
+            LOGGER.info("{} resource {} in MCP server.", action, resourceKey(r));
+            if (r.isTemplate()) {
+                server.addResourceTemplate(resourceSpecBuilder.buildSyncResourceTemplateSpecification(r));
+            } else {
+                server.addResource(resourceSpecBuilder.buildSyncResourceSpecification(r));
+            }
+        });
+    }
+
+    private void registerStatelessResources(
+            List<RegisteredResource> addedOrChanged,
+            List<RegisteredResource> deleted,
+            Map<String, RegisteredResource> currentResourceMap) {
+        var server = mcpStatelessSyncServer.get();
+        deleted.forEach(r -> {
+            LOGGER.info("Removing resource {} from MCP server.", resourceKey(r));
+            if (r.isTemplate()) {
+                server.removeResourceTemplate(r.template().uriTemplate());
+            } else {
+                server.removeResource(r.resource().uri());
+            }
+        });
+        addedOrChanged.forEach(r -> {
+            var action = currentResourceMap.containsKey(resourceKey(r)) ? "Updating" : "Adding";
+            LOGGER.info("{} resource {} in MCP server.", action, resourceKey(r));
+            if (r.isTemplate()) {
+                server.addResourceTemplate(resourceSpecBuilder.buildSyncStatelessResourceTemplateSpecification(r));
+            } else {
+                server.addResource(resourceSpecBuilder.buildSyncStatelessResourceSpecification(r));
+            }
+        });
+    }
+
     private void logToolDeletion(RegisteredTool deletedTool) {
         LOGGER.info("Removing tool {} from MCP server.", deletedTool.tool().name());
     }
@@ -379,5 +476,21 @@ public class ToolLiveReload {
 
     private Map<String, RegisteredPrompt> getPromptMap(List<RegisteredPrompt> prompts) {
         return prompts.stream().collect(Collectors.toMap(p -> p.prompt().name(), Function.identity()));
+    }
+
+    private Map<String, RegisteredResource> getResourceMap(List<RegisteredResource> resources) {
+        return resources.stream().collect(Collectors.toMap(this::resourceKey, Function.identity()));
+    }
+
+    private String resourceKey(RegisteredResource resource) {
+        return resource.isTemplate()
+                ? resource.template().uriTemplate()
+                : resource.resource().uri();
+    }
+
+    private boolean resourceDefinitionEquals(RegisteredResource current, RegisteredResource updated) {
+        return current.isTemplate()
+                ? current.template().equals(updated.template())
+                : current.resource().equals(updated.resource());
     }
 }

@@ -154,4 +154,56 @@ public class MicrometerMetricService implements MetricService {
             }
         };
     }
+
+    @Override
+    public void recordResourceRead(String resourceUri) {
+        try {
+            var tags = List.of(Tag.of("resource_uri", resourceUri));
+            meterRegistry.counter("com.infobip.openapi.resource.read", tags).increment();
+        } catch (Exception e) {
+            LOGGER.error("Failed to record resource read metric: {}", e.getMessage(), e);
+        }
+    }
+
+    @Override
+    public void recordResourceResolveCall(String resourceUri, HttpStatusCode httpStatusCode) {
+        try {
+            var tags = List.of(
+                    Tag.of("resource_uri", resourceUri), Tag.of("status_code", String.valueOf(httpStatusCode.value())));
+            meterRegistry
+                    .counter("com.infobip.openapi.resource.resolve.call", tags)
+                    .increment();
+        } catch (Exception e) {
+            LOGGER.error("Failed to record resource resolve call metric: {}", e.getMessage(), e);
+        }
+    }
+
+    @Override
+    public ResourceTimer startResourceTimer() {
+        var sample = io.micrometer.core.instrument.Timer.start(meterRegistry);
+        return new ResourceTimer() {
+            @Override
+            public void timeResourceRead(String resourceUri, boolean isError) {
+                try {
+                    var tags =
+                            List.of(Tag.of("resource_uri", resourceUri), Tag.of("is_error", String.valueOf(isError)));
+                    sample.stop(meterRegistry.timer("com.infobip.openapi.resource.read.duration", tags));
+                } catch (Exception e) {
+                    LOGGER.error("Failed to record resource read duration metric: {}", e.getMessage(), e);
+                }
+            }
+
+            @Override
+            public void timeResolveCall(String resourceUri, HttpStatusCode httpStatusCode) {
+                try {
+                    var tags = List.of(
+                            Tag.of("resource_uri", resourceUri),
+                            Tag.of("status_code", String.valueOf(httpStatusCode.value())));
+                    sample.stop(meterRegistry.timer("com.infobip.openapi.resource.resolve.call.duration", tags));
+                } catch (Exception e) {
+                    LOGGER.error("Failed to record resource resolve call duration metric: {}", e.getMessage(), e);
+                }
+            }
+        };
+    }
 }

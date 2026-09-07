@@ -45,4 +45,21 @@ public class NoOpMetricService implements MetricService {
     public LiveReloadTimer startLiveReloadTimer() {
         return status -> {};
     }
+
+    @Override
+    public void recordResourceRead(String resourceUri) {}
+
+    @Override
+    public void recordResourceResolveCall(String resourceUri, HttpStatusCode httpStatusCode) {}
+
+    @Override
+    public ResourceTimer startResourceTimer() {
+        return new ResourceTimer() {
+            @Override
+            public void timeResourceRead(String resourceUri, boolean isError) {}
+
+            @Override
+            public void timeResolveCall(String resourceUri, HttpStatusCode httpStatusCode) {}
+        };
+    }
 }

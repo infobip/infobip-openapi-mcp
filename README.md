@@ -560,6 +560,54 @@ Messages support both `user` and `assistant` roles, enabling few-shot prompt pat
 included in live reload — when the OpenAPI specification changes, prompt additions and removals are detected and
 connected MCP clients are notified.
 
+### Resources
+
+The framework supports [MCP resources][20] — data that MCP clients can discover and read (`resources/list`,
+`resources/templates/list`, `resources/read`). Resources are defined using the `x-mcp-resources` [vendor extension][7]
+on the root OpenAPI object as an array of resource definitions. Two resolution modes are available:
+
+- **Inline mode** — resources with static `text` or `blob` (base64-encoded) content served verbatim, with no backend
+  call.
+- **Resolved mode** — resources with a `resolve` block that delegates to a backend HTTP `GET` endpoint at read time.
+  The response body becomes the resource content verbatim; credentials are forwarded using the configured
+  `CredentialProvider`.
+
+Each resource must use exactly one mode — defining both `inline` and `resolve` on the same resource causes a startup
+error. Similarly, each resource must define exactly one of `uri` (a concrete resource, surfaced via `resources/list`)
+or `uriTemplate` (an [RFC 6570][21] resource template, surfaced via `resources/templates/list`).
+
+```yaml
+# Top-level OpenAPI vendor extension (sibling to info, paths, components)
+x-mcp-resources:
+  - uri: "res://welcome"
+    name: welcome
+    description: "Static welcome message"
+    mimeType: text/plain
+    inline:
+      text: "Welcome to the API!"
+
+  - uriTemplate: "res://users/{userId}"
+    name: user-profile
+    description: "User profile, resolved from the backend"
+    resolve:
+      path: /internal/users/{userId}
+```
+
+The `path` in the `resolve` block is resolved relative to the same base URL used for API tool calls (derived from
+the `servers` entry in the OpenAPI specification). For resource templates, each variable extracted from the requested
+URI is forwarded to the backend based on where its name appears: a variable whose name matches a `{placeholder}` in the
+`path` (e.g. `userId` above) is substituted into the path, and any variable not named in the `path` is appended as a
+query parameter. This lets a resource template target either a path-parameter endpoint (`/internal/users/{userId}`) or a
+query-parameter endpoint (`/internal/users`, yielding `?userId=...`), or a combination of both.
+
+For backend-resolved resources, the response body is used as-is (raw passthrough) — no JSON envelope is expected.
+The resource's `mimeType`, if declared in the `x-mcp-resources` definition, is used as-is; otherwise it falls back to
+the backend response's `Content-Type` header.
+
+Resources are automatically included in live reload — when the OpenAPI specification changes, resource additions and
+removals are detected and connected MCP clients are notified via `notifications/resources/list_changed`. Resource
+subscriptions (`resources/subscribe`) are not supported.
+
 ### Properties
 
 [External configuration properties][11] that can be used to configure framework behavior:
@@ -670,3 +718,7 @@ This project is licensed under the [MIT License](LICENSE).
 [18]: https://mustache.github.io "Mustache — Logic-less templates"
 
 [19]: https://swagger.io/docs/specification/v3_0/serialization/ "Parameter serialization in OpenAPI specification"
+
+[20]: https://modelcontextprotocol.io/specification/2025-11-25/server/resources "Resources in MCP specification"
+
+[21]: https://www.rfc-editor.org/rfc/rfc6570 "RFC 6570 — URI Template"
