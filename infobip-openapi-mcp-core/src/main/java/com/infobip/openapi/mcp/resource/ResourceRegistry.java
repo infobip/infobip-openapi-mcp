@@ -287,23 +287,23 @@ public class ResourceRegistry {
                 .filter(entry -> !pathVariableNames.contains(entry.getKey()))
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (a, b) -> b, LinkedHashMap::new));
 
-        var spec = restClient.get().uri(uriBuilder -> {
-            if (resolveConfig.isAbsolute()) {
-                var builder = UriComponentsBuilder.fromUriString(resolveConfig.path());
-                queryVariables.forEach(builder::queryParam);
-                return builder.buildAndExpand(templateVariables).toUri();
-            }
-            var builder = uriBuilder.path(resolveConfig.path());
-            queryVariables.forEach(builder::queryParam);
-            return builder.build(templateVariables);
-        });
-
-        credential.ifPresent(auth -> spec.header(HttpHeaders.AUTHORIZATION, auth));
-
-        var enrichedSpec = enricherChain.enrich(spec, context);
-
         var resolveCallTimer = metricService.startResourceTimer();
         try {
+            var spec = restClient.get().uri(uriBuilder -> {
+                if (resolveConfig.isAbsolute()) {
+                    var builder = UriComponentsBuilder.fromUriString(resolveConfig.path());
+                    queryVariables.forEach(builder::queryParam);
+                    return builder.buildAndExpand(templateVariables).toUri();
+                }
+                var builder = uriBuilder.path(resolveConfig.path());
+                queryVariables.forEach(builder::queryParam);
+                return builder.build(templateVariables);
+            });
+
+            credential.ifPresent(auth -> spec.header(HttpHeaders.AUTHORIZATION, auth));
+
+            var enrichedSpec = enricherChain.enrich(spec, context);
+
             var response = enrichedSpec.retrieve().toEntity(String.class);
             resolveCallTimer.timeResolveCall(
                     request.uri(), HttpStatus.valueOf(response.getStatusCode().value()));

@@ -285,6 +285,24 @@ class ResourceRegistryTest {
         }
 
         @Test
+        void shouldThrowResourceExecutionExceptionWhenResolvePathReferencesUnknownVariable() {
+            // Given
+            var registry = givenRegistryWithExtension(List.of(Map.of(
+                    "uriTemplate", "res://cats/{number}",
+                    "name", "cat-api",
+                    "resolve", Map.of("path", "/resources/cats/{unknown}"))));
+
+            var resource = registry.getResources().getFirst();
+            var request = new McpSchema.ReadResourceRequest("res://cats/3", null);
+
+            // When / Then
+            thenThrownBy(() -> resource.handler().apply(CONTEXT, request))
+                    .isInstanceOf(ResourceExecutionException.class)
+                    .hasMessageContaining("res://cats/3")
+                    .hasMessageContaining("/resources/cats/{unknown}");
+        }
+
+        @Test
         void shouldFallBackToResponseContentTypeWhenMimeTypeNotDefined() {
             // Given
             wireMockServer.stubFor(get(urlPathEqualTo("/resources/greeting"))
