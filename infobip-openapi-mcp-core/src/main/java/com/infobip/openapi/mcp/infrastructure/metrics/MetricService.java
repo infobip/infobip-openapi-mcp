@@ -18,6 +18,12 @@ public interface MetricService {
         void timeResolveCall(String promptName, HttpStatusCode httpStatusCode);
     }
 
+    interface ResourceTimer {
+        void timeResourceCall(String resourceName, boolean isError);
+
+        void timeReadCall(String resourceName, HttpStatusCode httpStatusCode);
+    }
+
     interface LiveReloadTimer {
         void record(String status);
     }
@@ -33,6 +39,12 @@ public interface MetricService {
     void recordPromptResolveCall(String promptName, HttpStatusCode httpStatusCode);
 
     PromptTimer startPromptTimer();
+
+    void recordResourceCall(String resourceName);
+
+    void recordResourceReadCall(String resourceName, HttpStatusCode httpStatusCode);
+
+    ResourceTimer startResourceTimer();
 
     void recordLiveReloadExecution(String status);
 

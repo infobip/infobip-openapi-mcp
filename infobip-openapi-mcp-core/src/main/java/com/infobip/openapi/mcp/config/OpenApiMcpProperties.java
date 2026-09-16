@@ -39,6 +39,7 @@ import org.springframework.validation.annotation.Validated;
  *                                     The keys are the filter names, and the values are booleans indicating whether to include (true) or exclude (false).
  *                                     By default, all filters are enabled.
  * @param tools                        Tool configuration.
+ * @param resources                    Resource configuration.
  * @param liveReload                   Live reload configuration for automatic OpenAPI spec refresh.
  */
 @Validated
@@ -53,6 +54,7 @@ public record OpenApiMcpProperties(
         String userAgent,
         Map<String, Boolean> filters,
         @NestedConfigurationProperty @Valid Tools tools,
+        @NestedConfigurationProperty @Valid Resources resources,
         @NestedConfigurationProperty @Valid OpenApiMcpProperties.LiveReload liveReload) {
 
     public static final String PREFIX = "infobip.openapi.mcp";
@@ -87,6 +89,9 @@ public record OpenApiMcpProperties(
         if (tools == null) {
             tools = new Tools(null, null, null, null, null, null, null);
         }
+        if (resources == null) {
+            resources = new Resources(null);
+        }
         if (liveReload == null) {
             liveReload = new LiveReload(null, null, null);
         }
@@ -98,7 +103,7 @@ public record OpenApiMcpProperties(
      * @return a new OpenApiMcpProperties instance with defaults
      */
     public static OpenApiMcpProperties withDefaults() {
-        return new OpenApiMcpProperties(null, null, null, null, null, null, null, null, null, null);
+        return new OpenApiMcpProperties(null, null, null, null, null, null, null, null, null, null, null);
     }
 
     /**
@@ -229,6 +234,25 @@ public record OpenApiMcpProperties(
          */
         public record Annotations(
                 Boolean readOnlyHint, Boolean destructiveHint, Boolean idempotentHint, Boolean openWorldHint) {}
+    }
+
+    /**
+     * Configuration for resources.
+     *
+     * @param uriScheme The URI scheme used to build resource URIs / URI templates for operations flagged with
+     *                  {@code x-mcp-resource: true}. Default is "api".
+     */
+    public record Resources(String uriScheme) {
+        public static final String DEFAULT_URI_SCHEME = "api";
+
+        /**
+         * Constructor with defaults for optional properties.
+         */
+        public Resources {
+            if (uriScheme == null) {
+                uriScheme = DEFAULT_URI_SCHEME;
+            }
+        }
     }
 
     /**

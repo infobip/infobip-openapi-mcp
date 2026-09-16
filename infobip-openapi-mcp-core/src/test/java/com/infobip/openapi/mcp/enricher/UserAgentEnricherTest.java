@@ -119,6 +119,7 @@ class UserAgentEnricherTest {
                 userAgent,
                 null,
                 null,
+                null,
                 null);
     }
 }

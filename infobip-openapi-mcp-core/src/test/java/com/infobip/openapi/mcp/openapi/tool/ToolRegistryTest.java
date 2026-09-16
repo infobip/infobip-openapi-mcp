@@ -70,6 +70,7 @@ class ToolRegistryTest {
                 null,
                 null,
                 new OpenApiMcpProperties.Tools(null, null, null, true, null, null, null),
+                null,
                 null);
         toolRegistry = new ToolRegistry(
                 openApiRegistry,
@@ -513,6 +514,41 @@ class ToolRegistryTest {
     }
 
     @Test
+    void shouldExcludeOperationMarkedWithMcpResourceExtensionFromTools() {
+        // Given
+        var openApi = parseOpenAPI("""
+            {
+              "openapi": "3.1.0",
+              "info": {
+                "title": "Test API",
+                "version": "1.0.0"
+              },
+              "paths": {
+                "/users": {
+                  "get": {
+                    "operationId": "getUsers",
+                    "description": "Get all users",
+                    "x-mcp-resource": true
+                  },
+                  "post": {
+                    "operationId": "createUser",
+                    "description": "Create a new user"
+                  }
+                }
+              }
+            }
+            """);
+        given(openApiRegistry.openApi()).willReturn(openApi);
+
+        // When
+        var result = toolRegistry.getTools();
+
+        // Then
+        then(result).hasSize(1);
+        then(result.getFirst().tool().name()).isEqualTo("createUser");
+    }
+
+    @Test
     void shouldHandleOperationWithoutParametersOrRequestBody() {
         // Given
         var openApi = parseOpenAPI("""
@@ -914,6 +950,7 @@ class ToolRegistryTest {
                 null,
                 null,
                 new OpenApiMcpProperties.Tools(null, null, null, false, null, null, null),
+                null,
                 null);
         toolRegistry = new ToolRegistry(
                 openApiRegistry,
@@ -968,6 +1005,7 @@ class ToolRegistryTest {
                 null,
                 null,
                 new OpenApiMcpProperties.Tools(null, null, null, false, null, null, null),
+                null,
                 null);
         toolRegistry = new ToolRegistry(
                 openApiRegistry,
@@ -1309,6 +1347,7 @@ class ToolRegistryTest {
                 null,
                 null,
                 new OpenApiMcpProperties.Tools(null, null, null, true, null, ExamplesMode.ALL, null),
+                null,
                 null);
         inputExampleComposer = new InputExampleComposer(properties);
         toolRegistry = new ToolRegistry(
@@ -1374,6 +1413,7 @@ class ToolRegistryTest {
                 null,
                 null,
                 new OpenApiMcpProperties.Tools(null, null, null, true, null, ExamplesMode.SKIP, null),
+                null,
                 null);
         inputExampleComposer = new InputExampleComposer(properties);
         toolRegistry = new ToolRegistry(
@@ -1472,6 +1512,7 @@ class ToolRegistryTest {
                 null,
                 null,
                 new OpenApiMcpProperties.Tools(null, null, null, true, null, ExamplesMode.ALL, null),
+                null,
                 null);
         inputExampleComposer = new InputExampleComposer(properties);
         toolRegistry = new ToolRegistry(
@@ -1577,6 +1618,7 @@ class ToolRegistryTest {
                 null,
                 null,
                 new OpenApiMcpProperties.Tools(null, null, null, true, null, ExamplesMode.ALL, null),
+                null,
                 null);
         inputExampleComposer = new InputExampleComposer(properties);
         toolRegistry = new ToolRegistry(
@@ -1653,6 +1695,7 @@ class ToolRegistryTest {
                 null,
                 null,
                 new OpenApiMcpProperties.Tools(null, null, null, true, null, ExamplesMode.ANNOTATED, null),
+                null,
                 null);
         inputExampleComposer = new InputExampleComposer(properties);
         toolRegistry = new ToolRegistry(

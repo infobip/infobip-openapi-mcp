@@ -88,8 +88,14 @@ The framework follows this startup flow:
    `RegisteredPrompt` with an `McpSchema.Prompt` and a handler. Two modes are supported: **inline mode**
    where Mustache templates are compiled at startup and rendered server-side from user arguments, and **resolved mode**
    where the handler calls a backend HTTP endpoint to resolve the prompt
-5. Tools and prompts are registered with the Spring AI MCP server (SSE, Streamable HTTP, Stateless HTTP, or stdio
-   transport)
+5. `ResourceRegistry` reads the `x-mcp-resource: true` vendor extension on `GET` operations and converts each into a
+   `RegisteredResource`, using `ResourceUriBuilder` to derive the `uri`/`uriTemplate` (`<uri-scheme>://<path>` with
+   `{param}` placeholders for path parameters and an RFC 6570 `{?q1,q2,...}` suffix for query parameters) and the
+   same `NamingStrategy` bean used for tools to derive the resource `name`. Operations with no parameters become a
+   static MCP `Resource`; operations with any path or query parameter become a `ResourceTemplate`. A marked operation
+   is excluded from `ToolRegistry`'s tool list; marking a non-`GET` operation is a startup-time configuration error
+6. Tools, prompts and resources are registered with the Spring AI MCP server (SSE, Streamable HTTP, Stateless HTTP, or
+   stdio transport)
 
 **Runtime tool call flow:**
 `ToolSpecBuilder` → `ToolCallFilterChain` (ordered `ToolCallFilter` beans) → `RegisteredTool` (lowest precedence, makes
@@ -99,6 +105,13 @@ HTTP call via `ToolHandler`) → optional `JsonDoubleSerializationCorrector` ret
 `PromptSpecBuilder` → `PromptCallFilterChain` (ordered `PromptCallFilter` beans) → `RegisteredPrompt` (lowest
 precedence, resolves inline template or calls backend HTTP endpoint)
 
+**Runtime resource read flow:**
+`ResourceSpecBuilder` → `ResourceCallFilterChain` (ordered `ResourceCallFilter` beans) → `RegisteredResource` (lowest
+precedence, makes HTTP call via `ResourceHandler`)
+
+Unlike tools, prompts and resources are registered once at MCP server bean-creation time and are not affected by
+live-reload.
+
 ### Key Extension Points
 
 | Interface            | Purpose                                                                                                                  |
@@ -107,7 +120,8 @@ precedence, resolves inline template or calls backend HTTP endpoint)
 | `ApiRequestEnricher`      | Modify HTTP requests to the downstream API (headers, metadata); failures are swallowed                                   |
 | `ToolCallFilter`          | Intercept tool calls; can abort the chain unlike enrichers                                                               |
 | `PromptCallFilter`        | Intercept prompt calls; can abort the chain, add observability, or short-circuit resolution                              |
-| `NamingStrategy`          | Custom tool name generation; replace the default bean                                                                    |
+| `ResourceCallFilter`      | Intercept resource reads; can abort the chain, add observability, or short-circuit resolution                            |
+| `NamingStrategy`          | Custom tool name generation; also used to derive MCP resource names; replace the default bean                            |
 | `ErrorModelProvider`      | Custom error response format returned to MCP clients                                                                     |
 | `CredentialProvider`      | Supply credentials from any source (HTTP header, vault, env, etc.); replace the default bean                             |
 | `ProgressUpdateProvider`  | Controls the `progress`, `total`, and `message` fields of each `notifications/progress` message; replace the default bean |

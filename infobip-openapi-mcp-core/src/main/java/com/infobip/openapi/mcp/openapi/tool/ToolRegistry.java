@@ -7,6 +7,7 @@ import com.infobip.openapi.mcp.openapi.OpenApiRegistry;
 import com.infobip.openapi.mcp.openapi.schema.ComposedExample;
 import com.infobip.openapi.mcp.openapi.schema.InputExampleComposer;
 import com.infobip.openapi.mcp.openapi.schema.InputSchemaComposer;
+import com.infobip.openapi.mcp.openapi.schema.Spec;
 import com.infobip.openapi.mcp.openapi.tool.exception.ToolRegistrationException;
 import com.infobip.openapi.mcp.openapi.tool.naming.NamingStrategy;
 import com.infobip.openapi.mcp.util.OpenApiMapperFactory;
@@ -101,6 +102,7 @@ public class ToolRegistry {
                 .flatMap(pathEntry -> pathEntry.getValue().readOperationsMap().entrySet().stream()
                         .map(operationEntry -> new FullOperation(
                                 pathEntry.getKey(), operationEntry.getKey(), operationEntry.getValue(), openApi)))
+                .filter(fullOperation -> !Spec.isResourceOperation(fullOperation.operation()))
                 .map(fullOperation -> {
                     var toolName = determineToolName(fullOperation);
                     var tool = McpSchema.Tool.builder()

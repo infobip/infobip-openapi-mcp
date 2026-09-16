@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- MCP Resources support via the `x-mcp-resource: true` vendor extension on a `GET` OpenAPI operation. Marking an
+  operation this way exposes it as an MCP `Resource` (for parameter-less operations) or a `ResourceTemplate` (for
+  operations with path and/or query parameters), instead of registering it as a tool. The resource's `uri`/
+  `uriTemplate`, `name`, `title`, `description`, and `mimeType` are all derived automatically from the OpenAPI
+  operation. The URI scheme used to build resource URIs defaults to `api` and can be customized with the
+  `infobip.openapi.mcp.resources.uri-scheme` property.
+
 ## 1.0.1
 
 ### Added
