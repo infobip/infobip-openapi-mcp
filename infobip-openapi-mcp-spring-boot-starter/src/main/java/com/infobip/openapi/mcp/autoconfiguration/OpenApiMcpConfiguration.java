@@ -551,6 +551,8 @@ class OpenApiMcpConfiguration {
             ToolSpecBuilder toolSpecBuilder,
             PromptRegistry promptRegistry,
             PromptSpecBuilder promptSpecBuilder,
+            ResourceRegistry resourceRegistry,
+            ResourceSpecBuilder resourceSpecBuilder,
             OpenApiMcpProperties properties,
             MetricService metricService,
             McpServerMetaData mcpServerMetaData) {
@@ -563,6 +565,8 @@ class OpenApiMcpConfiguration {
                 toolSpecBuilder,
                 promptRegistry,
                 promptSpecBuilder,
+                resourceRegistry,
+                resourceSpecBuilder,
                 properties,
                 metricService,
                 mcpServerMetaData);

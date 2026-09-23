@@ -109,8 +109,10 @@ precedence, resolves inline template or calls backend HTTP endpoint)
 `ResourceSpecBuilder` → `ResourceCallFilterChain` (ordered `ResourceCallFilter` beans) → `RegisteredResource` (lowest
 precedence, makes HTTP call via `ResourceHandler`)
 
-Unlike tools, prompts and resources are registered once at MCP server bean-creation time and are not affected by
-live-reload.
+Tools, prompts and resources are all included in live reload. `ToolLiveReload` diffs each of the three against the
+refreshed OpenAPI specification and notifies connected clients via the matching `notify*ListChanged` call. Resources
+are diffed by URI, with static resources and resource templates diffed separately so that an operation switching
+between the two kinds is applied as a removal from one collection and an addition to the other.
 
 ### Key Extension Points
 

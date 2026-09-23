@@ -560,6 +560,9 @@ Messages support both `user` and `assistant` roles, enabling few-shot prompt pat
 included in live reload — when the OpenAPI specification changes, prompt additions and removals are detected and
 connected MCP clients are notified.
 
+Resources are included in live reload in the same way — when the OpenAPI specification changes, resource additions,
+removals and definition changes are detected and connected MCP clients are notified.
+
 ### Properties
 
 [External configuration properties][11] that can be used to configure framework behavior:

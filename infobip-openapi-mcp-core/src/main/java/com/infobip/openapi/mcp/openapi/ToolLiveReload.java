@@ -8,6 +8,9 @@ import com.infobip.openapi.mcp.openapi.tool.ToolRegistry;
 import com.infobip.openapi.mcp.prompt.PromptRegistry;
 import com.infobip.openapi.mcp.prompt.PromptSpecBuilder;
 import com.infobip.openapi.mcp.prompt.RegisteredPrompt;
+import com.infobip.openapi.mcp.resource.RegisteredResource;
+import com.infobip.openapi.mcp.resource.ResourceRegistry;
+import com.infobip.openapi.mcp.resource.ResourceSpecBuilder;
 import com.infobip.openapi.mcp.util.ToolSpecBuilder;
 import io.modelcontextprotocol.server.McpStatelessSyncServer;
 import io.modelcontextprotocol.server.McpSyncServer;
@@ -25,9 +28,10 @@ import org.springframework.scheduling.annotation.Scheduled;
 /**
  * Handles automatic reloading of the OpenAPI specification at runtime.
  *
- * <p>This component periodically fetches the OpenAPI specification and synchronizes MCP tools
- * with any detected changes. It is designed to support zero-downtime updates in distributed
- * deployments where multiple server instances need to converge on the same tool set.
+ * <p>This component periodically fetches the OpenAPI specification and synchronizes MCP tools,
+ * prompts and resources with any detected changes. It is designed to support zero-downtime updates
+ * in distributed deployments where multiple server instances need to converge on the same
+ * specification.
  *
  * <h2>Scheduling</h2>
  * <p>The reload job is triggered by a cron expression (default: every 10 minutes). The job runs
@@ -43,12 +47,18 @@ import org.springframework.scheduling.annotation.Scheduled;
  *
  * <h2>Change Detection</h2>
  * <p>Changes are detected by comparing the OpenAPI specification version string. When a version
- * change is found, the framework compares the current tool set with the new specification:
+ * change is found, the framework compares the current tool, prompt and resource sets with the new
+ * specification:
  * <ul>
  *   <li>Tools no longer present in the specification are removed</li>
  *   <li>New tools are added</li>
  *   <li>Modified tools (changed name, description, or schema) are replaced</li>
  * </ul>
+ *
+ * <p>Prompts and resources are diffed the same way, keyed by prompt name and resource URI
+ * respectively. Because a resource may change between a static resource and a resource template
+ * (for example when a query parameter is added to the operation), each kind is diffed separately
+ * so that such a change is applied as a removal from one collection and an addition to the other.
  *
  * <h2>Scope Reloading</h2>
  * <p>When tools are updated and a {@link ScopeDiscoveryService} is available, OAuth scopes are
@@ -56,8 +66,10 @@ import org.springframework.scheduling.annotation.Scheduled;
  *
  * <h2>Client Notification</h2>
  * <p>After tools are updated, connected MCP clients are notified via
- * {@link McpSyncServer#notifyToolsListChanged()} for stateful servers. Stateless servers do not
- * maintain client connections, so no notification is needed.
+ * {@link McpSyncServer#notifyToolsListChanged()} for stateful servers, and correspondingly via
+ * {@link McpSyncServer#notifyPromptsListChanged()} and
+ * {@link McpSyncServer#notifyResourcesListChanged()} when prompts or resources change. Stateless
+ * servers do not maintain client connections, so no notification is needed.
  *
  * <h2>SDK Limitations</h2>
  * <p>Due to constraints in the MCP SDK (as of Spring AI 1.1.0), tools cannot be updated in batch.
@@ -100,6 +112,8 @@ public class ToolLiveReload {
     private final ToolSpecBuilder toolSpecBuilder;
     private final PromptRegistry promptRegistry;
     private final PromptSpecBuilder promptSpecBuilder;
+    private final ResourceRegistry resourceRegistry;
+    private final ResourceSpecBuilder resourceSpecBuilder;
     private final OpenApiMcpProperties.LiveReload liveReloadConfig;
     private final MetricService metricService;
     private final McpServerMetaData mcpServerMetaData;
@@ -115,6 +129,8 @@ public class ToolLiveReload {
             ToolSpecBuilder toolSpecBuilder,
             PromptRegistry promptRegistry,
             PromptSpecBuilder promptSpecBuilder,
+            ResourceRegistry resourceRegistry,
+            ResourceSpecBuilder resourceSpecBuilder,
             OpenApiMcpProperties properties,
             MetricService metricService,
             McpServerMetaData mcpServerMetaData) {
@@ -126,6 +142,8 @@ public class ToolLiveReload {
         this.toolSpecBuilder = toolSpecBuilder;
         this.promptRegistry = promptRegistry;
         this.promptSpecBuilder = promptSpecBuilder;
+        this.resourceRegistry = resourceRegistry;
+        this.resourceSpecBuilder = resourceSpecBuilder;
         this.liveReloadConfig = properties.liveReload();
         this.metricService = metricService;
         this.mcpServerMetaData = mcpServerMetaData;
@@ -147,11 +165,12 @@ public class ToolLiveReload {
             var currentOpenApiVersion = openApiRegistry.openApi().getInfo().getVersion();
             var currentTools = toolRegistry.getRegisteredToolsCache();
             var currentPrompts = promptRegistry.getRegisteredPromptsCache();
+            var currentResources = resourceRegistry.getRegisteredResourcesCache();
 
             var maxRetries = liveReloadConfig.maxRetries();
             for (int attempt = 1; attempt <= maxRetries; attempt++) {
                 try {
-                    var changed = reload(currentOpenApiVersion, currentTools, currentPrompts);
+                    var changed = reload(currentOpenApiVersion, currentTools, currentPrompts, currentResources);
                     status = changed ? Status.SUCCESS_TOOLS_UPDATED : Status.SUCCESS_NO_CHANGE;
                     break;
                 } catch (Exception e) {
@@ -183,15 +202,19 @@ public class ToolLiveReload {
     }
 
     /**
-     * Refreshes the OpenAPI specification and updates tools if needed.
+     * Refreshes the OpenAPI specification and updates tools, prompts and resources if needed.
      *
      * @param currentOpenApiVersion the current OpenAPI version
      * @param currentTools          the current list of registered tools
      * @param currentPrompts        the current list of registered prompts
-     * @return true if tools or prompts were updated, false if no changes detected
+     * @param currentResources      the current list of registered resources
+     * @return true if tools, prompts or resources were updated, false if no changes detected
      */
     public boolean reload(
-            String currentOpenApiVersion, List<RegisteredTool> currentTools, List<RegisteredPrompt> currentPrompts) {
+            String currentOpenApiVersion,
+            List<RegisteredTool> currentTools,
+            List<RegisteredPrompt> currentPrompts,
+            List<RegisteredResource> currentResources) {
         openApiRegistry.reload();
         var newOpenApiVersion = openApiRegistry.openApi().getInfo().getVersion();
         if (currentOpenApiVersion.equals(newOpenApiVersion)) {
@@ -208,11 +231,13 @@ public class ToolLiveReload {
         // leaves the server in a consistent state (either both are applied or neither is).
         var toolDiff = computeToolDiff(currentTools);
         var promptDiff = computePromptDiff(currentPrompts);
+        var resourceDiff = computeResourceDiff(currentResources);
 
         var toolsUpdated = applyToolDiff(toolDiff);
         var promptsUpdated = applyPromptDiff(promptDiff);
+        var resourcesUpdated = applyResourceDiff(resourceDiff);
 
-        return toolsUpdated || promptsUpdated;
+        return toolsUpdated || promptsUpdated || resourcesUpdated;
     }
 
     private record ToolDiff(
@@ -224,6 +249,18 @@ public class ToolLiveReload {
             List<RegisteredPrompt> addedOrChanged,
             List<RegisteredPrompt> deleted,
             Map<String, RegisteredPrompt> currentPromptMap) {}
+
+    private record ResourceDiff(
+            List<RegisteredResource> addedOrChanged,
+            List<RegisteredResource> deleted,
+            Map<String, RegisteredResource> currentResourceMap) {
+
+        boolean isEmpty() {
+            return addedOrChanged.isEmpty() && deleted.isEmpty();
+        }
+    }
+
+    private record ResourceDiffs(ResourceDiff staticResources, ResourceDiff templates) {}
 
     private ToolDiff computeToolDiff(List<RegisteredTool> currentTools) {
         var registeredTools = toolRegistry.getTools();
@@ -248,6 +285,106 @@ public class ToolLiveReload {
                 })
                 .toList();
         return new PromptDiff(addedOrChanged, deleted, currentPromptMap);
+    }
+
+    /**
+     * Computes the resource diff, keeping static resources and resource templates apart. An operation that
+     * changes from one kind to the other therefore shows up as a deletion in one diff and an addition in the
+     * other, which is exactly how the MCP server has to be updated.
+     */
+    private ResourceDiffs computeResourceDiff(List<RegisteredResource> currentResources) {
+        var newResources = resourceRegistry.getResources();
+        return new ResourceDiffs(
+                computeResourceDiffOfKind(currentResources, newResources, false),
+                computeResourceDiffOfKind(currentResources, newResources, true));
+    }
+
+    private ResourceDiff computeResourceDiffOfKind(
+            List<RegisteredResource> currentResources, List<RegisteredResource> newResources, boolean template) {
+        var currentResourceMap = getResourceMap(currentResources, template);
+        var newResourceMap = getResourceMap(newResources, template);
+        var deleted = currentResourceMap.values().stream()
+                .filter(resource -> !newResourceMap.containsKey(resource.uri()))
+                .toList();
+        var addedOrChanged = newResourceMap.values().stream()
+                .filter(resource -> {
+                    var existing = currentResourceMap.get(resource.uri());
+                    return existing == null || !isSameDefinition(existing, resource);
+                })
+                .toList();
+        return new ResourceDiff(addedOrChanged, deleted, currentResourceMap);
+    }
+
+    private boolean isSameDefinition(RegisteredResource left, RegisteredResource right) {
+        return left.isTemplate()
+                ? left.resourceTemplate().equals(right.resourceTemplate())
+                : left.resource().equals(right.resource());
+    }
+
+    private boolean applyResourceDiff(ResourceDiffs diffs) {
+        if (diffs.staticResources().isEmpty() && diffs.templates().isEmpty()) {
+            return false;
+        }
+        mcpSyncServer.ifPresent(ignored -> registerStatefulResources(diffs));
+        mcpStatelessSyncServer.ifPresent(ignored -> registerStatelessResources(diffs));
+        mcpSyncServer.ifPresent(McpSyncServer::notifyResourcesListChanged);
+        return true;
+    }
+
+    private void registerStatefulResources(ResourceDiffs diffs) {
+        var server = mcpSyncServer.get();
+        diffs.staticResources().deleted().forEach(resource -> {
+            logResourceDeletion(resource);
+            server.removeResource(resource.uri());
+        });
+        diffs.templates().deleted().forEach(resource -> {
+            logResourceDeletion(resource);
+            server.removeResourceTemplate(resource.uri());
+        });
+        diffs.staticResources().addedOrChanged().forEach(resource -> {
+            logResourceAdditionOrChange(resource, diffs.staticResources().currentResourceMap());
+            server.addResource(resourceSpecBuilder.buildSyncResourceSpecification(resource));
+        });
+        diffs.templates().addedOrChanged().forEach(resource -> {
+            logResourceAdditionOrChange(resource, diffs.templates().currentResourceMap());
+            server.addResourceTemplate(resourceSpecBuilder.buildSyncResourceTemplateSpecification(resource));
+        });
+    }
+
+    private void registerStatelessResources(ResourceDiffs diffs) {
+        var server = mcpStatelessSyncServer.get();
+        diffs.staticResources().deleted().forEach(resource -> {
+            logResourceDeletion(resource);
+            server.removeResource(resource.uri());
+        });
+        diffs.templates().deleted().forEach(resource -> {
+            logResourceDeletion(resource);
+            server.removeResourceTemplate(resource.uri());
+        });
+        diffs.staticResources().addedOrChanged().forEach(resource -> {
+            logResourceAdditionOrChange(resource, diffs.staticResources().currentResourceMap());
+            server.addResource(resourceSpecBuilder.buildSyncStatelessResourceSpecification(resource));
+        });
+        diffs.templates().addedOrChanged().forEach(resource -> {
+            logResourceAdditionOrChange(resource, diffs.templates().currentResourceMap());
+            server.addResourceTemplate(resourceSpecBuilder.buildSyncStatelessResourceTemplateSpecification(resource));
+        });
+    }
+
+    private void logResourceDeletion(RegisteredResource resource) {
+        LOGGER.info("Removing resource {} ({}) from MCP server.", resource.name(), resource.uri());
+    }
+
+    private void logResourceAdditionOrChange(
+            RegisteredResource resource, Map<String, RegisteredResource> currentResourceMap) {
+        var action = currentResourceMap.containsKey(resource.uri()) ? "Updating" : "Adding";
+        LOGGER.info("{} resource {} ({}) in MCP server.", action, resource.name(), resource.uri());
+    }
+
+    private Map<String, RegisteredResource> getResourceMap(List<RegisteredResource> resources, boolean template) {
+        return resources.stream()
+                .filter(resource -> resource.isTemplate() == template)
+                .collect(Collectors.toMap(RegisteredResource::uri, Function.identity(), (first, second) -> first));
     }
 
     private boolean applyToolDiff(ToolDiff diff) {

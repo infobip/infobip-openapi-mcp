@@ -14,7 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   operations with path and/or query parameters), instead of registering it as a tool. The resource's `uri`/
   `uriTemplate`, `name`, `title`, `description`, and `mimeType` are all derived automatically from the OpenAPI
   operation. The URI scheme used to build resource URIs defaults to `api` and can be customized with the
-  `infobip.openapi.mcp.resources.uri-scheme` property.
+  `infobip.openapi.mcp.resources.uri-scheme` property. Resources are included in live reload — when the OpenAPI
+  specification changes, resource additions, removals and definition changes are applied and connected MCP clients
+  are notified.
 
 ## 1.0.1
 

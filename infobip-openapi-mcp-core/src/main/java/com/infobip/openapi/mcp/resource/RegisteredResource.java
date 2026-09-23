@@ -42,6 +42,13 @@ public record RegisteredResource(
         return isTemplate() ? resourceTemplate.name() : resource.name();
     }
 
+    /**
+     * Returns the URI template of a resource template, or the URI of a static resource.
+     */
+    public String uri() {
+        return isTemplate() ? resourceTemplate.uriTemplate() : resource.uri();
+    }
+
     @Override
     public McpSchema.ReadResourceResult doFilter(
             McpRequestContext ctx, McpSchema.ReadResourceRequest req, ResourceCallFilterChain chain) {

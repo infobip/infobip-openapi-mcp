@@ -19,6 +19,9 @@ import com.infobip.openapi.mcp.openapi.tool.naming.OperationIdStrategy;
 import com.infobip.openapi.mcp.prompt.PromptRegistry;
 import com.infobip.openapi.mcp.prompt.PromptSpecBuilder;
 import com.infobip.openapi.mcp.prompt.RegisteredPrompt;
+import com.infobip.openapi.mcp.resource.RegisteredResource;
+import com.infobip.openapi.mcp.resource.ResourceRegistry;
+import com.infobip.openapi.mcp.resource.ResourceSpecBuilder;
 import com.infobip.openapi.mcp.util.OpenApiMapperFactory;
 import com.infobip.openapi.mcp.util.ToolSpecBuilder;
 import io.modelcontextprotocol.server.McpServerFeatures;
@@ -99,6 +102,12 @@ class ToolLiveReloadTest {
 
     @Mock
     private PromptSpecBuilder promptSpecBuilder;
+
+    @Mock
+    private ResourceRegistry resourceRegistry;
+
+    @Mock
+    private ResourceSpecBuilder resourceSpecBuilder;
 
     @Captor
     private ArgumentCaptor<McpServerFeatures.SyncToolSpecification> syncToolSpecCaptor;
@@ -639,6 +648,8 @@ class ToolLiveReloadTest {
                 toolSpecBuilder,
                 promptRegistry,
                 promptSpecBuilder,
+                resourceRegistry,
+                resourceSpecBuilder,
                 PROPERTIES,
                 metricService,
                 mcpServerMetaData);
@@ -678,6 +689,8 @@ class ToolLiveReloadTest {
                     toolSpecBuilder,
                     promptRegistry,
                     promptSpecBuilder,
+                    resourceRegistry,
+                    resourceSpecBuilder,
                     PROPERTIES,
                     metricService,
                     mcpServerMetaData);
@@ -719,6 +732,8 @@ class ToolLiveReloadTest {
                     toolSpecBuilder,
                     promptRegistry,
                     promptSpecBuilder,
+                    resourceRegistry,
+                    resourceSpecBuilder,
                     PROPERTIES,
                     metricService,
                     mcpServerMetaData);
@@ -761,6 +776,8 @@ class ToolLiveReloadTest {
                     toolSpecBuilder,
                     promptRegistry,
                     promptSpecBuilder,
+                    resourceRegistry,
+                    resourceSpecBuilder,
                     PROPERTIES,
                     metricService,
                     mcpServerMetaData);
@@ -772,6 +789,176 @@ class ToolLiveReloadTest {
             then(givenMcpSyncServer).should(never()).addPrompt(any());
             then(givenMcpSyncServer).should(never()).removePrompt(any());
             then(givenMcpSyncServer).should(never()).notifyPromptsListChanged();
+        }
+    }
+
+    @Nested
+    class ResourceReload {
+
+        @Test
+        void shouldAddResourceWhenNewResourceAppears() throws InterruptedException {
+            // Given
+            givenSpecVersionChanged();
+            var newResource = givenStaticResource("api://users", "getUsers");
+            given(resourceRegistry.getRegisteredResourcesCache()).willReturn(List.of());
+            given(resourceRegistry.getResources()).willReturn(List.of(newResource));
+            given(resourceSpecBuilder.buildSyncResourceSpecification(newResource))
+                    .willReturn(new McpServerFeatures.SyncResourceSpecification(
+                            newResource.resource(), (exchange, request) -> null));
+
+            // When
+            givenOpenApiLiveReload().reloadOnSchedule();
+
+            // Then
+            then(givenMcpSyncServer).should().addResource(any());
+            then(givenMcpSyncServer).should(never()).removeResource(any());
+            then(givenMcpSyncServer).should().notifyResourcesListChanged();
+        }
+
+        @Test
+        void shouldAddResourceTemplateWhenNewResourceTemplateAppears() throws InterruptedException {
+            // Given
+            givenSpecVersionChanged();
+            var newTemplate = givenResourceTemplate("api://users/{id}", "getUser");
+            given(resourceRegistry.getRegisteredResourcesCache()).willReturn(List.of());
+            given(resourceRegistry.getResources()).willReturn(List.of(newTemplate));
+            given(resourceSpecBuilder.buildSyncResourceTemplateSpecification(newTemplate))
+                    .willReturn(new McpServerFeatures.SyncResourceTemplateSpecification(
+                            newTemplate.resourceTemplate(), (exchange, request) -> null));
+
+            // When
+            givenOpenApiLiveReload().reloadOnSchedule();
+
+            // Then
+            then(givenMcpSyncServer).should().addResourceTemplate(any());
+            then(givenMcpSyncServer).should(never()).removeResourceTemplate(any());
+            then(givenMcpSyncServer).should().notifyResourcesListChanged();
+        }
+
+        @Test
+        void shouldRemoveResourceWhenResourceDisappears() throws InterruptedException {
+            // Given
+            givenSpecVersionChanged();
+            var oldResource = givenStaticResource("api://users", "getUsers");
+            given(resourceRegistry.getRegisteredResourcesCache()).willReturn(List.of(oldResource));
+            given(resourceRegistry.getResources()).willReturn(List.of());
+
+            // When
+            givenOpenApiLiveReload().reloadOnSchedule();
+
+            // Then
+            then(givenMcpSyncServer).should().removeResource("api://users");
+            then(givenMcpSyncServer).should().notifyResourcesListChanged();
+        }
+
+        @Test
+        void shouldRemoveResourceTemplateWhenResourceTemplateDisappears() throws InterruptedException {
+            // Given
+            givenSpecVersionChanged();
+            var oldTemplate = givenResourceTemplate("api://users/{id}", "getUser");
+            given(resourceRegistry.getRegisteredResourcesCache()).willReturn(List.of(oldTemplate));
+            given(resourceRegistry.getResources()).willReturn(List.of());
+
+            // When
+            givenOpenApiLiveReload().reloadOnSchedule();
+
+            // Then
+            then(givenMcpSyncServer).should().removeResourceTemplate("api://users/{id}");
+            then(givenMcpSyncServer).should().notifyResourcesListChanged();
+        }
+
+        @Test
+        void shouldUpdateResourceWhenResourceDefinitionChanges() throws InterruptedException {
+            // Given
+            givenSpecVersionChanged();
+            var oldResource = givenStaticResource("api://users", "getUsers");
+            var changedResource = RegisteredResource.ofResource(
+                    McpSchema.Resource.builder()
+                            .uri("api://users")
+                            .name("getUsers")
+                            .description("Now with a description")
+                            .build(),
+                    (ctx, req) -> null);
+            given(resourceRegistry.getRegisteredResourcesCache()).willReturn(List.of(oldResource));
+            given(resourceRegistry.getResources()).willReturn(List.of(changedResource));
+            given(resourceSpecBuilder.buildSyncResourceSpecification(changedResource))
+                    .willReturn(new McpServerFeatures.SyncResourceSpecification(
+                            changedResource.resource(), (exchange, request) -> null));
+
+            // When
+            givenOpenApiLiveReload().reloadOnSchedule();
+
+            // Then
+            then(givenMcpSyncServer).should().addResource(any());
+            then(givenMcpSyncServer).should(never()).removeResource(any());
+            then(givenMcpSyncServer).should().notifyResourcesListChanged();
+        }
+
+        @Test
+        void shouldRemoveResourceAndAddTemplateWhenResourceBecomesTemplate() throws InterruptedException {
+            // Given
+            givenSpecVersionChanged();
+            var oldResource = givenStaticResource("api://users", "getUsers");
+            var newTemplate = givenResourceTemplate("api://users{?page}", "getUsers");
+            given(resourceRegistry.getRegisteredResourcesCache()).willReturn(List.of(oldResource));
+            given(resourceRegistry.getResources()).willReturn(List.of(newTemplate));
+            given(resourceSpecBuilder.buildSyncResourceTemplateSpecification(newTemplate))
+                    .willReturn(new McpServerFeatures.SyncResourceTemplateSpecification(
+                            newTemplate.resourceTemplate(), (exchange, request) -> null));
+
+            // When
+            givenOpenApiLiveReload().reloadOnSchedule();
+
+            // Then
+            then(givenMcpSyncServer).should().removeResource("api://users");
+            then(givenMcpSyncServer).should().addResourceTemplate(any());
+            then(givenMcpSyncServer).should().notifyResourcesListChanged();
+        }
+
+        @Test
+        void shouldNotNotifyResourcesChangedWhenResourcesAreIdentical() throws InterruptedException {
+            // Given
+            givenSpecVersionChanged();
+            var existingResource = givenStaticResource("api://users", "getUsers");
+            var existingTemplate = givenResourceTemplate("api://users/{id}", "getUser");
+            given(resourceRegistry.getRegisteredResourcesCache())
+                    .willReturn(List.of(existingResource, existingTemplate));
+            given(resourceRegistry.getResources()).willReturn(List.of(existingResource, existingTemplate));
+
+            // When
+            givenOpenApiLiveReload().reloadOnSchedule();
+
+            // Then
+            then(givenMcpSyncServer).should(never()).addResource(any());
+            then(givenMcpSyncServer).should(never()).removeResource(any());
+            then(givenMcpSyncServer).should(never()).addResourceTemplate(any());
+            then(givenMcpSyncServer).should(never()).removeResourceTemplate(any());
+            then(givenMcpSyncServer).should(never()).notifyResourcesListChanged();
+        }
+
+        private void givenSpecVersionChanged() {
+            var givenBaseOpenApi = loadOpenApi(BASE_SPEC);
+            var givenEditedOpenApi = loadOpenApi(WITH_ADDED_TOOL_SPEC);
+            given(givenOpenApiRegistry.openApi())
+                    .willReturn(givenBaseOpenApi)
+                    .willReturn(givenBaseOpenApi)
+                    .willReturn(givenEditedOpenApi);
+            givenToolRegistry.getTools();
+            setupToolSpecBuilderForNewTools();
+        }
+
+        private RegisteredResource givenStaticResource(String uri, String name) {
+            return RegisteredResource.ofResource(
+                    McpSchema.Resource.builder().uri(uri).name(name).build(), (ctx, req) -> null);
+        }
+
+        private RegisteredResource givenResourceTemplate(String uriTemplate, String name) {
+            return RegisteredResource.ofResourceTemplate(
+                    McpSchema.ResourceTemplate.builder()
+                            .uriTemplate(uriTemplate)
+                            .name(name)
+                            .build(),
+                    (ctx, req) -> null);
         }
     }
 
