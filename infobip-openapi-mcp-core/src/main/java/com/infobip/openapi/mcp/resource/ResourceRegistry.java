@@ -7,6 +7,7 @@ import com.infobip.openapi.mcp.openapi.tool.FullOperation;
 import com.infobip.openapi.mcp.openapi.tool.naming.NamingStrategy;
 import io.modelcontextprotocol.spec.McpSchema;
 import io.swagger.v3.oas.models.PathItem;
+import java.util.Comparator;
 import java.util.List;
 import java.util.function.BiFunction;
 
@@ -22,7 +23,8 @@ import java.util.function.BiFunction;
 public class ResourceRegistry {
 
     private static final String DEFAULT_MIME_TYPE = "application/json";
-    private static final String SUCCESS_RESPONSE_CODE = "200";
+    private static final String PREFERRED_SUCCESS_RESPONSE_CODE = "200";
+    private static final String SUCCESS_RESPONSE_RANGE = "2XX";
 
     private final OpenApiRegistry openApiRegistry;
     private final NamingStrategy namingStrategy;
@@ -118,18 +120,38 @@ public class ResourceRegistry {
         return resourceName;
     }
 
+    /**
+     * Resolves the MIME type from the first successful response declaring content. {@code 200} is preferred, then any
+     * other explicit {@code 2xx} code in ascending order, then the {@code 2XX} range key. Falls back to
+     * {@code application/json} when no successful response declares content.
+     */
     private String resolveMimeType(FullOperation fullOperation) {
         var responses = fullOperation.operation().getResponses();
         if (responses == null) {
             return DEFAULT_MIME_TYPE;
         }
-        var successResponse = responses.get(SUCCESS_RESPONSE_CODE);
-        if (successResponse == null
-                || successResponse.getContent() == null
-                || successResponse.getContent().isEmpty()) {
-            return DEFAULT_MIME_TYPE;
+        return responses.entrySet().stream()
+                .filter(entry -> successResponsePriority(entry.getKey()) >= 0)
+                .filter(entry -> entry.getValue().getContent() != null
+                        && !entry.getValue().getContent().isEmpty())
+                .min(Comparator.comparingInt(entry -> successResponsePriority(entry.getKey())))
+                .map(entry -> entry.getValue().getContent().keySet().iterator().next())
+                .orElse(DEFAULT_MIME_TYPE);
+    }
+
+    private int successResponsePriority(String responseCode) {
+        if (PREFERRED_SUCCESS_RESPONSE_CODE.equals(responseCode)) {
+            return 0;
         }
-        return successResponse.getContent().keySet().iterator().next();
+        if (SUCCESS_RESPONSE_RANGE.equalsIgnoreCase(responseCode)) {
+            return 1000;
+        }
+        if (responseCode.length() == 3
+                && responseCode.charAt(0) == '2'
+                && responseCode.chars().allMatch(Character::isDigit)) {
+            return Integer.parseInt(responseCode);
+        }
+        return -1;
     }
 
     public List<RegisteredResource> getRegisteredResourcesCache() {

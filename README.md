@@ -349,27 +349,22 @@ public CredentialProvider credentialProvider() {
 > `InitialAuthenticationFilter` returns HTTP 401, and `ToolHandler` returns an error tool result
 > with an authentication error.
 
-### ToolCallFilter
+### Call filters
 
-You can implement and register beans of type `com.infobip.openapi.mcp.openapi.tool.ToolCallFilter` to customize the tool
-call handling behavior. Tool call filters can modify requests before making API calls, as well as API responses before
-returning them to MCP client. They are also a good place to implement custom observability. Unlike API request
-enrichers, tool call filters can break the processing chain, thus preventing the API call from being made.
+You can implement and register call filter beans to customize how tool calls, prompt calls and resource reads are
+handled. A call filter can inspect or modify the request before it is processed, inspect or modify the result before
+it is returned to the MCP client, and short-circuit the chain to prevent further processing entirely. Call filters are
+a good place to implement custom observability, authorization, or caching. Unlike API request enrichers, call filters
+can break the processing chain, thus preventing the downstream API call from being made.
 
-The `com.infobip.openapi.mcp.openapi.tool.RegisteredTool` provides the default implementation of a tool filter which
-makes the HTTP API call. It is registered with the lowest precedence, so you can preempt it by using any precedence
-higher than that.
+Each chain ends with a default filter which performs the actual work. It is registered with the lowest precedence, so
+you can preempt it by using any precedence higher than that.
 
-### PromptCallFilter
-
-You can implement and register beans of type `com.infobip.openapi.mcp.prompt.PromptCallFilter` to customize prompt
-call handling behavior. Prompt call filters can inspect or modify prompt requests before resolution, inspect or modify
-prompt results before returning them to the MCP client, and short-circuit the chain to prevent prompt resolution
-entirely. They are a good place to implement custom observability, authorization, or caching for prompt calls.
-
-The `com.infobip.openapi.mcp.prompt.RegisteredPrompt` provides the default implementation of a prompt filter which
-performs the actual prompt resolution (inline template rendering or backend HTTP call). It is registered with the lowest
-precedence, so you can preempt it by using any precedence higher than that.
+| MCP primitive | Filter interface                                       | Default filter (lowest precedence)                                                                 |
+|---------------|--------------------------------------------------------|----------------------------------------------------------------------------------------------------|
+| Tools         | `com.infobip.openapi.mcp.openapi.tool.ToolCallFilter`  | `com.infobip.openapi.mcp.openapi.tool.RegisteredTool` — makes the HTTP API call                    |
+| Prompts       | `com.infobip.openapi.mcp.prompt.PromptCallFilter`      | `com.infobip.openapi.mcp.prompt.RegisteredPrompt` — renders the inline template or calls the backend |
+| Resources     | `com.infobip.openapi.mcp.resource.ResourceCallFilter`  | `com.infobip.openapi.mcp.resource.RegisteredResource` — makes the HTTP API call                    |
 
 ### JSON serialization
 
@@ -560,8 +555,80 @@ Messages support both `user` and `assistant` roles, enabling few-shot prompt pat
 included in live reload — when the OpenAPI specification changes, prompt additions and removals are detected and
 connected MCP clients are notified.
 
-Resources are included in live reload in the same way — when the OpenAPI specification changes, resource additions,
-removals and definition changes are detected and connected MCP clients are notified.
+### Resources
+
+The framework supports [MCP resources][20] — read-only data that MCP clients can discover and fetch by URI. Any `GET`
+operation in the OpenAPI specification can be exposed as a resource instead of a tool by marking it with the
+`x-mcp-resource: true` [vendor extension][7]. A marked operation is removed from the tool list, so it is exposed
+either as a resource or as a tool, never both. Marking a non-`GET` operation is a configuration error and fails at
+startup.
+
+```yaml
+paths:
+  /status:
+    get:
+      operationId: getStatus
+      summary: Service status
+      description: Current health and version of the service
+      x-mcp-resource: true
+      responses:
+        "200":
+          content:
+            application/json: { }
+  /users/{id}:
+    get:
+      operationId: getUserById
+      summary: User profile
+      x-mcp-resource: true
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: expand
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          content:
+            application/json: { }
+```
+
+Resource URIs are derived from the operation path as `<uri-scheme>://<path>`, where the scheme is configurable via
+`infobip.openapi.mcp.resources.uri-scheme` (`api` by default). Operations with no path or query parameters become
+static resources with a concrete `uri`; operations with parameters become resource templates whose `uriTemplate`
+keeps path parameters as `{param}` placeholders and appends query parameters as an [RFC 6570][21] form-style
+expansion:
+
+| Operation           | Parameters                | Resource URI                 | Kind              |
+|---------------------|---------------------------|------------------------------|-------------------|
+| `GET /status`       | none                      | `api://status`               | Resource          |
+| `GET /users/{id}`   | `id` (path)               | `api://users/{id}`           | Resource template |
+| `GET /users`        | `expand` (query)          | `api://users{?expand}`       | Resource template |
+| `GET /users/{id}`   | `id` (path), `expand` (query) | `api://users/{id}{?expand}` | Resource template |
+
+Parameters declared on the OpenAPI Path Item are inherited by the operation and taken into account, with operation
+level parameters overriding inherited ones of the same name.
+
+The resource `name` is produced by the same `NamingStrategy` bean used for tool names, the `title` comes from the
+operation `summary` (falling back to the name), the `description` from the operation `description`, and the
+`mimeType` from the content type of the first successful response declaring content — `200` is preferred, then any
+other `2xx` code in ascending order, then the `2XX` range (defaulting to `application/json`).
+
+When a client reads a resource, the framework matches the concrete URI back against the operation, forwards path
+variables and query parameters to the downstream API, and returns the response body as the resource contents. The
+media type of the contents is taken from the response `Content-Type` header, falling back to the declared `mimeType`.
+Textual media types (`text/*`, and JSON, XML, YAML and similar `application/*` types, including `+json`/`+xml`
+suffixes) are returned as text contents; any other media type, such as images, PDFs or `application/octet-stream`, is
+returned as base64 encoded blob contents. Query parameter values in the resource URI are percent-decoded as URI
+components (a literal `+` stays a `+`, it is not treated as a space) and re-encoded when forwarded to the backend.
+Query parameters that are not declared on the operation are dropped and logged rather than forwarded, so clients
+cannot inject arbitrary parameters into the backend call. Credentials are supplied by the configured `CredentialProvider`
+and requests pass through the registered `ApiRequestEnricher` beans, exactly as for tool calls. Reads can be
+intercepted by implementing `ResourceCallFilter`.
+
+Resources are included in live reload in the same way as tools and prompts — when the OpenAPI specification changes,
+resource additions, removals and definition changes are detected and connected MCP clients are notified.
 
 ### Properties
 
@@ -674,3 +741,7 @@ This project is licensed under the [MIT License](LICENSE).
 [18]: https://mustache.github.io "Mustache — Logic-less templates"
 
 [19]: https://swagger.io/docs/specification/v3_0/serialization/ "Parameter serialization in OpenAPI specification"
+
+[20]: https://modelcontextprotocol.io/specification/2025-11-25/server/resources "Resources in MCP specification"
+
+[21]: https://datatracker.ietf.org/doc/html/rfc6570 "RFC 6570 — URI Template"

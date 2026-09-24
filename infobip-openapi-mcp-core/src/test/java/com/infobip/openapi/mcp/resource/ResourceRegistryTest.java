@@ -12,6 +12,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -315,6 +317,41 @@ class ResourceRegistryTest {
         // Then
         then(result).hasSize(1);
         then(result.getFirst().resource().mimeType()).isEqualTo("text/csv");
+    }
+
+    @ParameterizedTest
+    @CsvSource(delimiter = '|', textBlock = """
+            # responses                                                                          | expectedMimeType
+            "201": {"content": {"text/csv": {}}}, "200": {"content": {"text/plain": {}}}          | text/plain
+            "206": {"content": {"text/csv": {}}}, "203": {"content": {"text/plain": {}}}          | text/plain
+            "2XX": {"content": {"text/csv": {}}}, "204": {"content": {"text/plain": {}}}          | text/plain
+            "200": {"description": "No content"}, "2XX": {"content": {"text/csv": {}}}            | text/csv
+            "404": {"content": {"text/plain": {}}}, "default": {"content": {"text/plain": {}}}    | application/json
+            """)
+    void shouldDeriveMimeTypeFromPreferredSuccessResponse(String responses, String expectedMimeType) {
+        // Given
+        var openApi = parseOpenAPI("""
+            {
+              "openapi": "3.1.0",
+              "info": { "title": "Test API", "version": "1.0.0" },
+              "paths": {
+                "/report": {
+                  "get": {
+                    "operationId": "getReport",
+                    "x-mcp-resource": true,
+                    "responses": { %s }
+                  }
+                }
+              }
+            }
+            """.formatted(responses));
+        given(openApiRegistry.openApi()).willReturn(openApi);
+
+        // When
+        var result = resourceRegistry.getResources();
+
+        // Then
+        then(result.getFirst().resource().mimeType()).isEqualTo(expectedMimeType);
     }
 
     @Nested
