@@ -618,10 +618,25 @@ other `2xx` code in ascending order, then the `2XX` range (defaulting to `applic
 When a client reads a resource, the framework matches the concrete URI back against the operation, forwards path
 variables and query parameters to the downstream API, and returns the response body as the resource contents. The
 media type of the contents is taken from the response `Content-Type` header, falling back to the declared `mimeType`.
-Textual media types (`text/*`, and JSON, XML, YAML and similar `application/*` types, including `+json`/`+xml`
-suffixes) are returned as text contents; any other media type, such as images, PDFs or `application/octet-stream`, is
-returned as base64 encoded blob contents. Query parameter values in the resource URI are percent-decoded as URI
-components (a literal `+` stays a `+`, it is not treated as a space) and re-encoded when forwarded to the backend.
+Media types declaring a `charset`, `text/*`, JSON (`application/json`, `application/*+json`), XML (`application/xml`,
+`application/*+xml`), `application/yaml` and `application/javascript` are returned as text contents, decoded using the
+declared charset (UTF-8 by default). Any other media type is returned as base64 encoded blob contents, which is
+lossless for any content. To customize this, for example to return a vendor specific media type as text, or to apply
+size limits, register your own `ResourceContentsConverter` bean. It receives the downstream response (URI, declared
+`mimeType`, OpenAPI operation, status, headers and body) and returns the resource contents. The default
+`DefaultResourceContentsConverter` can be constructed with a custom list of text media types, or delegated to:
+
+```java
+@Bean
+public ResourceContentsConverter resourceContentsConverter() {
+    var textMediaTypes = new ArrayList<>(DefaultResourceContentsConverter.DEFAULT_TEXT_MEDIA_TYPES);
+    textMediaTypes.add(MediaType.parseMediaType("application/vnd.acme.config"));
+    return new DefaultResourceContentsConverter(textMediaTypes);
+}
+```
+
+Query parameter values in the resource URI are percent-decoded as URI components (a literal `+` stays a `+`, it is
+not treated as a space) and re-encoded when forwarded to the backend.
 Query parameters that are not declared on the operation are dropped and logged rather than forwarded, so clients
 cannot inject arbitrary parameters into the backend call. Credentials are supplied by the configured `CredentialProvider`
 and requests pass through the registered `ApiRequestEnricher` beans, exactly as for tool calls. Reads can be

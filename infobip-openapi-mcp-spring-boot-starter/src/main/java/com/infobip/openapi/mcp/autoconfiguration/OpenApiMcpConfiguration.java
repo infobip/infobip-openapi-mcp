@@ -32,8 +32,10 @@ import com.infobip.openapi.mcp.progress.ProgressUpdateProvider;
 import com.infobip.openapi.mcp.prompt.PromptCallFilter;
 import com.infobip.openapi.mcp.prompt.PromptRegistry;
 import com.infobip.openapi.mcp.prompt.PromptSpecBuilder;
+import com.infobip.openapi.mcp.resource.DefaultResourceContentsConverter;
 import com.infobip.openapi.mcp.resource.RegisteredResource;
 import com.infobip.openapi.mcp.resource.ResourceCallFilter;
+import com.infobip.openapi.mcp.resource.ResourceContentsConverter;
 import com.infobip.openapi.mcp.resource.ResourceHandler;
 import com.infobip.openapi.mcp.resource.ResourceRegistry;
 import com.infobip.openapi.mcp.resource.ResourceSpecBuilder;
@@ -430,13 +432,26 @@ class OpenApiMcpConfiguration {
     }
 
     @Bean
+    @ConditionalOnMissingBean
+    public ResourceContentsConverter resourceContentsConverter() {
+        return new DefaultResourceContentsConverter();
+    }
+
+    @Bean
     public ResourceHandler resourceHandler(
             @Qualifier(TOOL_HANDLER_REST_CLIENT_QUALIFIER) RestClient restClient,
             CredentialProvider credentialProvider,
             ApiRequestEnricherChain enricherChain,
             MetricService metricService,
-            ResourceUriBuilder resourceUriBuilder) {
-        return new ResourceHandler(restClient, credentialProvider, enricherChain, metricService, resourceUriBuilder);
+            ResourceUriBuilder resourceUriBuilder,
+            ResourceContentsConverter resourceContentsConverter) {
+        return new ResourceHandler(
+                restClient,
+                credentialProvider,
+                enricherChain,
+                metricService,
+                resourceUriBuilder,
+                resourceContentsConverter);
     }
 
     @Bean

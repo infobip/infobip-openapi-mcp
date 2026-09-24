@@ -6,20 +6,14 @@ import com.infobip.openapi.mcp.enricher.ApiRequestEnricherChain;
 import com.infobip.openapi.mcp.infrastructure.metrics.MetricService;
 import com.infobip.openapi.mcp.openapi.tool.FullOperation;
 import io.modelcontextprotocol.spec.McpSchema;
-import java.nio.charset.StandardCharsets;
-import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 import org.jspecify.annotations.NullMarked;
-import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.InvalidMediaTypeException;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestClient;
@@ -33,35 +27,27 @@ public class ResourceHandler {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ResourceHandler.class);
     private static final String QUERY_VARIABLE_PREFIX = "__query";
-    private static final Set<String> TEXTUAL_SUBTYPES = Set.of(
-            "json",
-            "xml",
-            "yaml",
-            "x-yaml",
-            "javascript",
-            "ecmascript",
-            "graphql",
-            "sql",
-            "x-ndjson",
-            "x-www-form-urlencoded");
 
     private final RestClient restClient;
     private final CredentialProvider credentialProvider;
     private final ApiRequestEnricherChain enricherChain;
     private final MetricService metricService;
     private final ResourceUriBuilder resourceUriBuilder;
+    private final ResourceContentsConverter resourceContentsConverter;
 
     public ResourceHandler(
             RestClient restClient,
             CredentialProvider credentialProvider,
             ApiRequestEnricherChain enricherChain,
             MetricService metricService,
-            ResourceUriBuilder resourceUriBuilder) {
+            ResourceUriBuilder resourceUriBuilder,
+            ResourceContentsConverter resourceContentsConverter) {
         this.restClient = restClient;
         this.credentialProvider = credentialProvider;
         this.enricherChain = enricherChain;
         this.metricService = metricService;
         this.resourceUriBuilder = resourceUriBuilder;
+        this.resourceContentsConverter = resourceContentsConverter;
     }
 
     public McpSchema.ReadResourceResult handleResourceRead(
@@ -84,7 +70,7 @@ public class ResourceHandler {
             }
 
             var response = readFromBackend(fullOperation, resourceName, request, context, credential);
-            var contents = toResourceContents(request.uri(), mimeType, response);
+            var contents = convert(fullOperation, resourceName, mimeType, request, context, response);
 
             resourceCallTimer.timeResourceCall(resourceName, false);
             return new McpSchema.ReadResourceResult(List.of(contents));
@@ -94,51 +80,31 @@ public class ResourceHandler {
         }
     }
 
-    /**
-     * Converts the backend response into MCP resource contents. The media type is taken from the response
-     * {@code Content-Type} header, falling back to the MIME type declared for the resource. Textual media types are
-     * returned as {@link McpSchema.TextResourceContents} decoded with the response charset (UTF-8 by default); any other
-     * media type is returned as base64 encoded {@link McpSchema.BlobResourceContents}.
-     */
-    private McpSchema.ResourceContents toResourceContents(
-            String uri, String declaredMimeType, ResponseEntity<byte[]> response) {
-        var body = response.getBody() != null ? response.getBody() : new byte[0];
-        var mediaType = resolveMediaType(response.getHeaders().getContentType(), declaredMimeType);
-        if (mediaType == null) {
-            return new McpSchema.TextResourceContents(uri, declaredMimeType, new String(body, StandardCharsets.UTF_8));
-        }
-
-        var mimeType = mediaType.getType() + "/" + mediaType.getSubtype();
-        if (isTextual(mediaType)) {
-            var charset = mediaType.getCharset() != null ? mediaType.getCharset() : StandardCharsets.UTF_8;
-            return new McpSchema.TextResourceContents(uri, mimeType, new String(body, charset));
-        }
-        return new McpSchema.BlobResourceContents(
-                uri, mimeType, Base64.getEncoder().encodeToString(body));
-    }
-
-    private @Nullable MediaType resolveMediaType(@Nullable MediaType responseContentType, String declaredMimeType) {
-        if (responseContentType != null) {
-            return responseContentType;
-        }
+    private McpSchema.ResourceContents convert(
+            FullOperation fullOperation,
+            String resourceName,
+            String mimeType,
+            McpSchema.ReadResourceRequest request,
+            McpRequestContext context,
+            ResponseEntity<byte[]> response) {
+        var resourceResponse = new ResourceResponse(
+                request.uri(),
+                resourceName,
+                mimeType,
+                fullOperation,
+                response.getStatusCode(),
+                response.getHeaders(),
+                response.getBody() != null ? response.getBody() : new byte[0]);
         try {
-            return MediaType.parseMediaType(declaredMimeType);
-        } catch (InvalidMediaTypeException exception) {
-            LOGGER.debug(
-                    "Declared MIME type '{}' is not a valid media type, treating content as text", declaredMimeType);
-            return null;
+            return resourceContentsConverter.convert(resourceResponse, context);
+        } catch (RuntimeException exception) {
+            LOGGER.error(
+                    "Failed to convert response of resource '{}' into resource contents: {}",
+                    resourceName,
+                    exception.getMessage(),
+                    exception);
+            throw ResourceReadException.becauseContentsConversionFailed(resourceName, exception);
         }
-    }
-
-    private boolean isTextual(MediaType mediaType) {
-        if ("text".equals(mediaType.getType())) {
-            return true;
-        }
-        var suffix = mediaType.getSubtypeSuffix();
-        if (suffix != null && TEXTUAL_SUBTYPES.contains(suffix)) {
-            return true;
-        }
-        return "application".equals(mediaType.getType()) && TEXTUAL_SUBTYPES.contains(mediaType.getSubtype());
     }
 
     private ResponseEntity<byte[]> readFromBackend(

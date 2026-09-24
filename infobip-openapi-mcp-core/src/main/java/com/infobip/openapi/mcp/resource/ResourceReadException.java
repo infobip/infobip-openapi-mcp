@@ -20,4 +20,12 @@ public final class ResourceReadException extends McpError {
                 "Failed to read resource '" + resourceName + "' via GET " + path + ": " + cause.getMessage(),
                 cause);
     }
+
+    public static @NonNull ResourceReadException becauseContentsConversionFailed(String resourceName, Throwable cause) {
+        return new ResourceReadException(
+                McpSchema.ErrorCodes.INTERNAL_ERROR,
+                "Failed to convert response of resource '" + resourceName + "' into resource contents: "
+                        + cause.getMessage(),
+                cause);
+    }
 }

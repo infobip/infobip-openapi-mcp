@@ -107,7 +107,8 @@ precedence, resolves inline template or calls backend HTTP endpoint)
 
 **Runtime resource read flow:**
 `ResourceSpecBuilder` → `ResourceCallFilterChain` (ordered `ResourceCallFilter` beans) → `RegisteredResource` (lowest
-precedence, makes HTTP call via `ResourceHandler`)
+precedence, makes HTTP call via `ResourceHandler`, which delegates to the `ResourceContentsConverter` bean to turn the
+response into text or blob contents; the default decides by media type only)
 
 Tools, prompts and resources are all included in live reload. `ToolLiveReload` diffs each of the three against the
 refreshed OpenAPI specification and notifies connected clients via the matching `notify*ListChanged` call. Resources
@@ -127,6 +128,7 @@ between the two kinds is applied as a removal from one collection and an additio
 | `ErrorModelProvider`      | Custom error response format returned to MCP clients                                                                     |
 | `CredentialProvider`      | Supply credentials from any source (HTTP header, vault, env, etc.); replace the default bean                             |
 | `ProgressUpdateProvider`  | Controls the `progress`, `total`, and `message` fields of each `notifications/progress` message; replace the default bean |
+| `ResourceContentsConverter` | Converts the downstream response of a resource read into text or base64 blob contents; replace the default bean |
 
 Important: filters, enrichers, strategies and providers can be implemented by application code, which is outside the
 framework. You will not see those implementations in this project's source code. This is the supported way to extend and

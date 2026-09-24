@@ -21,6 +21,8 @@ import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import io.modelcontextprotocol.spec.McpSchema;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.parser.OpenAPIV3Parser;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
 import java.util.Optional;
@@ -128,46 +130,93 @@ class ResourceHandlerTest {
                         "api://logo", "image/png", Base64.getEncoder().encodeToString(pngBytes)));
     }
 
-    @ParameterizedTest
-    @CsvSource(delimiter = '|', textBlock = """
-            # responseContentType              | declaredMimeType | expectedMimeType
-            text/csv; charset=UTF-8            | application/json | text/csv
-            application/problem+json           | application/json | application/problem+json
-            application/xml                    | application/json | application/xml
-            ''                                 | text/markdown    | text/markdown
-            """)
-    void shouldReturnTextualBackendResponseAsTextResourceContents(
-            String responseContentType, String declaredMimeType, String expectedMimeType) {
+    @Test
+    void shouldReturnContentsProducedByResourceContentsConverter() {
         // Given
-        var response = aResponse().withBody("content");
-        if (!responseContentType.isEmpty()) {
-            response = response.withHeader(HttpHeaders.CONTENT_TYPE, responseContentType);
-        }
-        wireMockServer.stubFor(get(urlPathEqualTo("/document")).willReturn(response));
+        wireMockServer.stubFor(get(urlPathEqualTo("/status"))
+                .willReturn(aResponse().withHeader("X-Trace", "abc").withBody("UP")));
         var fullOperation = fullOperation("""
             {
               "openapi": "3.1.0",
               "info": { "title": "Test API", "version": "1.0.0" },
               "paths": {
-                "/document": {
+                "/status": {
                   "get": {
-                    "operationId": "getDocument"
+                    "operationId": "getStatus"
                   }
                 }
               }
             }
             """);
-        var handler = handlerWithCredential(context -> Optional.empty());
-        var request = new McpSchema.ReadResourceRequest("api://document");
+        var receivedResponses = new ArrayList<ResourceResponse>();
+        ResourceContentsConverter converter = (response, context) -> {
+            receivedResponses.add(response);
+            return new McpSchema.TextResourceContents(response.uri(), "text/custom", "converted");
+        };
+        var handler = new ResourceHandler(
+                restClient,
+                context -> Optional.empty(),
+                noOpEnricherChain,
+                metricService,
+                resourceUriBuilder,
+                converter);
+        var request = new McpSchema.ReadResourceRequest("api://status");
 
         // When
-        var result = handler.handleResourceRead(
-                fullOperation, "getDocument", declaredMimeType, request, new McpRequestContext());
+        var result =
+                handler.handleResourceRead(fullOperation, "getStatus", MIME_TYPE, request, new McpRequestContext());
 
         // Then
         then(result.contents())
                 .usingRecursiveFieldByFieldElementComparator()
-                .containsExactly(new McpSchema.TextResourceContents("api://document", expectedMimeType, "content"));
+                .containsExactly(new McpSchema.TextResourceContents("api://status", "text/custom", "converted"));
+        then(receivedResponses).singleElement().satisfies(response -> {
+            then(response.uri()).isEqualTo("api://status");
+            then(response.resourceName()).isEqualTo("getStatus");
+            then(response.declaredMimeType()).isEqualTo(MIME_TYPE);
+            then(response.fullOperation()).isSameAs(fullOperation);
+            then(response.statusCode().value()).isEqualTo(200);
+            then(response.headers().getFirst("X-Trace")).isEqualTo("abc");
+            then(response.body()).isEqualTo("UP".getBytes(StandardCharsets.UTF_8));
+        });
+    }
+
+    @Test
+    void shouldThrowResourceReadExceptionWhenResourceContentsConverterFails() {
+        // Given
+        wireMockServer.stubFor(
+                get(urlPathEqualTo("/status")).willReturn(aResponse().withBody("UP")));
+        var fullOperation = fullOperation("""
+            {
+              "openapi": "3.1.0",
+              "info": { "title": "Test API", "version": "1.0.0" },
+              "paths": {
+                "/status": {
+                  "get": {
+                    "operationId": "getStatus"
+                  }
+                }
+              }
+            }
+            """);
+        ResourceContentsConverter converter = (response, context) -> {
+            throw new IllegalStateException("unsupported content");
+        };
+        var handler = new ResourceHandler(
+                restClient,
+                context -> Optional.empty(),
+                noOpEnricherChain,
+                metricService,
+                resourceUriBuilder,
+                converter);
+        var request = new McpSchema.ReadResourceRequest("api://status");
+
+        // When & Then
+        thenThrownBy(() -> handler.handleResourceRead(
+                        fullOperation, "getStatus", MIME_TYPE, request, new McpRequestContext()))
+                .isInstanceOf(ResourceReadException.class)
+                .hasMessageContaining("getStatus")
+                .hasMessageContaining("unsupported content");
     }
 
     @Test
@@ -361,7 +410,8 @@ class ResourceHandlerTest {
                 context -> Optional.empty(),
                 noOpEnricherChain,
                 new MicrometerMetricService(meterRegistry, operation -> "getStatus"),
-                resourceUriBuilder);
+                resourceUriBuilder,
+                new DefaultResourceContentsConverter());
         var request = new McpSchema.ReadResourceRequest("api://status");
 
         // When
@@ -412,7 +462,8 @@ class ResourceHandlerTest {
                 },
                 noOpEnricherChain,
                 new MicrometerMetricService(meterRegistry, operation -> "getStatus"),
-                resourceUriBuilder);
+                resourceUriBuilder,
+                new DefaultResourceContentsConverter());
         var request = new McpSchema.ReadResourceRequest("api://status");
 
         // When & Then
@@ -433,7 +484,12 @@ class ResourceHandlerTest {
 
     private ResourceHandler handlerWithCredential(CredentialProvider credentialProvider) {
         return new ResourceHandler(
-                restClient, credentialProvider, noOpEnricherChain, metricService, resourceUriBuilder);
+                restClient,
+                credentialProvider,
+                noOpEnricherChain,
+                metricService,
+                resourceUriBuilder,
+                new DefaultResourceContentsConverter());
     }
 
     private FullOperation fullOperation(String jsonSpec) {
