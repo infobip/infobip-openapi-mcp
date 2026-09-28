@@ -8,7 +8,9 @@ import com.infobip.openapi.mcp.error.ErrorModelWriter;
 import com.infobip.openapi.mcp.infrastructure.metrics.MetricService;
 import com.infobip.openapi.mcp.openapi.schema.DecomposedRequestData;
 import com.infobip.openapi.mcp.progress.ProgressUpdateProvider;
+import com.infobip.openapi.mcp.util.PlusAwareUriEncoder;
 import io.modelcontextprotocol.spec.McpSchema;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -278,8 +280,8 @@ public class ToolHandler {
                             .parametersByType()
                             .query()
                             .forEach((name, value) -> addQueryParameter(builder, name, value));
-                    return builder.build(
-                            decomposedRequestData.parametersByType().path());
+                    return builder.build(encodePathParameters(
+                            decomposedRequestData.parametersByType().path()));
                 });
 
         decomposedRequestData.resolveRequestBody().ifPresent(body -> {
@@ -396,18 +398,30 @@ public class ToolHandler {
         if (value instanceof Map<?, ?> mapValue) {
             mapValue.forEach((propertyName, propertyValue) -> {
                 if (propertyValue != null) {
-                    uriBuilder.queryParam(propertyName.toString(), propertyValue.toString());
+                    uriBuilder.queryParam(
+                            PlusAwareUriEncoder.encodeQueryParam(propertyName.toString()),
+                            PlusAwareUriEncoder.encodeQueryParam(propertyValue.toString()));
                 }
             });
         } else if (value instanceof Iterable<?> iterableValue) {
             for (var item : iterableValue) {
                 if (item != null) {
-                    uriBuilder.queryParam(name, item.toString());
+                    uriBuilder.queryParam(
+                            PlusAwareUriEncoder.encodeQueryParam(name),
+                            PlusAwareUriEncoder.encodeQueryParam(item.toString()));
                 }
             }
         } else {
-            uriBuilder.queryParam(name, value.toString());
+            uriBuilder.queryParam(
+                    PlusAwareUriEncoder.encodeQueryParam(name), PlusAwareUriEncoder.encodeQueryParam(value.toString()));
         }
+    }
+
+    private Map<String, String> encodePathParameters(Map<String, Object> pathParameters) {
+        var encoded = new HashMap<String, String>();
+        pathParameters.forEach(
+                (name, value) -> encoded.put(name, PlusAwareUriEncoder.encodePathSegment(value.toString())));
+        return encoded;
     }
 
     /**

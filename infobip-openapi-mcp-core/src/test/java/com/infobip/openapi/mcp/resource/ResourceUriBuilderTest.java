@@ -139,6 +139,40 @@ class ResourceUriBuilderTest {
         then(pathVariables).containsExactly(java.util.Map.entry("id", "123"));
     }
 
+    @ParameterizedTest
+    @CsvSource(delimiter = '|', textBlock = """
+            # resourceUri                     | expectedValue
+            api://users/John%20Doe            | John Doe
+            api://users/a+b                   | a+b
+            api://users/%2B385                | +385
+            api://users/%7Bid%7D               | {id}
+            """)
+    void shouldPercentDecodePathVariableValuesPreservingLiteralPlus(String resourceUri, String expectedValue) {
+        // Given
+        var fullOperation = fullOperation("""
+            {
+              "openapi": "3.1.0",
+              "info": { "title": "Test API", "version": "1.0.0" },
+              "paths": {
+                "/users/{id}": {
+                  "get": {
+                    "operationId": "getUserById",
+                    "parameters": [
+                      { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+                    ]
+                  }
+                }
+              }
+            }
+            """);
+
+        // When
+        var pathVariables = resourceUriBuilder.matchPathVariables(fullOperation, resourceUri);
+
+        // Then
+        then(pathVariables).containsExactly(java.util.Map.entry("id", expectedValue));
+    }
+
     @Test
     void shouldReturnEmptyMapWhenNoPathParametersDeclared() {
         // Given

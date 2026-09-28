@@ -97,6 +97,33 @@ public abstract class ParameterPackingTestBase extends IntegrationTestBase {
     }
 
     @Test
+    void shouldEncodePlusCharacterInPathAndQueryParameterValues() {
+        withInitializedMcpClient(givenClient -> {
+            // Given
+            var givenPathParam = "2026-09-25T12:00:00.000+03:00";
+            var givenQueryParam = "2026-09-25T15:00:00.000+03:00";
+            givenOpenAPISpecification("/openapi/parameters.json");
+            var givenApiResponse = """
+                    {"resParam": "ok"}""";
+            var givenApiCallUrl = "/test/2026-09-25T12:00:00.000%2B03:00?queryParam=2026-09-25T15:00:00.000%2B03:00";
+            getStaticWireMockServer()
+                    .stubFor(get(urlEqualTo(givenApiCallUrl))
+                            .willReturn(aResponse().withStatus(200).withBody(givenApiResponse)));
+
+            // When
+            var actualToolResponse = givenClient.callTool(McpSchema.CallToolRequest.builder()
+                    .name("test_operation_params_get")
+                    .arguments(Map.of(
+                            "pathParam", givenPathParam,
+                            "queryParam", givenQueryParam))
+                    .build());
+
+            // Then
+            thenTollResponseMatchesApiResponse(actualToolResponse, givenApiResponse);
+        });
+    }
+
+    @Test
     void shouldCallPostToolWithMinimalParams() {
         withInitializedMcpClient(givenClient -> {
             // Given

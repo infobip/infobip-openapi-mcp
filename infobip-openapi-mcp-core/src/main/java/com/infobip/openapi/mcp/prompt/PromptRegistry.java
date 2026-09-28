@@ -6,6 +6,7 @@ import com.infobip.openapi.mcp.enricher.ApiRequestEnricherChain;
 import com.infobip.openapi.mcp.infrastructure.metrics.MetricService;
 import com.infobip.openapi.mcp.openapi.OpenApiRegistry;
 import com.infobip.openapi.mcp.openapi.schema.Spec;
+import com.infobip.openapi.mcp.util.PlusAwareUriEncoder;
 import io.modelcontextprotocol.spec.McpSchema;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -213,11 +214,14 @@ public class PromptRegistry {
         var spec = restClient.get().uri(uriBuilder -> {
             if (resolveConfig.isAbsolute()) {
                 var builder = UriComponentsBuilder.fromUriString(resolveConfig.path());
-                args.forEach((key, value) -> builder.queryParam(key, value.toString()));
-                return builder.build().toUri();
+                args.forEach((key, value) -> builder.queryParam(
+                        PlusAwareUriEncoder.encodeQueryParam(key),
+                        PlusAwareUriEncoder.encodeQueryParam(value.toString())));
+                return builder.build(true).toUri();
             }
             var builder = uriBuilder.path(resolveConfig.path());
-            args.forEach((key, value) -> builder.queryParam(key, value.toString()));
+            args.forEach((key, value) -> builder.queryParam(
+                    PlusAwareUriEncoder.encodeQueryParam(key), PlusAwareUriEncoder.encodeQueryParam(value.toString())));
             return builder.build();
         });
 

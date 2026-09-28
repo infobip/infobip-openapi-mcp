@@ -9,12 +9,14 @@ import static org.mockito.Mockito.when;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.infobip.openapi.mcp.McpRequestContext;
 import com.infobip.openapi.mcp.auth.CredentialProvider;
+import com.infobip.openapi.mcp.config.DownstreamApiRestClients;
 import com.infobip.openapi.mcp.enricher.ApiRequestEnricherChain;
 import com.infobip.openapi.mcp.infrastructure.metrics.MetricService;
 import com.infobip.openapi.mcp.infrastructure.metrics.NoOpMetricService;
 import com.infobip.openapi.mcp.openapi.OpenApiRegistry;
 import io.modelcontextprotocol.spec.McpSchema;
 import io.swagger.v3.oas.models.OpenAPI;
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -49,9 +51,9 @@ class PromptRegistryTest {
     void setUp() {
         wireMockServer = new WireMockServer(wireMockConfig().port(0));
         wireMockServer.start();
-        restClient = RestClient.builder()
-                .baseUrl("http://localhost:" + wireMockServer.port())
-                .requestFactory(new SimpleClientHttpRequestFactory())
+
+        restClient = DownstreamApiRestClients.builder(
+                        "http://localhost:" + wireMockServer.port(), Duration.ofSeconds(5), Duration.ofSeconds(5))
                 .build();
     }
 
@@ -353,6 +355,42 @@ class PromptRegistryTest {
         }
 
         @Test
+        void shouldEncodePlusCharacterInQueryParameterForRelativePath() {
+            // Given
+            var dateWithTimezoneOffset = "2026-09-25T12:00:00.000+03:00";
+            wireMockServer.stubFor(get(urlPathEqualTo("/prompts/scheduled"))
+                    .withQueryParam("date", equalTo(dateWithTimezoneOffset))
+                    .willReturn(okJson("""
+                            {
+                                "description": "Scheduled prompt",
+                                "messages": [
+                                    {"role": "user", "content": "Scheduled"}
+                                ]
+                            }
+                            """)));
+
+            var registry = givenRegistryWithExtension(List.of(Map.of(
+                    "name",
+                    "scheduled",
+                    "description",
+                    "Scheduled",
+                    "arguments",
+                    List.of(Map.of("name", "date", "description", "Date", "required", true)),
+                    "resolve",
+                    Map.of("path", "/prompts/scheduled"))));
+
+            var prompt = registry.getPrompts().getFirst();
+            var request = new McpSchema.GetPromptRequest("scheduled", Map.of("date", dateWithTimezoneOffset));
+
+            // When
+            var result = prompt.handler().apply(CONTEXT, request);
+
+            // Then
+            then(((McpSchema.TextContent) result.messages().getFirst().content()).text())
+                    .isEqualTo("Scheduled");
+        }
+
+        @Test
         void shouldForwardCredentialsInAuthorizationHeader() {
             // Given
             wireMockServer.stubFor(get(urlPathEqualTo("/prompts/secure"))
@@ -488,6 +526,49 @@ class PromptRegistryTest {
                 then(result.description()).isEqualTo("External greeting");
                 then(((McpSchema.TextContent) result.messages().getFirst().content()).text())
                         .isEqualTo("Hello from external!");
+            } finally {
+                absoluteUrlServer.stop();
+            }
+        }
+
+        @Test
+        void shouldEncodePlusCharacterInQueryParameterForAbsoluteUrl() {
+            // Given — use a separate WireMock server to simulate a different host
+            var absoluteUrlServer = new WireMockServer(0);
+            try {
+                absoluteUrlServer.start();
+                var dateWithTimezoneOffset = "2026-09-25T12:00:00.000+03:00";
+                absoluteUrlServer.stubFor(get(urlPathEqualTo("/external/prompts/scheduled"))
+                        .withQueryParam("date", equalTo(dateWithTimezoneOffset))
+                        .willReturn(okJson("""
+                                {
+                                    "description": "External scheduled",
+                                    "messages": [{"role": "user", "content": "Scheduled"}]
+                                }
+                                """)));
+
+                var registry = givenRegistryWithExtension(List.of(Map.of(
+                        "name",
+                        "external-scheduled",
+                        "description",
+                        "External scheduled",
+                        "arguments",
+                        List.of(Map.of("name", "date", "description", "Date")),
+                        "resolve",
+                        Map.of(
+                                "path",
+                                "http://localhost:" + absoluteUrlServer.port() + "/external/prompts/scheduled"))));
+
+                var prompt = registry.getPrompts().getFirst();
+                var request =
+                        new McpSchema.GetPromptRequest("external-scheduled", Map.of("date", dateWithTimezoneOffset));
+
+                // When
+                var result = prompt.handler().apply(CONTEXT, request);
+
+                // Then
+                then(((McpSchema.TextContent) result.messages().getFirst().content()).text())
+                        .isEqualTo("Scheduled");
             } finally {
                 absoluteUrlServer.stop();
             }

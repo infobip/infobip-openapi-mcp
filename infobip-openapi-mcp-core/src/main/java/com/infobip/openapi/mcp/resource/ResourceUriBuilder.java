@@ -68,7 +68,10 @@ public class ResourceUriBuilder {
             return Map.of();
         }
         var template = new UriTemplate(fullOperation.path());
-        return template.match(stripSchemeAndQuery(resourceUri));
+        var rawVariables = template.match(stripSchemeAndQuery(resourceUri));
+        var result = new LinkedHashMap<String, String>();
+        rawVariables.forEach((name, value) -> result.put(name, decode(value)));
+        return result;
     }
 
     /**

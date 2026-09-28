@@ -8,6 +8,7 @@ import com.infobip.openapi.mcp.auth.HttpServletRequestCredentialProvider;
 import com.infobip.openapi.mcp.auth.scope.ScopeDiscoveryService;
 import com.infobip.openapi.mcp.config.ApiBaseUrlConfig;
 import com.infobip.openapi.mcp.config.ApiBaseUrlProvider;
+import com.infobip.openapi.mcp.config.DownstreamApiRestClients;
 import com.infobip.openapi.mcp.config.OpenApiMcpProperties;
 import com.infobip.openapi.mcp.enricher.*;
 import com.infobip.openapi.mcp.error.DefaultErrorModelProvider;
@@ -66,7 +67,6 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
 import org.springframework.core.env.Environment;
-import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.RestClient;
 import tools.jackson.databind.ObjectMapper;
 
@@ -119,20 +119,19 @@ class OpenApiMcpConfiguration {
         return new ApiBaseUrlProvider(config, openApiRegistry);
     }
 
+    /**
+     * {@code RestClient} used for downstream API calls. Performs no URI encoding of its own (see
+     * {@link DownstreamApiRestClients}) — callers must pre-encode query and path parameter values
+     * themselves (see {@code PlusAwareUriEncoder}) before building the request URI.
+     */
     @Bean
     @Qualifier(TOOL_HANDLER_REST_CLIENT_QUALIFIER)
-    public RestClient toolHandlerRestClient(
-            OpenApiMcpProperties properties, OpenApiRegistry openApiRegistry, ApiBaseUrlProvider apiBaseUrlProvider) {
-        var factory = new SimpleClientHttpRequestFactory();
-        factory.setConnectTimeout((int) properties.connectTimeout().toMillis());
-        factory.setReadTimeout((int) properties.readTimeout().toMillis());
-
+    public RestClient toolHandlerRestClient(OpenApiMcpProperties properties, ApiBaseUrlProvider apiBaseUrlProvider) {
         // Resolve the base URL from the loaded OpenAPI spec
         var resolvedBaseUrl = apiBaseUrlProvider.get();
 
-        return RestClient.builder()
-                .requestFactory(factory)
-                .baseUrl(resolvedBaseUrl.toString())
+        return DownstreamApiRestClients.builder(
+                        resolvedBaseUrl.toString(), properties.connectTimeout(), properties.readTimeout())
                 .build();
     }
 

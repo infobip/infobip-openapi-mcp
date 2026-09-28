@@ -14,6 +14,7 @@ import static org.mockito.Mockito.when;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.infobip.openapi.mcp.McpRequestContext;
 import com.infobip.openapi.mcp.auth.HttpServletRequestCredentialProvider;
+import com.infobip.openapi.mcp.config.DownstreamApiRestClients;
 import com.infobip.openapi.mcp.config.OpenApiMcpProperties;
 import com.infobip.openapi.mcp.enricher.ApiRequestEnricherChain;
 import com.infobip.openapi.mcp.enricher.XForwardedForEnricher;
@@ -31,6 +32,7 @@ import io.modelcontextprotocol.spec.McpSchema;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.Operation;
 import io.swagger.v3.oas.models.PathItem;
+import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -78,18 +80,15 @@ class ToolHandlerTest {
         wireMockServer = new WireMockServer(wireMockConfig().port(0));
         wireMockServer.start();
 
-        var requestFactory = new SimpleClientHttpRequestFactory();
-        requestFactory.setConnectTimeout(TIMEOUT_MS);
-        requestFactory.setReadTimeout(TIMEOUT_MS);
-
-        var restClient = RestClient.builder()
-                .baseUrl("http://localhost:" + wireMockServer.port())
-                .requestFactory(requestFactory)
-                .build();
-
         // Setup mock properties
         var toolsConfig = new OpenApiMcpProperties.Tools(null, null, true, null, null, null, null);
         lenient().when(properties.tools()).thenReturn(toolsConfig);
+
+        var restClient = DownstreamApiRestClients.builder(
+                        "http://localhost:" + wireMockServer.port(),
+                        Duration.ofMillis(TIMEOUT_MS),
+                        Duration.ofMillis(TIMEOUT_MS))
+                .build();
 
         // Create actual ErrorModelWriter with DefaultErrorModelProvider
         var objectMapper = new ObjectMapper();
@@ -188,6 +187,30 @@ class ToolHandlerTest {
                     .withQueryParam("R", equalTo("100"))
                     .withQueryParam("G", equalTo("200"))
                     .withQueryParam("B", equalTo("150"))
+                    .withHeader("Accept", equalTo("application/json"))
+                    .willReturn(aResponse().withStatus(200).withBody(responseBody)));
+
+            // When
+            var result = toolHandler.handleToolCall(fullOperation, decomposedSchema, createTestContext());
+
+            // Then
+            then(extractTextContent(result.content())).isEqualTo(responseBody);
+            then(result.isError()).isFalse();
+        }
+
+        @Test
+        void shouldEncodePlusCharacterInQueryParameterValue() {
+            // Given
+            var fullOperation = new FullOperation("/users", PathItem.HttpMethod.GET, new Operation(), new OpenAPI());
+            var dateWithTimezoneOffset = "2026-09-25T12:00:00.000+03:00";
+            var decomposedSchema = new DecomposedRequestData(
+                    new DecomposedRequestData.ParametersByType(
+                            Map.of(), Map.of("date", dateWithTimezoneOffset), Map.of(), Map.of()),
+                    null);
+            var responseBody = "{\"users\":[]}";
+
+            wireMockServer.stubFor(get(urlEqualTo("/users?date=2026-09-25T12:00:00.000%2B03:00"))
+                    .withQueryParam("date", equalTo(dateWithTimezoneOffset))
                     .withHeader("Accept", equalTo("application/json"))
                     .willReturn(aResponse().withStatus(200).withBody(responseBody)));
 
@@ -309,6 +332,30 @@ class ToolHandlerTest {
             var responseBody = "{\"orderId\":1001,\"userId\":42,\"item\":\"Laptop\",\"quantity\":1}";
 
             wireMockServer.stubFor(get(urlPathEqualTo("/users/42/orders/1001"))
+                    .withHeader("Accept", equalTo("application/json"))
+                    .willReturn(aResponse().withStatus(200).withBody(responseBody)));
+
+            // When
+            var result = toolHandler.handleToolCall(fullOperation, decomposedSchema, createTestContext());
+
+            // Then
+            then(extractTextContent(result.content())).isEqualTo(responseBody);
+            then(result.isError()).isFalse();
+        }
+
+        @Test
+        void shouldEncodePlusCharacterInPathParameterValue() {
+            // Given
+            var fullOperation =
+                    new FullOperation("/events/{date}", PathItem.HttpMethod.GET, new Operation(), new OpenAPI());
+            var dateWithTimezoneOffset = "2026-09-25T12:00:00.000+03:00";
+            var decomposedSchema = new DecomposedRequestData(
+                    new DecomposedRequestData.ParametersByType(
+                            Map.of("date", dateWithTimezoneOffset), Map.of(), Map.of(), Map.of()),
+                    null);
+            var responseBody = "{\"event\":\"scheduled\"}";
+
+            wireMockServer.stubFor(get(urlEqualTo("/events/2026-09-25T12:00:00.000%2B03:00"))
                     .withHeader("Accept", equalTo("application/json"))
                     .willReturn(aResponse().withStatus(200).withBody(responseBody)));
 

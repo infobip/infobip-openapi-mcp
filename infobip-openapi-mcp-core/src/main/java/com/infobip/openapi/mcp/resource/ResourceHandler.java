@@ -5,6 +5,7 @@ import com.infobip.openapi.mcp.auth.CredentialProvider;
 import com.infobip.openapi.mcp.enricher.ApiRequestEnricherChain;
 import com.infobip.openapi.mcp.infrastructure.metrics.MetricService;
 import com.infobip.openapi.mcp.openapi.tool.FullOperation;
+import com.infobip.openapi.mcp.util.PlusAwareUriEncoder;
 import io.modelcontextprotocol.spec.McpSchema;
 import java.util.HashMap;
 import java.util.List;
@@ -147,16 +148,20 @@ public class ResourceHandler {
         var pathVariables = resourceUriBuilder.matchPathVariables(fullOperation, request.uri());
         var queryParameters = resourceUriBuilder.extractQueryParameters(fullOperation, request.uri());
 
-        // Query values are bound as URI variables rather than inlined into the template, so that they are fully
-        // encoded (e.g. a literal '+' becomes %2B) and '{...}' inside a value is never expanded as a template variable.
-        var uriVariables = new HashMap<String, Object>(pathVariables);
+        // Query values are bound as URI variables rather than inlined into the template, so that '{...}' inside a
+        // value is never expanded as a template variable. Query and path values are pre-encoded here rather than
+        // relying on the RestClient's URI builder, since the downstream RestClient is configured with
+        // EncodingMode.NONE.
+        var uriVariables = new HashMap<String, Object>();
+        pathVariables.forEach((name, value) -> uriVariables.put(name, PlusAwareUriEncoder.encodePathSegment(value)));
         var spec = restClient.get().uri(uriBuilder -> {
             var builder = uriBuilder.path(fullOperation.path());
             var index = 0;
             for (var queryParameter : queryParameters.entrySet()) {
                 var variableName = QUERY_VARIABLE_PREFIX + index++;
-                builder.queryParam(queryParameter.getKey(), "{" + variableName + "}");
-                uriVariables.put(variableName, queryParameter.getValue());
+                builder.queryParam(
+                        PlusAwareUriEncoder.encodeQueryParam(queryParameter.getKey()), "{" + variableName + "}");
+                uriVariables.put(variableName, PlusAwareUriEncoder.encodeQueryParam(queryParameter.getValue()));
             }
             return builder.build(uriVariables);
         });

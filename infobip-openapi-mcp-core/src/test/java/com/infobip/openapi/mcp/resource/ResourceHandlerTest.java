@@ -12,6 +12,7 @@ import static org.assertj.core.api.BDDAssertions.thenThrownBy;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.infobip.openapi.mcp.McpRequestContext;
 import com.infobip.openapi.mcp.auth.CredentialProvider;
+import com.infobip.openapi.mcp.config.DownstreamApiRestClients;
 import com.infobip.openapi.mcp.enricher.ApiRequestEnricherChain;
 import com.infobip.openapi.mcp.infrastructure.metrics.MetricService;
 import com.infobip.openapi.mcp.infrastructure.metrics.MicrometerMetricService;
@@ -22,6 +23,7 @@ import io.modelcontextprotocol.spec.McpSchema;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.parser.OpenAPIV3Parser;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
@@ -32,7 +34,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.RestClient;
 
 class ResourceHandlerTest {
@@ -51,9 +52,9 @@ class ResourceHandlerTest {
     void setUp() {
         wireMockServer = new WireMockServer(wireMockConfig().port(0));
         wireMockServer.start();
-        restClient = RestClient.builder()
-                .baseUrl("http://localhost:" + wireMockServer.port())
-                .requestFactory(new SimpleClientHttpRequestFactory())
+
+        restClient = DownstreamApiRestClients.builder(
+                        "http://localhost:" + wireMockServer.port(), Duration.ofSeconds(5), Duration.ofSeconds(5))
                 .build();
     }
 
@@ -308,6 +309,47 @@ class ResourceHandlerTest {
                     "operationId": "search",
                     "parameters": [
                       { "name": "q", "in": "query", "schema": { "type": "string" } }
+                    ]
+                  }
+                }
+              }
+            }
+            """);
+        var handler = handlerWithCredential(context -> Optional.empty());
+        var request = new McpSchema.ReadResourceRequest(resourceUri);
+
+        // When
+        var result = handler.handleResourceRead(fullOperation, "search", MIME_TYPE, request, new McpRequestContext());
+
+        // Then
+        then(result.contents())
+                .usingRecursiveFieldByFieldElementComparator()
+                .containsExactly(new McpSchema.TextResourceContents(resourceUri, MIME_TYPE, "[]"));
+    }
+
+    @ParameterizedTest
+    @CsvSource(delimiter = '|', textBlock = """
+            # resourceUri                     | expectedBackendUrl
+            api://search/%2B385                | /search/%2B385
+            api://search/a+b                   | /search/a%2Bb
+            api://search/John%20Doe            | /search/John%20Doe
+            api://search/%7Bid%7D              | /search/%7Bid%7D
+            api://search/a%26b%3Dc             | /search/a&b=c
+            """)
+    void shouldEncodePathVariableValuesWhenCallingBackend(String resourceUri, String expectedBackendUrl) {
+        // Given
+        wireMockServer.stubFor(
+                get(urlEqualTo(expectedBackendUrl)).willReturn(aResponse().withBody("[]")));
+        var fullOperation = fullOperation("""
+            {
+              "openapi": "3.1.0",
+              "info": { "title": "Test API", "version": "1.0.0" },
+              "paths": {
+                "/search/{q}": {
+                  "get": {
+                    "operationId": "search",
+                    "parameters": [
+                      { "name": "q", "in": "path", "required": true, "schema": { "type": "string" } }
                     ]
                   }
                 }

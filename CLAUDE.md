@@ -115,6 +115,10 @@ refreshed OpenAPI specification and notifies connected clients via the matching 
 are diffed by URI, with static resources and resource templates diffed separately so that an operation switching
 between the two kinds is applied as a removal from one collection and an addition to the other.
 
+The shared downstream `RestClient` (built via `DownstreamApiRestClients`, `EncodingMode.NONE`) performs no URI encoding
+of its own, so every caller (`ToolHandler`, `PromptRegistry`, `ResourceHandler`) must pre-encode query/path parameter
+values itself via `PlusAwareUriEncoder` before building the request URI.
+
 ### Key Extension Points
 
 | Interface            | Purpose                                                                                                                  |

@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Query and path parameter values containing a literal `+` character, for example, date-times with
+  a `+HH:mm` timezone offset such as `2026-09-25T12:00:00.000+03:00`, are now correctly
+  percent-encoded (`%2B`) before being sent to the downstream API. Previously the `+` was passed
+  through unencoded, which many APIs interpret as a space, silently corrupting the value. This
+  applies to tool call parameters, resolved-mode prompt arguments, and resource reads.
+
 ## 1.0.2
 
 ### Added
