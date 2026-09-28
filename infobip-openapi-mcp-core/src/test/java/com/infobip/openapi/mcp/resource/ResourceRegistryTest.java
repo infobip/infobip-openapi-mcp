@@ -389,6 +389,41 @@ class ResourceRegistryTest {
             then(resourceRegistry.getRegisteredResourcesCache().getFirst().name())
                     .isEqualTo("getStatus");
         }
+
+        @Test
+        void shouldBeClearedWhenPathsAreRemovedFromOpenAPI() {
+            // Given
+            var openApiWithResource = parseOpenAPI("""
+                {
+                  "openapi": "3.1.0",
+                  "info": { "title": "Test API", "version": "1.0.0" },
+                  "paths": {
+                    "/status": {
+                      "get": {
+                        "operationId": "getStatus",
+                        "x-mcp-resource": true
+                      }
+                    }
+                  }
+                }
+                """);
+            var openApiWithoutPaths = parseOpenAPI("""
+                {
+                  "openapi": "3.1.0",
+                  "info": { "title": "Test API", "version": "2.0.0" },
+                  "paths": {}
+                }
+                """);
+            given(openApiRegistry.openApi()).willReturn(openApiWithResource, openApiWithoutPaths);
+            resourceRegistry.getResources();
+
+            // When
+            var resources = resourceRegistry.getResources();
+
+            // Then
+            then(resources).isEmpty();
+            then(resourceRegistry.getRegisteredResourcesCache()).isEmpty();
+        }
     }
 
     private OpenAPI parseOpenAPI(String jsonSpec) {

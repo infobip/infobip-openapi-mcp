@@ -55,7 +55,8 @@ public class ResourceRegistry {
     public List<RegisteredResource> getResources() {
         var openApi = openApiRegistry.openApi();
         if (openApi.getPaths() == null || openApi.getPaths().isEmpty()) {
-            return List.of();
+            this.registeredResourcesCache = List.of();
+            return registeredResourcesCache;
         }
 
         var registeredResources = openApi.getPaths().entrySet().stream()
