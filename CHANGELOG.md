@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Discriminator flattening now marks the discriminator property in each resolved `oneOf` branch with the JSON Schema
+  `const` keyword instead of a single-value `enum` plus a synthesized "Always set to '...'." description, when the
+  source OpenAPI document is version 3.1. `const` is not part of OpenAPI 3.0's JSON Schema dialect, so specs written
+  against 3.0 keep the previous `enum`/description behavior.
+
 ### Fixed
 
 - Query and path parameter values containing a literal `+` character, for example, date-times with

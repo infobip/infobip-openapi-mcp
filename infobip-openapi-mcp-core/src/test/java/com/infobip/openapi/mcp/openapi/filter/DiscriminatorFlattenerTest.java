@@ -158,8 +158,7 @@ class DiscriminatorFlattenerTest {
                             "properties": {
                               "kind": {
                                 "type": "string",
-                                "enum": [ "a" ],
-                                "description": "Always set to 'a'."
+                                "const": "a"
                               },
                               "aProp": { "type": "integer" }
                             }
@@ -169,8 +168,7 @@ class DiscriminatorFlattenerTest {
                             "properties": {
                               "kind": {
                                 "type": "string",
-                                "enum": [ "b" ],
-                                "description": "Always set to 'b'."
+                                "const": "b"
                               },
                               "bProp": { "type": "boolean" }
                             }
@@ -247,8 +245,7 @@ class DiscriminatorFlattenerTest {
                             "properties": {
                               "type": {
                                 "type": "string",
-                                "enum": [ "ok" ],
-                                "description": "Always set to 'ok'."
+                                "const": "ok"
                               },
                               "value": { "type": "string" }
                             }
@@ -373,8 +370,7 @@ class DiscriminatorFlattenerTest {
                                 "properties": {
                                   "kind": {
                                     "type": "string",
-                                    "enum": [ "x" ],
-                                    "description": "Always set to 'x'."
+                                    "const": "x"
                                   },
                                   "xval": { "type": "integer" }
                                 }
@@ -394,8 +390,7 @@ class DiscriminatorFlattenerTest {
                             "properties": {
                               "kind": {
                                 "type": "string",
-                                "enum": [ "x" ],
-                                "description": "Always set to 'x'."
+                                "const": "x"
                               },
                               "xval": { "type": "integer" }
                             }
@@ -471,8 +466,7 @@ class DiscriminatorFlattenerTest {
                                 "properties": {
                                   "kind": {
                                     "type": "string",
-                                    "enum": [ "car" ],
-                                    "description": "Always set to 'car'."
+                                    "const": "car"
                                   }
                                 }
                               },
@@ -492,8 +486,7 @@ class DiscriminatorFlattenerTest {
                             "properties": {
                               "kind": {
                                 "type": "string",
-                                "enum": [ "car" ],
-                                "description": "Always set to 'car'."
+                                "const": "car"
                               }
                             }
                           },
@@ -572,8 +565,7 @@ class DiscriminatorFlattenerTest {
                                 "properties": {
                                   "kind": {
                                     "type": "string",
-                                    "enum": [ "car" ],
-                                    "description": "Always set to 'car'."
+                                    "const": "car"
                                   }
                                 }
                               }
@@ -593,8 +585,7 @@ class DiscriminatorFlattenerTest {
                             "properties": {
                               "kind": {
                                 "type": "string",
-                                "enum": [ "car" ],
-                                "description": "Always set to 'car'."
+                                "const": "car"
                               }
                             }
                           }
@@ -664,8 +655,7 @@ class DiscriminatorFlattenerTest {
                                 "properties": {
                                   "t": {
                                     "type": "string",
-                                    "enum": [ "book" ],
-                                    "description": "Always set to 'book'."
+                                    "const": "book"
                                   },
                                   "title": { "type": "string" }
                                 }
@@ -749,8 +739,7 @@ class DiscriminatorFlattenerTest {
                                 "properties": {
                                   "actionType": {
                                     "type": "string",
-                                    "enum": [ "specific" ],
-                                    "description": "Always set to 'specific'."
+                                    "const": "specific"
                                   }
                                 }
                               },
@@ -772,8 +761,7 @@ class DiscriminatorFlattenerTest {
                             "properties": {
                               "actionType": {
                                 "type": "string",
-                                "enum": [ "specific" ],
-                                "description": "Always set to 'specific'."
+                                "const": "specific"
                               }
                             }
                           },
@@ -873,8 +861,7 @@ class DiscriminatorFlattenerTest {
                                 "properties": {
                                   "type": {
                                     "type": "string",
-                                    "enum": [ "TEXT" ],
-                                    "description": "Always set to 'TEXT'."
+                                    "const": "TEXT"
                                   }
                                 }
                               },
@@ -894,8 +881,7 @@ class DiscriminatorFlattenerTest {
                                 "properties": {
                                   "type": {
                                     "type": "string",
-                                    "enum": [ "INTEGER" ],
-                                    "description": "Always set to 'INTEGER'."
+                                    "const": "INTEGER"
                                   }
                                 }
                               },
@@ -917,8 +903,7 @@ class DiscriminatorFlattenerTest {
                             "properties": {
                               "type": {
                                 "type": "string",
-                                "enum": [ "TEXT" ],
-                                "description": "Always set to 'TEXT'."
+                                "const": "TEXT"
                               }
                             }
                           },
@@ -938,8 +923,7 @@ class DiscriminatorFlattenerTest {
                             "properties": {
                               "type": {
                                 "type": "string",
-                                "enum": [ "INTEGER" ],
-                                "description": "Always set to 'INTEGER'."
+                                "const": "INTEGER"
                               }
                             }
                           },
@@ -1063,8 +1047,7 @@ class DiscriminatorFlattenerTest {
                                 "properties": {
                                   "category": {
                                     "type": "string",
-                                    "enum": [ "OPTION_A" ],
-                                    "description": "Always set to 'OPTION_A'."
+                                    "const": "OPTION_A"
                                   }
                                 }
                               },
@@ -1092,8 +1075,7 @@ class DiscriminatorFlattenerTest {
                                 "properties": {
                                   "mode": {
                                     "type": "string",
-                                    "enum": [ "MODE_X" ],
-                                    "description": "Always set to 'MODE_X'."
+                                    "const": "MODE_X"
                                   }
                                 }
                               },
@@ -1115,8 +1097,7 @@ class DiscriminatorFlattenerTest {
                             "properties": {
                               "category": {
                                 "type": "string",
-                                "enum": [ "OPTION_A" ],
-                                "description": "Always set to 'OPTION_A'."
+                                "const": "OPTION_A"
                               }
                             }
                           },
@@ -1139,8 +1120,7 @@ class DiscriminatorFlattenerTest {
                             "properties": {
                               "mode": {
                                 "type": "string",
-                                "enum": [ "MODE_X" ],
-                                "description": "Always set to 'MODE_X'."
+                                "const": "MODE_X"
                               }
                             }
                           },
@@ -1219,8 +1199,7 @@ class DiscriminatorFlattenerTest {
                                 "properties": {
                                   "type": {
                                     "type": "string",
-                                    "enum": [ "forward" ],
-                                    "description": "Always set to 'forward'."
+                                    "const": "forward"
                                   },
                                   "nestedAction": {
                                     "$ref": "#/components/schemas/Action"
@@ -1292,8 +1271,7 @@ class DiscriminatorFlattenerTest {
                                 "properties": {
                                   "dtype": {
                                     "type": "string",
-                                    "enum": [ "leaf" ],
-                                    "description": "Always set to 'leaf'."
+                                    "const": "leaf"
                                   }
                                 }
                               },
@@ -1309,8 +1287,7 @@ class DiscriminatorFlattenerTest {
                             "properties": {
                               "dtype": {
                                 "type": "string",
-                                "enum": [ "leaf" ],
-                                "description": "Always set to 'leaf'."
+                                "const": "leaf"
                               }
                             }
                           },
@@ -1434,8 +1411,7 @@ class DiscriminatorFlattenerTest {
                                 "properties": {
                                   "type": {
                                     "type": "string",
-                                    "enum": [ "car" ],
-                                    "description": "Always set to 'car'."
+                                    "const": "car"
                                   }
                                 }
                               },
@@ -1460,8 +1436,7 @@ class DiscriminatorFlattenerTest {
                                 "properties": {
                                   "type": {
                                     "type": "string",
-                                    "enum": [ "bike" ],
-                                    "description": "Always set to 'bike'."
+                                    "const": "bike"
                                   }
                                 }
                               },
@@ -1481,8 +1456,7 @@ class DiscriminatorFlattenerTest {
                             "properties": {
                               "type": {
                                 "type": "string",
-                                "enum": [ "car" ],
-                                "description": "Always set to 'car'."
+                                "const": "car"
                               }
                             }
                           },
@@ -1507,8 +1481,7 @@ class DiscriminatorFlattenerTest {
                             "properties": {
                               "type": {
                                 "type": "string",
-                                "enum": [ "bike" ],
-                                "description": "Always set to 'bike'."
+                                "const": "bike"
                               }
                             }
                           },
@@ -1593,8 +1566,7 @@ class DiscriminatorFlattenerTest {
                           "properties": {
                             "dtype": {
                               "type": "string",
-                              "enum": [ "first" ],
-                              "description": "Always set to 'first'."
+                              "const": "first"
                             },
                             "f": {"type": "integer"}
                           }
@@ -1604,8 +1576,7 @@ class DiscriminatorFlattenerTest {
                           "properties": {
                             "dtype": {
                               "type": "string",
-                              "enum": [ "second" ],
-                              "description": "Always set to 'second'."
+                              "const": "second"
                             },
                             "b": {"type": "boolean"}
                           }
@@ -1615,8 +1586,7 @@ class DiscriminatorFlattenerTest {
                           "properties": {
                             "dtype": {
                               "type": "string",
-                              "enum": [ "third" ],
-                              "description": "Always set to 'third'."
+                              "const": "third"
                             },
                             "z": {"type": "string"}
                           }
@@ -1727,8 +1697,7 @@ class DiscriminatorFlattenerTest {
                             "properties": {
                               "atype": {
                                 "type": "string",
-                                "enum": [ "dog" ],
-                                "description": "Always set to 'dog'."
+                                "const": "dog"
                               },
                               "bark": { "type": "boolean" }
                             }
@@ -1822,8 +1791,7 @@ class DiscriminatorFlattenerTest {
                             "properties": {
                               "mtype": {
                                 "type": "string",
-                                "enum": [ "text" ],
-                                "description": "Always set to 'text'."
+                                "const": "text"
                               },
                               "body": { "type": "string" }
                             }
@@ -1987,8 +1955,7 @@ class DiscriminatorFlattenerTest {
                                 "properties": {
                                   "type": {
                                     "type": "string",
-                                    "enum": ["TYPE_A"],
-                                    "description": "Always set to 'TYPE_A'."
+                                    "const": "TYPE_A"
                                   }
                                 },
                                 "required": ["type"]
@@ -2016,8 +1983,7 @@ class DiscriminatorFlattenerTest {
                                 "properties": {
                                   "type": {
                                     "type": "string",
-                                    "enum": ["TYPE_B"],
-                                    "description": "Always set to 'TYPE_B'."
+                                    "const": "TYPE_B"
                                   }
                                 },
                                 "required": ["type"]
@@ -2062,8 +2028,7 @@ class DiscriminatorFlattenerTest {
                             "properties": {
                               "type": {
                                 "type": "string",
-                                "enum": ["TYPE_A"],
-                                "description": "Always set to 'TYPE_A'."
+                                "const": "TYPE_A"
                               }
                             },
                             "required": ["type"]
@@ -2091,8 +2056,7 @@ class DiscriminatorFlattenerTest {
                             "properties": {
                               "type": {
                                 "type": "string",
-                                "enum": ["TYPE_B"],
-                                "description": "Always set to 'TYPE_B'."
+                                "const": "TYPE_B"
                               }
                             },
                             "required": ["type"]
@@ -2213,8 +2177,7 @@ class DiscriminatorFlattenerTest {
                             "properties": {
                               "type": {
                                 "type": "string",
-                                "enum": [ "FORWARD" ],
-                                "description": "Always set to 'FORWARD'."
+                                "const": "FORWARD"
                               },
                               "url": { "type": "string" },
                               "format": { "type": "string" }
@@ -2326,8 +2289,7 @@ class DiscriminatorFlattenerTest {
                                 "properties": {
                                   "messageType": {
                                     "type": "string",
-                                    "enum": ["TEXT"],
-                                    "description": "Always set to 'TEXT'."
+                                    "const": "TEXT"
                                   },
                                   "timestamp": {
                                     "type": "string",
@@ -2374,8 +2336,7 @@ class DiscriminatorFlattenerTest {
                             "properties": {
                               "messageType": {
                                 "type": "string",
-                                "enum": ["TEXT"],
-                                "description": "Always set to 'TEXT'."
+                                "const": "TEXT"
                               },
                               "timestamp": {
                                 "type": "string",
@@ -2480,8 +2441,7 @@ class DiscriminatorFlattenerTest {
                                 "properties": {
                                   "messageType": {
                                     "type": "string",
-                                    "enum": ["TEXT"],
-                                    "description": "Always set to 'TEXT'."
+                                    "const": "TEXT"
                                   },
                                   "timestamp": {
                                     "type": "string",
@@ -2503,8 +2463,7 @@ class DiscriminatorFlattenerTest {
                             "properties": {
                               "messageType": {
                                 "type": "string",
-                                "enum": ["TEXT"],
-                                "description": "Always set to 'TEXT'."
+                                "const": "TEXT"
                               },
                               "timestamp": {
                                 "type": "string",
@@ -2633,8 +2592,7 @@ class DiscriminatorFlattenerTest {
                                 "properties": {
                                   "messageType": {
                                     "type": "string",
-                                    "enum": ["TEXT"],
-                                    "description": "Always set to 'TEXT'."
+                                    "const": "TEXT"
                                   },
                                   "timestamp": {
                                     "type": "string",
@@ -2690,8 +2648,7 @@ class DiscriminatorFlattenerTest {
                             "properties": {
                               "messageType": {
                                 "type": "string",
-                                "enum": ["TEXT"],
-                                "description": "Always set to 'TEXT'."
+                                "const": "TEXT"
                               },
                               "timestamp": {
                                 "type": "string",
@@ -2782,8 +2739,7 @@ class DiscriminatorFlattenerTest {
                                 "properties": {
                                   "type": {
                                     "type": "string",
-                                    "enum": [ "item" ],
-                                    "description": "Always set to 'item'."
+                                    "const": "item"
                                   },
                                   "value": { "type": "string" }
                                 }
@@ -2854,8 +2810,7 @@ class DiscriminatorFlattenerTest {
                               "properties": {
                                 "kind": {
                                   "type": "string",
-                                  "enum": [ "element" ],
-                                  "description": "Always set to 'element'."
+                                  "const": "element"
                                 },
                                 "data": { "type": "integer" }
                               }
@@ -2925,8 +2880,7 @@ class DiscriminatorFlattenerTest {
                               "properties": {
                                 "mode": {
                                   "type": "string",
-                                  "enum": [ "fallback" ],
-                                  "description": "Always set to 'fallback'."
+                                  "const": "fallback"
                                 },
                                 "fallbackValue": { "type": "string" }
                               }
@@ -2996,8 +2950,7 @@ class DiscriminatorFlattenerTest {
                               "properties": {
                                 "searchType": {
                                   "type": "string",
-                                  "enum": [ "match" ],
-                                  "description": "Always set to 'match'."
+                                  "const": "match"
                                 },
                                 "pattern": { "type": "string" }
                               }
@@ -3076,8 +3029,7 @@ class DiscriminatorFlattenerTest {
                                 "properties": {
                                   "configType": {
                                     "type": "string",
-                                    "enum": [ "advanced" ],
-                                    "description": "Always set to 'advanced'."
+                                    "const": "advanced"
                                   },
                                   "settings": { "type": "object" }
                                 }
@@ -3152,8 +3104,7 @@ class DiscriminatorFlattenerTest {
                               "properties": {
                                 "fallbackType": {
                                   "type": "string",
-                                  "enum": [ "basic" ],
-                                  "description": "Always set to 'basic'."
+                                  "const": "basic"
                                 },
                                 "simple": { "type": "boolean" }
                               }
@@ -3223,8 +3174,7 @@ class DiscriminatorFlattenerTest {
                               "properties": {
                                 "forbidden": {
                                   "type": "string",
-                                  "enum": [ "denied" ],
-                                  "description": "Always set to 'denied'."
+                                  "const": "denied"
                                 },
                                 "reason": { "type": "string" }
                               }
@@ -3298,8 +3248,7 @@ class DiscriminatorFlattenerTest {
                               "properties": {
                                 "contentType": {
                                   "type": "string",
-                                  "enum": [ "data" ],
-                                  "description": "Always set to 'data'."
+                                  "const": "data"
                                 },
                                 "payload": { "type": "string" }
                               }
@@ -3386,8 +3335,7 @@ class DiscriminatorFlattenerTest {
                                   "properties": {
                                     "itemType": {
                                       "type": "string",
-                                      "enum": [ "simple" ],
-                                      "description": "Always set to 'simple'."
+                                      "const": "simple"
                                     },
                                     "value": { "type": "string" }
                                   }
@@ -3403,8 +3351,7 @@ class DiscriminatorFlattenerTest {
                               "properties": {
                                 "notType": {
                                   "type": "string",
-                                  "enum": [ "forbidden" ],
-                                  "description": "Always set to 'forbidden'."
+                                  "const": "forbidden"
                                 },
                                 "illegal": { "type": "boolean" }
                               }
@@ -3501,8 +3448,7 @@ class DiscriminatorFlattenerTest {
                             "properties": {
                               "messageType": {
                                 "type": "string",
-                                "enum": [ "text" ],
-                                "description": "Always set to 'text'."
+                                "const": "text"
                               },
                               "text": { "type": "string" }
                             }
@@ -3513,8 +3459,7 @@ class DiscriminatorFlattenerTest {
                             "properties": {
                               "messageType": {
                                 "type": "string",
-                                "enum": [ "image" ],
-                                "description": "Always set to 'image'."
+                                "const": "image"
                               },
                               "imageUrl": { "type": "string" }
                             }
@@ -3600,8 +3545,7 @@ class DiscriminatorFlattenerTest {
                             "properties": {
                               "messageType": {
                                 "type": "string",
-                                "enum": [ "text" ],
-                                "description": "Always set to 'text'."
+                                "const": "text"
                               },
                               "text": { "type": "string" }
                             }
@@ -3689,8 +3633,7 @@ class DiscriminatorFlattenerTest {
                                 "properties": {
                                   "actionType": {
                                     "type": "string",
-                                    "enum": [ "forward" ],
-                                    "description": "Always set to 'forward'."
+                                    "const": "forward"
                                   }
                                 }
                               },
@@ -3714,8 +3657,7 @@ class DiscriminatorFlattenerTest {
                             "properties": {
                               "actionType": {
                                 "type": "string",
-                                "enum": [ "forward" ],
-                                "description": "Always set to 'forward'."
+                                "const": "forward"
                               }
                             }
                           },
@@ -3732,6 +3674,303 @@ class DiscriminatorFlattenerTest {
                 }
                 """;
 
+            assertFlattened(input, expected);
+        }
+    }
+
+    @Nested
+    class OpenApi30Compatibility {
+
+        @Test
+        @DisplayName("OpenAPI 3.0 discriminator mapping keeps enum/description instead of const")
+        void simpleDiscriminatorMappingUsesEnumNotConst() throws Exception {
+            var input = """
+                {
+                  "openapi": "3.0.3",
+                  "info": { "title": "API", "version": "1" },
+                  "paths": { },
+                  "servers": [ { "url": "/" } ],
+                  "components": {
+                    "schemas": {
+                      "Base": {
+                        "type": "object",
+                        "discriminator": {
+                          "propertyName": "kind",
+                          "mapping": {
+                            "a": "#/components/schemas/A",
+                            "b": "#/components/schemas/B"
+                          }
+                        },
+                        "properties": {
+                          "kind": { "type": "string" },
+                          "common": { "type": "string" }
+                        }
+                      },
+                      "A": {
+                        "type": "object",
+                        "properties": {
+                          "kind": { "type": "string" },
+                          "aProp": { "type": "integer" }
+                        }
+                      },
+                      "B": {
+                        "type": "object",
+                        "properties": {
+                          "kind": { "type": "string" },
+                          "bProp": { "type": "boolean" }
+                        }
+                      }
+                    }
+                  }
+                }
+                """;
+            var expected = """
+                {
+                  "openapi": "3.0.3",
+                  "info": { "title": "API", "version": "1" },
+                  "paths": { },
+                  "servers": [ { "url": "/" } ],
+                  "components": {
+                    "schemas": {
+                      "Base": {
+                        "type": "object",
+                        "oneOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "enum": [ "a" ],
+                                "description": "Always set to 'a'."
+                              },
+                              "aProp": { "type": "integer" }
+                            }
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "enum": [ "b" ],
+                                "description": "Always set to 'b'."
+                              },
+                              "bProp": { "type": "boolean" }
+                            }
+                          }
+                        ]
+                      },
+                      "A": {
+                        "type": "object",
+                        "properties": {
+                          "kind": { "type": "string" },
+                          "aProp": { "type": "integer" }
+                        }
+                      },
+                      "B": {
+                        "type": "object",
+                        "properties": {
+                          "kind": { "type": "string" },
+                          "bProp": { "type": "boolean" }
+                        }
+                      }
+                    }
+                  }
+                }
+                """;
+            assertFlattened(input, expected);
+        }
+
+        @Test
+        @DisplayName("OpenAPI 3.0 discriminator mapping with allOf keeps enum/description instead of const")
+        void allOfInlinePropertyUsesEnumNotConst() throws Exception {
+            var input = """
+                {
+                  "openapi": "3.0.3",
+                  "info": { "title": "API", "version": "1" },
+                  "paths": { },
+                  "servers": [ { "url": "/" } ],
+                  "components": {
+                    "schemas": {
+                      "Base": {
+                        "type": "object",
+                        "discriminator": { "propertyName": "kind", "mapping": { "x": "#/components/schemas/X" } },
+                        "properties": { "kind": { "type": "string" } }
+                      },
+                      "X": {
+                        "allOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "kind": { "type": "string" },
+                              "xval": { "type": "integer" }
+                            }
+                          },
+                          {
+                            "type": "object",
+                            "properties": { "extra": { "type": "string" } }
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+                """;
+            // Due to the way how OpenAPI parser reuses references,
+            // the "X" component schema also gets modified in the result.
+            var expected = """
+                {
+                  "openapi": "3.0.3",
+                  "info": { "title": "API", "version": "1" },
+                  "paths": { },
+                  "servers": [ { "url": "/" } ],
+                  "components": {
+                    "schemas": {
+                      "Base": {
+                        "type": "object",
+                        "oneOf": [
+                          {
+                            "allOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "type": "string",
+                                    "enum": [ "x" ],
+                                    "description": "Always set to 'x'."
+                                  },
+                                  "xval": { "type": "integer" }
+                                }
+                              },
+                              {
+                                "type": "object",
+                                "properties": { "extra": { "type": "string" } }
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      "X": {
+                        "allOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "enum": [ "x" ],
+                                "description": "Always set to 'x'."
+                              },
+                              "xval": { "type": "integer" }
+                            }
+                          },
+                          {
+                            "type": "object",
+                            "properties": { "extra": { "type": "string" } }
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+                """;
+            assertFlattened(input, expected);
+        }
+
+        @Test
+        @DisplayName(
+                "OpenAPI 3.0 discriminator mapping where property is only in referenced schema via $ref inside allOf "
+                        + "keeps enum/description instead of const")
+        void allOfWithRefOnlyPropertyInRefUsesEnumNotConst() throws Exception {
+            var input = """
+                {
+                  "openapi": "3.0.3",
+                  "info": { "title": "API", "version": "1" },
+                  "paths": { },
+                  "servers": [ { "url": "/" } ],
+                  "components": {
+                    "schemas": {
+                      "Base": {
+                        "type": "object",
+                        "properties": { "kind": { "type": "string" } }
+                      },
+                      "Vehicle": {
+                        "type": "object",
+                        "discriminator": { "propertyName": "kind", "mapping": { "car": "#/components/schemas/Car" } },
+                        "properties": { "kind": { "type": "string" } }
+                      },
+                      "Car": {
+                        "type": "object",
+                        "allOf": [
+                          { "$ref": "#/components/schemas/Base" },
+                          {
+                            "type": "object",
+                            "properties": { "model": { "type": "string" } }
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+                """;
+            // Unlike the OAS 3.1 counterpart of this test, the referenced schema's own "type": "object" is lost
+            // here: swagger-core's OAS 3.0 mixin serializes a ComposedSchema (produced because "Car" has an
+            // allOf) without its "type", regardless of this branch's enum/const change.
+            var expected = """
+                {
+                  "openapi": "3.0.3",
+                  "info": { "title": "API", "version": "1" },
+                  "paths": { },
+                  "servers": [ { "url": "/" } ],
+                  "components": {
+                    "schemas": {
+                      "Base": {
+                        "type": "object",
+                        "properties": { "kind": { "type": "string" } }
+                      },
+                      "Vehicle": {
+                        "type": "object",
+                        "oneOf": [
+                          {
+                            "allOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "type": "string",
+                                    "enum": [ "car" ],
+                                    "description": "Always set to 'car'."
+                                  }
+                                }
+                              },
+                              {
+                                "type": "object",
+                                "properties": { "model": { "type": "string" } }
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      "Car": {
+                        "allOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "enum": [ "car" ],
+                                "description": "Always set to 'car'."
+                              }
+                            }
+                          },
+                          {
+                            "type": "object",
+                            "properties": { "model": { "type": "string" } }
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+                """;
             assertFlattened(input, expected);
         }
     }
