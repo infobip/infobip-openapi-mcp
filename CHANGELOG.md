@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Jackson 2 upgraded to 2.21.7 and Jackson 3 to 3.1.7, ahead of upstream BOM releases.
+  Dependencies are now managed via Jackson BOMs for consistency across all Jackson modules.
+- Spring Boot upgraded to 4.1.1.
+
 ### Fixed
 
 - Query and path parameter values containing a literal `+` character, for example, date-times with

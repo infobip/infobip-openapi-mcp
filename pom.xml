@@ -51,29 +51,32 @@
 
         <!-- Dependencies: -->
         <spring-ai.version>2.0.1</spring-ai.version>
-        <spring-boot.version>4.1.0</spring-boot.version>
+        <spring-boot.version>4.1.1</spring-boot.version>
         <jspecify.version>1.0.0</jspecify.version>
         <junit.version>5.14.4</junit.version>
         <mockito.version>5.23.0</mockito.version>
         <assertj.version>3.27.7</assertj.version>
         <wiremock.version>3.13.2</wiremock.version>
-        <jackson2.version>2.21.5</jackson2.version>
-        <jackson3.version>3.1.5</jackson3.version>
+        <jackson2.version>2.21.7</jackson2.version>
+        <jackson3.version>3.1.7</jackson3.version>
     </properties>
 
     <dependencyManagement>
         <dependencies>
-            <!-- Jackson: pinned above the versions pulled in transitively by the BOMs below to
-                 patch CVE-2026-59889 (Incorrect Authorization) ahead of upstream releases. -->
+            <!-- Jackson: pinned ahead of upstream BOM releases for security patches -->
             <dependency>
-                <groupId>com.fasterxml.jackson.core</groupId>
-                <artifactId>jackson-databind</artifactId>
+                <groupId>com.fasterxml.jackson</groupId>
+                <artifactId>jackson-bom</artifactId>
                 <version>${jackson2.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
             </dependency>
             <dependency>
-                <groupId>tools.jackson.core</groupId>
-                <artifactId>jackson-databind</artifactId>
+                <groupId>tools.jackson</groupId>
+                <artifactId>jackson-bom</artifactId>
                 <version>${jackson3.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
             </dependency>
             <!-- Frameworks -->
             <dependency>
