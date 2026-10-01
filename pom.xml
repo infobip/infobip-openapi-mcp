@@ -59,6 +59,7 @@
         <wiremock.version>3.13.2</wiremock.version>
         <jackson2.version>2.21.7</jackson2.version>
         <jackson3.version>3.1.7</jackson3.version>
+        <tomcat.version>11.0.26</tomcat.version>
     </properties>
 
     <dependencyManagement>
@@ -92,6 +93,24 @@
                 <version>${spring-boot.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
+            </dependency>
+
+            <!-- Tomcat: override for CVE-2026-68525, CVE-2026-65905, CVE-2026-65182 -->
+            <!-- TODO: remove after Spring Boot picks up the new version -->
+            <dependency>
+                <groupId>org.apache.tomcat.embed</groupId>
+                <artifactId>tomcat-embed-core</artifactId>
+                <version>${tomcat.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.tomcat.embed</groupId>
+                <artifactId>tomcat-embed-websocket</artifactId>
+                <version>${tomcat.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.tomcat.embed</groupId>
+                <artifactId>tomcat-embed-el</artifactId>
+                <version>${tomcat.version}</version>
             </dependency>
 
             <!-- Utilities-->

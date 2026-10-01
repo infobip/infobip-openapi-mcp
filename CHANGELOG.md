@@ -20,6 +20,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   percent-encoded (`%2B`) before being sent to the downstream API. Previously the `+` was passed
   through unencoded, which many APIs interpret as a space, silently corrupting the value. This
   applies to tool call parameters, resolved-mode prompt arguments, and resource reads.
+- Tomcat embed libraries upgraded to 11.0.26 to remediate CVE-2026-68525, CVE-2026-65905, and
+  CVE-2026-65182. This override will be removed once Spring Boot picks up the new Tomcat version.
 
 ## 1.0.2
 
