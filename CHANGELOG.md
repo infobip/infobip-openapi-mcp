@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## 1.0.3
+
 ### Changed
 
 - Jackson 2 upgraded to 2.21.7 and Jackson 3 to 3.1.7, ahead of upstream BOM releases.
