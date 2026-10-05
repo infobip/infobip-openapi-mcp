@@ -5,9 +5,12 @@ import static org.assertj.core.api.Assertions.tuple;
 import static org.assertj.core.api.BDDAssertions.then;
 import static org.assertj.core.api.BDDAssertions.thenThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.mock;
 
 import com.infobip.openapi.mcp.McpRequestContext;
+import com.infobip.openapi.mcp.apps.AppMeta;
 import com.infobip.openapi.mcp.config.OpenApiMcpProperties;
 import com.infobip.openapi.mcp.openapi.OpenApiRegistry;
 import com.infobip.openapi.mcp.openapi.schema.ComposedExample;
@@ -17,12 +20,14 @@ import com.infobip.openapi.mcp.openapi.schema.InputSchemaComposer;
 import com.infobip.openapi.mcp.openapi.schema.Spec.ExamplesMode;
 import com.infobip.openapi.mcp.openapi.tool.exception.ToolRegistrationException;
 import com.infobip.openapi.mcp.openapi.tool.naming.OperationIdStrategy;
+import com.infobip.openapi.mcp.resource.ResourceRegistry;
 import com.infobip.openapi.mcp.util.OpenApiMapperFactory;
 import io.modelcontextprotocol.spec.McpSchema;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.parser.OpenAPIV3Parser;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.json.JSONException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -34,9 +39,11 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.skyscreamer.jsonassert.JSONAssert;
 import org.skyscreamer.jsonassert.JSONCompareMode;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import tools.jackson.databind.ObjectMapper;
 
-@ExtendWith(MockitoExtension.class)
+@ExtendWith({MockitoExtension.class, OutputCaptureExtension.class})
 class ToolRegistryTest {
 
     @Mock
@@ -830,7 +837,7 @@ class ToolRegistryTest {
                 .content(List.of(new McpSchema.TextContent("Success")))
                 .build();
 
-        given(toolHandler.handleToolCall(any(), any(), any())).willReturn(expectedResult);
+        given(toolHandler.handleToolCall(any(), any(), any(), isNull())).willReturn(expectedResult);
 
         // When
         var tools = toolRegistry.getTools();
@@ -857,7 +864,8 @@ class ToolRegistryTest {
 
         BDDMockito.then(toolHandler)
                 .should()
-                .handleToolCall(operationCaptor.capture(), argumentsCaptor.capture(), contextCaptor.capture());
+                .handleToolCall(
+                        operationCaptor.capture(), argumentsCaptor.capture(), contextCaptor.capture(), isNull());
 
         var capturedOperation = operationCaptor.getValue();
         then(capturedOperation.operation().getOperationId()).isEqualTo("getUser");
@@ -2154,6 +2162,225 @@ class ToolRegistryTest {
             return objectMapper.writeValueAsString(schema);
         } catch (Exception e) {
             throw new RuntimeException("Failed to write JSON schema", e);
+        }
+    }
+
+    @Nested
+    class McpApps {
+
+        @Test
+        void shouldPublishUiMetaOnAppLinkedTool() {
+            // Given
+            given(openApiRegistry.openApi()).willReturn(parseOpenAPI("""
+                {
+                  "openapi": "3.1.0",
+                  "info": { "title": "Test API", "version": "1.0.0" },
+                  "paths": {
+                    "/forecast": {
+                      "get": {
+                        "operationId": "getForecast",
+                        "x-mcp-app": { "resourceUri": "ui://forecast-dashboard" }
+                      }
+                    }
+                  }
+                }
+                """));
+
+            // When
+            var tools = toolRegistry.getTools();
+
+            // Then
+            then(tools).hasSize(1);
+            then(tools.getFirst().tool().meta())
+                    .containsEntry(AppMeta.UI_META_KEY, Map.of("resourceUri", "ui://forecast-dashboard"))
+                    .containsEntry(AppMeta.DEPRECATED_TOOL_RESOURCE_URI_KEY, "ui://forecast-dashboard")
+                    .doesNotContainKey("visibility");
+        }
+
+        @Test
+        void shouldIncludeVisibilityInUiMetaWhenConfigured() {
+            // Given
+            given(openApiRegistry.openApi()).willReturn(parseOpenAPI("""
+                {
+                  "openapi": "3.1.0",
+                  "info": { "title": "Test API", "version": "1.0.0" },
+                  "paths": {
+                    "/forecast": {
+                      "get": {
+                        "operationId": "getForecast",
+                        "x-mcp-app": { "resourceUri": "ui://forecast-dashboard", "visibility": ["app"] }
+                      }
+                    }
+                  }
+                }
+                """));
+
+            // When
+            var tools = toolRegistry.getTools();
+
+            // Then
+            var uiMeta = castUi(tools.getFirst().tool().meta());
+            then(uiMeta)
+                    .containsEntry("resourceUri", "ui://forecast-dashboard")
+                    .containsEntry("visibility", List.of("app"));
+        }
+
+        @Test
+        void shouldNotPublishMetaForPlainTools() {
+            // Given
+            given(openApiRegistry.openApi()).willReturn(parseOpenAPI("""
+                {
+                  "openapi": "3.1.0",
+                  "info": { "title": "Test API", "version": "1.0.0" },
+                  "paths": {
+                    "/forecast": { "get": { "operationId": "getForecast" } }
+                  }
+                }
+                """));
+
+            // When
+            var tools = toolRegistry.getTools();
+
+            // Then
+            then(tools.getFirst().tool().meta()).isNull();
+        }
+
+        @Test
+        void shouldNotRegisterToolForAppResourceOperation() {
+            // Given
+            given(openApiRegistry.openApi()).willReturn(parseOpenAPI("""
+                {
+                  "openapi": "3.1.0",
+                  "info": { "title": "Test API", "version": "1.0.0" },
+                  "paths": {
+                    "/dashboard": {
+                      "get": { "operationId": "getDashboard", "x-mcp-app-resource": true }
+                    }
+                  }
+                }
+                """));
+
+            // When / Then
+            then(toolRegistry.getTools()).isEmpty();
+        }
+
+        @Test
+        void shouldThrowWhenAppToolExtensionIsInvalid() {
+            // Given
+            given(openApiRegistry.openApi()).willReturn(parseOpenAPI("""
+                {
+                  "openapi": "3.1.0",
+                  "info": { "title": "Test API", "version": "1.0.0" },
+                  "paths": {
+                    "/forecast": {
+                      "get": {
+                        "operationId": "getForecast",
+                        "x-mcp-app": { "resourceUri": "https://not-a-ui-uri" }
+                      }
+                    }
+                  }
+                }
+                """));
+
+            // When & Then
+            thenThrownBy(() -> toolRegistry.getTools())
+                    .isInstanceOf(ToolRegistrationException.class)
+                    .hasMessageContaining("Invalid 'x-mcp-app' extension");
+        }
+
+        @Test
+        void shouldWarnWhenLinkedResourceUriIsNotRegistered(CapturedOutput output) {
+            // Given
+            var resourceRegistry = mock(ResourceRegistry.class);
+            given(resourceRegistry.getRegisteredAppResourceUris()).willReturn(Set.of("ui://registered"));
+            var appLinkedRegistry = new ToolRegistry(
+                    openApiRegistry,
+                    namingStrategy,
+                    inputSchemaComposer,
+                    inputExampleComposer,
+                    toolHandler,
+                    mapperFactory,
+                    toolAnnotationResolver,
+                    properties,
+                    resourceRegistry);
+            given(openApiRegistry.openApi()).willReturn(parseOpenAPI("""
+                {
+                  "openapi": "3.1.0",
+                  "info": { "title": "Test API", "version": "1.0.0" },
+                  "paths": {
+                    "/forecast": {
+                      "get": { "operationId": "getForecast", "x-mcp-app": { "resourceUri": "ui://missing" } }
+                    }
+                  }
+                }
+                """));
+
+            // When
+            appLinkedRegistry.getTools();
+
+            // Then
+            then(output).contains("getForecast").contains("ui://missing");
+            BDDMockito.then(resourceRegistry).should().getResources();
+        }
+
+        @Test
+        void shouldNotWarnWhenLinkedResourceUriIsRegistered(CapturedOutput output) {
+            // Given
+            var resourceRegistry = mock(ResourceRegistry.class);
+            given(resourceRegistry.getRegisteredAppResourceUris()).willReturn(Set.of("ui://forecast-dashboard"));
+            var appLinkedRegistry = new ToolRegistry(
+                    openApiRegistry,
+                    namingStrategy,
+                    inputSchemaComposer,
+                    inputExampleComposer,
+                    toolHandler,
+                    mapperFactory,
+                    toolAnnotationResolver,
+                    properties,
+                    resourceRegistry);
+            given(openApiRegistry.openApi()).willReturn(parseOpenAPI("""
+                {
+                  "openapi": "3.1.0",
+                  "info": { "title": "Test API", "version": "1.0.0" },
+                  "paths": {
+                    "/forecast": {
+                      "get": {
+                        "operationId": "getForecast", "x-mcp-app": { "resourceUri": "ui://forecast-dashboard" }
+                      }
+                    }
+                  }
+                }
+                """));
+
+            // When
+            appLinkedRegistry.getTools();
+
+            // Then
+            then(output).doesNotContain("not among the app resources");
+        }
+
+        @Test
+        void shouldNotFailToolRegistrationWhenResourceRegistryIsNotWired() {
+            // Given — the default toolRegistry under test has no ResourceRegistry reference
+            given(openApiRegistry.openApi()).willReturn(parseOpenAPI("""
+                {
+                  "openapi": "3.1.0",
+                  "info": { "title": "Test API", "version": "1.0.0" },
+                  "paths": {
+                    "/forecast": {
+                      "get": { "operationId": "getForecast", "x-mcp-app": { "resourceUri": "ui://whatever" } }
+                    }
+                  }
+                }
+                """));
+
+            // When / Then — registration succeeds without cross-checking
+            then(toolRegistry.getTools()).hasSize(1);
+        }
+
+        @SuppressWarnings("unchecked")
+        private Map<String, Object> castUi(Map<String, Object> meta) {
+            return (Map<String, Object>) meta.get(AppMeta.UI_META_KEY);
         }
     }
 

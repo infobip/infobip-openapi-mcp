@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- MCP Apps support (the `io.modelcontextprotocol/ui` extension, SEP-1865), enabling tools to declare interactive HTML
+  UIs that MCP Apps-capable hosts render inline with the tool's results. A `GET` operation whose response is an HTML
+  document can be marked with the `x-mcp-app-resource` vendor extension to expose it as a UI resource: it is listed
+  under its `ui://` URI with the exact `text/html;profile=mcp-app` media type, and reads return the HTML document
+  together with its declared UI metadata — CSP origins (`connectDomains`, `resourceDomains`, `frameDomains`,
+  `baseUriDomains`) that tell the host which services the UI may contact, browser permissions (`camera`,
+  `microphone`, `geolocation`, `clipboardWrite`), a sandbox `domain`, and a `prefersBorder` preference. The shorthand
+  `x-mcp-app-resource: true` uses defaults. A tool is linked to such a UI with the `x-mcp-app` vendor extension by
+  referencing its `resourceUri`, optionally restricting result `visibility` to `model` and/or `app`; the link is
+  published in the tool's `_meta` in both the nested and the deprecated flat form, so old and new hosts can find it.
+  In addition to the usual text content (kept as a fallback for clients without MCP Apps support), successful calls
+  of linked tools also return `structuredContent` — a JSON object the rendered UI can read — matching the declared
+  JSON response schema: objects pass through as-is, while arrays and scalars are wrapped under a `result` key. The
+  open-meteo-mcp example demonstrates the whole flow, including serving the UI document from the application itself
+  with a `ResourceCallFilter`.
+
 ## 1.0.4
 
 ### Fixed

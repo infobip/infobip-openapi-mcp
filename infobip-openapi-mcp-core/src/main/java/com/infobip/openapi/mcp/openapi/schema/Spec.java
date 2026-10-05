@@ -10,6 +10,8 @@ public class Spec {
     public static final String MCP_ANNOTATIONS_EXTENSION = "x-mcp-annotations";
     public static final String MCP_PROMPTS_EXTENSION = "x-mcp-prompts";
     public static final String MCP_RESOURCE_EXTENSION = "x-mcp-resource";
+    public static final String MCP_APP_RESOURCE_EXTENSION = "x-mcp-app-resource";
+    public static final String MCP_APP_EXTENSION = "x-mcp-app";
 
     static final Set<String> SUPPORTED_PARAMETER_TYPES = Set.of(
             DecomposedRequestData.ParametersByType.QUERY,
@@ -19,16 +21,48 @@ public class Spec {
 
     /**
      * Determines whether the given OpenAPI operation is flagged as an MCP resource via the
-     * {@value #MCP_RESOURCE_EXTENSION} vendor extension.
+     * {@value #MCP_RESOURCE_EXTENSION} vendor extension, or as an MCP Apps UI resource via the
+     * {@value #MCP_APP_RESOURCE_EXTENSION} vendor extension. Operations for which this returns
+     * {@code true} are excluded from the tool list.
      *
      * @param operation the OpenAPI operation to check
-     * @return {@code true} if the operation carries a truthy {@value #MCP_RESOURCE_EXTENSION} extension
+     * @return {@code true} if the operation carries a truthy {@value #MCP_RESOURCE_EXTENSION} or
+     *         {@value #MCP_APP_RESOURCE_EXTENSION} extension
      */
     public static boolean isResourceOperation(Operation operation) {
+        return Boolean.TRUE.equals(extensionValue(operation, MCP_RESOURCE_EXTENSION))
+                || isAppResourceOperation(operation);
+    }
+
+    /**
+     * Determines whether the given OpenAPI operation is flagged as an MCP Apps UI resource via the
+     * {@value #MCP_APP_RESOURCE_EXTENSION} vendor extension. The extension value is either the
+     * shorthand {@code true} or an object with the UI resource configuration.
+     *
+     * @param operation the OpenAPI operation to check
+     * @return {@code true} if the operation carries a truthy {@value #MCP_APP_RESOURCE_EXTENSION} extension
+     */
+    public static boolean isAppResourceOperation(Operation operation) {
+        var value = extensionValue(operation, MCP_APP_RESOURCE_EXTENSION);
+        return value != null && !Boolean.FALSE.equals(value);
+    }
+
+    /**
+     * Determines whether the given OpenAPI operation links itself to an MCP Apps UI resource via the
+     * {@value #MCP_APP_EXTENSION} vendor extension.
+     *
+     * @param operation the OpenAPI operation to check
+     * @return {@code true} if the operation carries an {@value #MCP_APP_EXTENSION} extension
+     */
+    public static boolean isAppToolOperation(Operation operation) {
+        return extensionValue(operation, MCP_APP_EXTENSION) != null;
+    }
+
+    private static Object extensionValue(Operation operation, String extensionName) {
         if (operation.getExtensions() == null) {
-            return false;
+            return null;
         }
-        return Boolean.TRUE.equals(operation.getExtensions().get(MCP_RESOURCE_EXTENSION));
+        return operation.getExtensions().get(extensionName);
     }
 
     /**

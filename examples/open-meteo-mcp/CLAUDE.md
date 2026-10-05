@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-A minimal example of `infobip-openapi-mcp-spring-boot-starter` in use: it exposes the [Open-Meteo](https://open-meteo.com) weather API as an MCP server over stdio transport. The entire application logic is configuration — `Application.java` is a standard Spring Boot entry point and `application.yaml` contains all meaningful settings.
+A minimal example of `infobip-openapi-mcp-spring-boot-starter` in use: it exposes the [Open-Meteo](https://open-meteo.com) weather API as an MCP server over stdio transport. Application logic is mostly configuration — `Application.java` is a standard Spring Boot entry point and `application.yaml` contains all meaningful settings. The only Java code is `McpAppsSpecEnhancer` (an `OpenApiFilter`) and `DashboardResourceFilter` (a `ResourceCallFilter`), which layer [MCP Apps](https://github.com/modelcontextprotocol/ext-apps/blob/main/specification/2026-01-26/apps.mdx) support onto the remote Open-Meteo spec: they inject `x-mcp-app` / `x-mcp-app-resource` vendor extensions and serve the linked UI document from a bundled `dashboard.html` instead of the downstream API.
 
 ## Build
 

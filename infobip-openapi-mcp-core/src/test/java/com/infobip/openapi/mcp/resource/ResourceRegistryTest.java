@@ -4,10 +4,13 @@ import static org.assertj.core.api.BDDAssertions.then;
 import static org.assertj.core.api.BDDAssertions.thenThrownBy;
 import static org.mockito.BDDMockito.given;
 
+import com.infobip.openapi.mcp.apps.AppMeta;
 import com.infobip.openapi.mcp.openapi.OpenApiRegistry;
 import com.infobip.openapi.mcp.openapi.tool.naming.OperationIdStrategy;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.parser.OpenAPIV3Parser;
+import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -423,6 +426,305 @@ class ResourceRegistryTest {
             // Then
             then(resources).isEmpty();
             then(resourceRegistry.getRegisteredResourcesCache()).isEmpty();
+        }
+    }
+
+    @Nested
+    class McpApps {
+
+        @Test
+        void shouldRegisterAppResourceWithDefaultUriAndNoMetaWhenExtensionIsTrueShorthand() {
+            // Given
+            var openApi = parseOpenAPI("""
+                {
+                  "openapi": "3.1.0",
+                  "info": { "title": "Test API", "version": "1.0.0" },
+                  "paths": {
+                    "/dashboard": {
+                      "get": {
+                        "operationId": "getDashboard",
+                        "x-mcp-app-resource": true,
+                        "responses": {
+                          "200": {
+                            "description": "OK",
+                            "content": { "text/html": { "schema": { "type": "string" } } }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+                """);
+            given(openApiRegistry.openApi()).willReturn(openApi);
+
+            // When
+            var result = resourceRegistry.getResources();
+
+            // Then
+            then(result).hasSize(1);
+            var registered = result.getFirst();
+            then(registered.isTemplate()).isFalse();
+            then(registered.resource().uri()).isEqualTo("ui://dashboard");
+            then(registered.resource().name()).isEqualTo("getDashboard");
+            then(registered.resource().mimeType()).isEqualTo(AppMeta.MIME_TYPE);
+            then(registered.resource().meta()).isNull();
+        }
+
+        @Test
+        void shouldUseExplicitUriAndPublishUiMetaFromExtension() {
+            // Given
+            var openApi = parseOpenAPI("""
+                {
+                  "openapi": "3.1.0",
+                  "info": { "title": "Test API", "version": "1.0.0" },
+                  "paths": {
+                    "/dashboard": {
+                      "get": {
+                        "operationId": "getDashboard",
+                        "x-mcp-app-resource": {
+                          "uri": "ui://custom-dashboard",
+                          "csp": { "connectDomains": ["https://api.example.com"] },
+                          "permissions": { "camera": {} },
+                          "domain": "sandbox.example.com",
+                          "prefersBorder": true
+                        }
+                      }
+                    }
+                  }
+                }
+                """);
+            given(openApiRegistry.openApi()).willReturn(openApi);
+
+            // When
+            var result = resourceRegistry.getResources();
+
+            // Then
+            var resource = result.getFirst().resource();
+            then(resource.uri()).isEqualTo("ui://custom-dashboard");
+            then(resource.mimeType()).isEqualTo(AppMeta.MIME_TYPE);
+            then(resource.meta())
+                    .containsEntry(
+                            AppMeta.UI_META_KEY,
+                            Map.of(
+                                    "csp",
+                                    Map.of("connectDomains", List.of("https://api.example.com")),
+                                    "permissions",
+                                    Map.of("camera", Map.of()),
+                                    "domain",
+                                    "sandbox.example.com",
+                                    "prefersBorder",
+                                    true));
+        }
+
+        @Test
+        void shouldNotRegisterOperationWhenAppResourceExtensionIsFalse() {
+            // Given
+            var openApi = parseOpenAPI("""
+                {
+                  "openapi": "3.1.0",
+                  "info": { "title": "Test API", "version": "1.0.0" },
+                  "paths": {
+                    "/dashboard": {
+                      "get": { "operationId": "getDashboard", "x-mcp-app-resource": false }
+                    }
+                  }
+                }
+                """);
+            given(openApiRegistry.openApi()).willReturn(openApi);
+
+            // When / Then
+            then(resourceRegistry.getResources()).isEmpty();
+        }
+
+        @Test
+        void shouldExposeRegisteredAppResourceUris() {
+            // Given
+            var openApi = parseOpenAPI("""
+                {
+                  "openapi": "3.1.0",
+                  "info": { "title": "Test API", "version": "1.0.0" },
+                  "paths": {
+                    "/dashboard": {
+                      "get": {
+                        "operationId": "getDashboard",
+                        "x-mcp-app-resource": { "uri": "ui://custom-dashboard" }
+                      }
+                    },
+                    "/status": { "get": { "operationId": "getStatus", "x-mcp-resource": true } }
+                  }
+                }
+                """);
+            given(openApiRegistry.openApi()).willReturn(openApi);
+
+            // When
+            resourceRegistry.getResources();
+
+            // Then
+            then(resourceRegistry.getRegisteredAppResourceUris()).containsExactly("ui://custom-dashboard");
+        }
+
+        @Test
+        void shouldThrowWhenAppResourceMarkedOnNonGetOperation() {
+            // Given
+            var openApi = parseOpenAPI("""
+                {
+                  "openapi": "3.1.0",
+                  "info": { "title": "Test API", "version": "1.0.0" },
+                  "paths": {
+                    "/dashboard": {
+                      "post": { "operationId": "createDashboard", "x-mcp-app-resource": true }
+                    }
+                  }
+                }
+                """);
+            given(openApiRegistry.openApi()).willReturn(openApi);
+
+            // When & Then
+            thenThrownBy(() -> resourceRegistry.getResources())
+                    .isInstanceOf(ResourceRegistrationException.class)
+                    .hasMessageContaining("Unable to register MCP app resource for operation: POST /dashboard")
+                    .hasMessageContaining("Only GET operations can be marked");
+        }
+
+        @Test
+        void shouldThrowWhenAppResourceOperationHasParameters() {
+            // Given
+            var openApi = parseOpenAPI("""
+                {
+                  "openapi": "3.1.0",
+                  "info": { "title": "Test API", "version": "1.0.0" },
+                  "paths": {
+                    "/dashboard/{id}": {
+                      "get": {
+                        "operationId": "getDashboard",
+                        "x-mcp-app-resource": true,
+                        "parameters": [
+                          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+                        ]
+                      }
+                    }
+                  }
+                }
+                """);
+            given(openApiRegistry.openApi()).willReturn(openApi);
+
+            // When & Then
+            thenThrownBy(() -> resourceRegistry.getResources())
+                    .isInstanceOf(ResourceRegistrationException.class)
+                    .hasMessageContaining("must not declare path or query parameters");
+        }
+
+        @Test
+        void shouldThrowWhenOperationMarkedAsAppResourceAndAppTool() {
+            // Given
+            var openApi = parseOpenAPI("""
+                {
+                  "openapi": "3.1.0",
+                  "info": { "title": "Test API", "version": "1.0.0" },
+                  "paths": {
+                    "/dashboard": {
+                      "get": {
+                        "operationId": "getDashboard",
+                        "x-mcp-app-resource": true,
+                        "x-mcp-app": { "resourceUri": "ui://other" }
+                      }
+                    }
+                  }
+                }
+                """);
+            given(openApiRegistry.openApi()).willReturn(openApi);
+
+            // When & Then
+            thenThrownBy(() -> resourceRegistry.getResources())
+                    .isInstanceOf(ResourceRegistrationException.class)
+                    .hasMessageContaining("both 'x-mcp-app-resource' and 'x-mcp-app'");
+        }
+
+        @Test
+        void shouldThrowWhenTwoAppResourcesDeclareTheSameUri() {
+            // Given
+            var openApi = parseOpenAPI("""
+                {
+                  "openapi": "3.1.0",
+                  "info": { "title": "Test API", "version": "1.0.0" },
+                  "paths": {
+                    "/dashboard-a": {
+                      "get": {
+                        "operationId": "getDashboardA",
+                        "x-mcp-app-resource": { "uri": "ui://duplicate" }
+                      }
+                    },
+                    "/dashboard-b": {
+                      "get": {
+                        "operationId": "getDashboardB",
+                        "x-mcp-app-resource": { "uri": "ui://duplicate" }
+                      }
+                    }
+                  }
+                }
+                """);
+            given(openApiRegistry.openApi()).willReturn(openApi);
+
+            // When & Then
+            thenThrownBy(() -> resourceRegistry.getResources())
+                    .isInstanceOf(ResourceRegistrationException.class)
+                    .hasMessageContaining("ui://duplicate")
+                    .hasMessageContaining("GET /dashboard-a")
+                    .hasMessageContaining("GET /dashboard-b");
+        }
+
+        @Test
+        void shouldThrowWhenAppResourceExtensionIsInvalid() {
+            // Given
+            var openApi = parseOpenAPI("""
+                {
+                  "openapi": "3.1.0",
+                  "info": { "title": "Test API", "version": "1.0.0" },
+                  "paths": {
+                    "/dashboard": {
+                      "get": {
+                        "operationId": "getDashboard",
+                        "x-mcp-app-resource": { "uri": "https://not-a-ui-uri" }
+                      }
+                    }
+                  }
+                }
+                """);
+            given(openApiRegistry.openApi()).willReturn(openApi);
+
+            // When & Then
+            thenThrownBy(() -> resourceRegistry.getResources())
+                    .isInstanceOf(ResourceRegistrationException.class)
+                    .hasMessageContaining("Invalid 'x-mcp-app-resource' extension");
+        }
+
+        @Test
+        void shouldClearAppResourceUriCacheWhenPathsAreRemovedFromOpenAPI() {
+            // Given
+            var openApiWithAppResource = parseOpenAPI("""
+                {
+                  "openapi": "3.1.0",
+                  "info": { "title": "Test API", "version": "1.0.0" },
+                  "paths": {
+                    "/dashboard": { "get": { "operationId": "getDashboard", "x-mcp-app-resource": true } }
+                  }
+                }
+                """);
+            var openApiWithoutPaths = parseOpenAPI("""
+                {
+                  "openapi": "3.1.0",
+                  "info": { "title": "Test API", "version": "2.0.0" },
+                  "paths": {}
+                }
+                """);
+            given(openApiRegistry.openApi()).willReturn(openApiWithAppResource, openApiWithoutPaths);
+            resourceRegistry.getResources();
+
+            // When
+            resourceRegistry.getResources();
+
+            // Then
+            then(resourceRegistry.getRegisteredAppResourceUris()).isEmpty();
         }
     }
 

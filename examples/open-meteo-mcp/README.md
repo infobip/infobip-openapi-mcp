@@ -59,6 +59,35 @@ You can usually configure your agent by updating its config file manually. For e
 }
 ```
 
+### MCP Apps
+
+The example also demonstrates [MCP Apps][5] — tools declaring an interactive HTML UI. Two Spring beans in
+`com.infobip.mcp.example` add this on top of the Open-Meteo specification at startup, since that remote specification
+cannot itself carry MCP Apps annotations:
+
+- `McpAppsSpecEnhancer` (an `OpenApiFilter`) injects the vendor extensions into the fetched spec: it marks a new
+  `/dashboard` operation with `x-mcp-app-resource` (exposing a `ui://open-meteo-dashboard` UI resource) and links the
+  forecast operation to that UI with `x-mcp-app`. Linked tools additionally return `structuredContent` alongside the
+  usual text content on successful calls.
+- `DashboardResourceFilter` (a `ResourceCallFilter`) short-circuits reads of that UI resource and serves the bundled
+  `dashboard.html` directly, instead of calling the (nonexistent) Open-Meteo dashboard endpoint. This shows how to
+  serve a UI document from the application itself rather than from the downstream API.
+
+The `dashboard.html` is a static placeholder. A production widget would load the MCP Apps bridge and exchange
+messages with the host to render live forecast data here.
+
+> [!NOTE]
+> This example builds against the in-development `1.0.3-SNAPSHOT` of the framework. Before building the image, install
+> the framework into your local Maven repository from the repository root:
+>
+> ```shell
+> mvn install -DskipTests
+> ```
+>
+> The Docker build runs `mvn dependency:go-offline` in a clean container, so the snapshot dependency must already be
+> published to a repository that build can reach. To try the image before `1.0.3` is released, either publish the
+> snapshot or build and run the example directly with `mvn spring-boot:run` against the locally installed framework.
+
 ### Debug
 
 Debugging is a little bit tricky, because MCP servers running on localhost use stdio for protocol transport. This means
@@ -86,3 +115,5 @@ If you need logs to persist after MCP server exists (for example to troubleshoot
 [3]: https://claude.com/product/claude-code
 
 [4]: https://claude.com/product/overview
+
+[5]: https://github.com/modelcontextprotocol/ext-apps/blob/main/specification/2026-01-26/apps.mdx "MCP Apps (SEP-1865) specification"

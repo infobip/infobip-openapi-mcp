@@ -12,10 +12,13 @@ import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.Operation;
 import io.swagger.v3.oas.models.PathItem;
 import io.swagger.v3.oas.models.examples.Example;
+import io.swagger.v3.oas.models.media.ArraySchema;
 import io.swagger.v3.oas.models.media.Content;
 import io.swagger.v3.oas.models.media.MediaType;
+import io.swagger.v3.oas.models.media.ObjectSchema;
 import io.swagger.v3.oas.models.responses.ApiResponse;
 import io.swagger.v3.oas.models.responses.ApiResponses;
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
 import org.jspecify.annotations.NullMarked;
@@ -362,6 +365,103 @@ class ToolResultMockerTest {
         // then
         then(actualResult).isNotNull();
         then(actualResult.isError()).isTrue();
+    }
+
+    @Test
+    void shouldComposeStructuredContentForObjectExampleOfAppTool() {
+        // given
+        var operation = new Operation()
+                .extensions(Map.of("x-mcp-app", Map.of("resourceUri", "ui://dashboard")))
+                .responses(new ApiResponses()
+                        .addApiResponse(
+                                "200",
+                                new ApiResponse()
+                                        .content(new Content()
+                                                .addMediaType(
+                                                        "application/json",
+                                                        new MediaType()
+                                                                .schema(new ObjectSchema())
+                                                                .example(Map.of("status", "ok"))))));
+        var mocker = givenEnabledMocker();
+
+        // when
+        var actualResult = mocker.doFilter(givenContextWith(operation), givenRequest(), failingChain());
+
+        // then
+        then(actualResult.isError()).isFalse();
+        then(actualResult.structuredContent()).isEqualTo(Map.of("status", "ok"));
+        then(((McpSchema.TextContent) actualResult.content().getFirst()).text()).isEqualTo("""
+                        {"status":"ok"}""");
+    }
+
+    @Test
+    void shouldWrapNonObjectExampleInStructuredContentOfAppTool() {
+        // given
+        var operation = new Operation()
+                .extensions(Map.of("x-mcp-app", Map.of("resourceUri", "ui://dashboard")))
+                .responses(new ApiResponses()
+                        .addApiResponse(
+                                "200",
+                                new ApiResponse()
+                                        .content(new Content()
+                                                .addMediaType(
+                                                        "application/json",
+                                                        new MediaType()
+                                                                .schema(new ArraySchema())
+                                                                .example(List.of("a", "b"))))));
+        var mocker = givenEnabledMocker();
+
+        // when
+        var actualResult = mocker.doFilter(givenContextWith(operation), givenRequest(), failingChain());
+
+        // then
+        then(actualResult.isError()).isFalse();
+        then(actualResult.structuredContent()).isEqualTo(Map.of("result", List.of("a", "b")));
+    }
+
+    @Test
+    void shouldNotComposeStructuredContentForNonAppTool() {
+        // given
+        var operation = new Operation()
+                .responses(new ApiResponses()
+                        .addApiResponse(
+                                "200",
+                                new ApiResponse()
+                                        .content(new Content()
+                                                .addMediaType(
+                                                        "application/json",
+                                                        new MediaType()
+                                                                .schema(new ObjectSchema())
+                                                                .example(Map.of("status", "ok"))))));
+        var mocker = givenEnabledMocker();
+
+        // when
+        var actualResult = mocker.doFilter(givenContextWith(operation), givenRequest(), failingChain());
+
+        // then
+        then(actualResult.isError()).isFalse();
+        then(actualResult.structuredContent()).isNull();
+    }
+
+    private ToolResultMocker givenEnabledMocker() {
+        return new ToolResultMocker(givenEnabledMockProps(), mapperFactory);
+    }
+
+    private McpRequestContext givenContextWith(Operation operation) {
+        var context = Mockito.mock(McpRequestContext.class);
+        given(context.openApiOperation())
+                .willReturn(new FullOperation("/mock/path", PathItem.HttpMethod.GET, operation, new OpenAPI()));
+        return context;
+    }
+
+    private McpSchema.CallToolRequest givenRequest() {
+        return Mockito.mock(McpSchema.CallToolRequest.class);
+    }
+
+    private ToolCallFilterChain failingChain() {
+        return (McpRequestContext ctx, McpSchema.CallToolRequest req) -> {
+            throw new IllegalStateException("Should not be called");
+        };
     }
 
     private OpenApiMcpProperties givenDisabledMockProps() {
