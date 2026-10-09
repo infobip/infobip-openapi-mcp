@@ -1,7 +1,12 @@
 package com.infobip.openapi.mcp.config;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
+import static com.github.tomakehurst.wiremock.client.WireMock.absent;
+import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
+import static com.github.tomakehurst.wiremock.client.WireMock.matching;
+import static com.github.tomakehurst.wiremock.client.WireMock.patch;
+import static com.github.tomakehurst.wiremock.client.WireMock.post;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
 import static org.assertj.core.api.BDDAssertions.then;
@@ -9,9 +14,11 @@ import static org.assertj.core.api.BDDAssertions.thenThrownBy;
 
 import com.github.tomakehurst.wiremock.WireMockServer;
 import java.time.Duration;
+import java.util.Map;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.MediaType;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
 
@@ -82,6 +89,65 @@ class DownstreamApiRestClientsTest {
         // When / Then: the request times out instead of waiting for the delayed response
         thenThrownBy(() -> restClient.get().uri("/status").retrieve().toBodilessEntity())
                 .isInstanceOf(ResourceAccessException.class);
+    }
+
+    @Test
+    void shouldSendRequestBodyWithContentLengthInsteadOfChunkedTransferEncoding() {
+        // Given
+        var restClient = builder().build();
+        wireMockServer.stubFor(post(urlEqualTo("/users"))
+                .withHeader("Content-Length", matching("\\d+"))
+                .withHeader("Transfer-Encoding", absent())
+                .willReturn(aResponse().withStatus(200)));
+
+        // When: a body of unknown length would be chunked, which the JDK client's h2c upgrade attempt
+        // gets reset for by some servers (WireMock included)
+        var response = restClient
+                .post()
+                .uri("/users")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(Map.of("name", "John Doe", "email", "john@example.com"))
+                .retrieve()
+                .toBodilessEntity();
+
+        // Then
+        then(response.getStatusCode().is2xxSuccessful()).isTrue();
+    }
+
+    @Test
+    void shouldSupportPatchMethod() {
+        // Given
+        var restClient = builder().build();
+        wireMockServer.stubFor(patch(urlEqualTo("/resource"))
+                .withRequestBody(equalTo("{\"name\":\"updated\"}"))
+                .willReturn(aResponse().withStatus(200)));
+
+        // When
+        var response = restClient
+                .patch()
+                .uri("/resource")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body("{\"name\":\"updated\"}")
+                .retrieve()
+                .toBodilessEntity();
+
+        // Then
+        then(response.getStatusCode().is2xxSuccessful()).isTrue();
+    }
+
+    @Test
+    void shouldFollowRedirectsForGetRequests() {
+        // Given
+        var restClient = builder().build();
+        wireMockServer.stubFor(
+                get(urlEqualTo("/old")).willReturn(aResponse().withStatus(302).withHeader("Location", "/new")));
+        wireMockServer.stubFor(get(urlEqualTo("/new")).willReturn(aResponse().withStatus(200)));
+
+        // When
+        var response = restClient.get().uri("/old").retrieve().toBodilessEntity();
+
+        // Then
+        then(response.getStatusCode().is2xxSuccessful()).isTrue();
     }
 
     private RestClient.Builder builder() {
