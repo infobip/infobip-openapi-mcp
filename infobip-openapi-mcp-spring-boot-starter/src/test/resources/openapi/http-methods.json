@@ -1,0 +1,89 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "HTTP Methods API",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/methods/head": {
+      "head": {
+        "operationId": "head-method",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/methods/options": {
+      "options": {
+        "operationId": "options-method",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/methods/get": {
+      "get": {
+        "operationId": "get-method",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/methods/post": {
+      "post": {
+        "operationId": "post-method",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/methods/put": {
+      "put": {
+        "operationId": "put-method",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/methods/patch": {
+      "patch": {
+        "operationId": "patch-method",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/methods/delete": {
+      "delete": {
+        "operationId": "delete-method",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/methods/trace": {
+      "trace": {
+        "operationId": "trace-method",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    }
+  }
+}

@@ -9,6 +9,8 @@ import io.modelcontextprotocol.spec.McpSchema.TextContent;
 import java.util.Map;
 import java.util.concurrent.TimeoutException;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 public abstract class ToolCallTestBase extends IntegrationTestBase {
 
@@ -29,6 +31,37 @@ public abstract class ToolCallTestBase extends IntegrationTestBase {
             // Then
             then(actualResponse.isError()).isFalse();
             then(actualResponse.structuredContent()).isNull();
+        });
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+        "HEAD, head_method, /methods/head",
+        "OPTIONS, options_method, /methods/options",
+        "GET, get_method, /methods/get",
+        "POST, post_method, /methods/post",
+        "PUT, put_method, /methods/put",
+        "PATCH, patch_method, /methods/patch",
+        "DELETE, delete_method, /methods/delete",
+        "TRACE, trace_method, /methods/trace"
+    })
+    void shouldCallToolBackedByHttpMethod(String givenHttpMethod, String givenToolName, String givenPath) {
+        withInitializedMcpClient(givenClient -> {
+            // Given
+            givenOpenAPISpecification("/openapi/http-methods.json");
+            getStaticWireMockServer()
+                    .stubFor(request(givenHttpMethod, urlEqualTo(givenPath))
+                            .willReturn(aResponse().withStatus(200)));
+
+            // When
+            var actualResponse = givenClient.callTool(McpSchema.CallToolRequest.builder()
+                    .name(givenToolName)
+                    .arguments(Map.of())
+                    .build());
+
+            // Then
+            then(actualResponse.isError()).isFalse();
+            getStaticWireMockServer().verify(1, requestedFor(givenHttpMethod, urlEqualTo(givenPath)));
         });
     }
 
