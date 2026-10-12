@@ -8,6 +8,7 @@ import com.infobip.openapi.mcp.auth.CredentialProvider;
 import com.infobip.openapi.mcp.auth.scope.JwtScopeService;
 import com.infobip.openapi.mcp.auth.scope.WwwAuthenticateProvider;
 import com.infobip.openapi.mcp.auth.web.InitialAuthenticationFilter;
+import com.infobip.openapi.mcp.config.HttpRequestFactories;
 import com.infobip.openapi.mcp.enricher.ApiRequestEnricherChain;
 import com.infobip.openapi.mcp.error.ErrorModelWriter;
 import java.util.Collection;
@@ -19,12 +20,12 @@ import org.springframework.ai.mcp.server.common.autoconfigure.properties.McpServ
 import org.springframework.ai.mcp.server.common.autoconfigure.properties.McpServerStreamableHttpProperties;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Conditional;
-import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.RestClient;
 
 @AutoConfiguration
@@ -35,10 +36,9 @@ class AuthConfiguration {
 
     @Bean
     @Qualifier(AUTHORIZATION_REST_CLIENT_QUALIFIER)
+    @ConditionalOnMissingBean(name = AUTHORIZATION_REST_CLIENT_QUALIFIER)
     public RestClient openapiMcpAuthorizationRestClientBuilder(AuthProperties authProperties) {
-        var factory = new SimpleClientHttpRequestFactory();
-        factory.setConnectTimeout(authProperties.connectTimeout());
-        factory.setReadTimeout(authProperties.readTimeout());
+        var factory = HttpRequestFactories.create(authProperties.connectTimeout(), authProperties.readTimeout());
 
         return RestClient.builder()
                 .requestFactory(factory)

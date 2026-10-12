@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Tools backed by `PATCH` operations no longer fail with an `Invalid HTTP method: PATCH` error when called.
+
+### Changed
+
+- Calls to the downstream API (tool calls, resolved-mode prompts and resource reads), to the authentication
+  validation endpoint and to the OAuth authorization server (`/.well-known` discovery) now use the JDK HTTP client
+  (`java.net.http.HttpClient`) instead of a client built on Java's `HttpURLConnection`. To change the HTTP client used 
+  by the framework you can override the individual `RestClient` Spring beans. Effects of the switch:
+  - Calls to HTTPS backends can now be made over HTTP/2 when the backend supports it. Previously only HTTP/1.1 was
+    used.
+  - Redirects are still followed for `GET` requests only, and the connect and read timeouts are applied as before.
+  - Downstream API request bodies are sent with a `Content-Length` header rather than chunked transfer encoding, and
+    downstream API responses are read fully into memory before being processed.
+  - Request headers that the JDK HTTP client reserves for itself (such as `Host`, `Connection` and `Content-Length`)
+    can no longer be set by an `ApiRequestEnricher`.
+
 ## 1.0.3
 
 ### Changed

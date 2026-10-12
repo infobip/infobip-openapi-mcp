@@ -126,6 +126,7 @@ class OpenApiMcpConfiguration {
      */
     @Bean
     @Qualifier(TOOL_HANDLER_REST_CLIENT_QUALIFIER)
+    @ConditionalOnMissingBean(name = TOOL_HANDLER_REST_CLIENT_QUALIFIER)
     public RestClient toolHandlerRestClient(OpenApiMcpProperties properties, ApiBaseUrlProvider apiBaseUrlProvider) {
         // Resolve the base URL from the loaded OpenAPI spec
         var resolvedBaseUrl = apiBaseUrlProvider.get();

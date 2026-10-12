@@ -82,6 +82,35 @@ public class OAuthControllerTest extends OAuthTestBase {
                         .withoutHeader("X-Forwarded-Host"));
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {"/.well-known/oauth-authorization-server", "/.well-known/openid-configuration"})
+    void shouldFollowRedirectFromWellKnownEndpoint(String givenWellKnownEndpoint) {
+        // Given
+        var givenRedirectTarget = "/redirected" + givenWellKnownEndpoint;
+        var givenResponseBody = """
+                {
+                  "issuer": "https://auth-server.example.com",
+                  "authorization_endpoint": "https://auth-server.example.com/auth",
+                  "token_endpoint": "https://auth-server.example.com/token"
+                }
+                """;
+
+        getStaticWireMockServer()
+                .stubFor(get(urlEqualTo(givenWellKnownEndpoint))
+                        .willReturn(aResponse().withStatus(302).withHeader("Location", givenRedirectTarget)));
+        getStaticWireMockServer()
+                .stubFor(get(urlEqualTo(givenRedirectTarget))
+                        .willReturn(aResponse().withStatus(200).withBody(givenResponseBody)));
+
+        // When
+        var response = restTemplate.exchange(
+                "http://localhost:" + port + givenWellKnownEndpoint, HttpMethod.GET, null, String.class);
+
+        // Then
+        then(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        getStaticWireMockServer().verify(1, getRequestedFor(urlEqualTo(givenRedirectTarget)));
+    }
+
     @Test
     void shouldUseResolvedScopes() throws JSONException {
         // Given
