@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## 1.1.0
+
 ### Added
 
 - MCP Apps support (the `io.modelcontextprotocol/ui` extension, SEP-1865), enabling tools to declare interactive HTML
