@@ -83,7 +83,13 @@ The framework follows this startup flow:
 2. `OpenApiFilterChain` applies `OpenApiFilter` beans (e.g., `DiscriminatorFlattener`, `PatternPropertyRemover`) to
    transform the spec
 3. `ToolRegistry` converts each API operation into a `RegisteredTool` using `InputSchemaComposer`,
-   `InputExampleComposer`, `ToolAnnotationResolver`, and the configured `NamingStrategy`
+   `InputExampleComposer`, `ToolAnnotationResolver`, and the configured `NamingStrategy`. Operations marked with
+   `x-mcp-app` (MCP Apps) get their `_meta` built by `AppMeta` (nested `_meta.ui.resourceUri` plus the deprecated
+   flat `ui/resourceUri` key) and have their JSON success-response schema classified once at startup by
+   `AppStructuredContent.declaredSchemaKind` so the runtime can decide how to build `structuredContent`; app
+   operations whose `resourceUri` is not among `ResourceRegistry`'s registered `ui://` URIs only produce a startup
+   warning (application code may register extra resources). Operations marked `x-mcp-app-resource` are excluded from
+   the tool list
 4. `PromptRegistry` reads the `x-mcp-prompts` vendor extension from the OpenAPI spec and converts each entry into a
    `RegisteredPrompt` with an `McpSchema.Prompt` and a handler. Two modes are supported: **inline mode**
    where Mustache templates are compiled at startup and rendered server-side from user arguments, and **resolved mode**
@@ -93,13 +99,22 @@ The framework follows this startup flow:
    `{param}` placeholders for path parameters and an RFC 6570 `{?q1,q2,...}` suffix for query parameters) and the
    same `NamingStrategy` bean used for tools to derive the resource `name`. Operations with no parameters become a
    static MCP `Resource`; operations with any path or query parameter become a `ResourceTemplate`. A marked operation
-   is excluded from `ToolRegistry`'s tool list; marking a non-`GET` operation is a startup-time configuration error
+   is excluded from `ToolRegistry`'s tool list; marking a non-`GET` operation is a startup-time configuration error.
+   The registry also reads the `x-mcp-app-resource` vendor extension (MCP Apps) on `GET` operations and turns each
+   into a static `ui://` `Resource` with the exact `text/html;profile=mcp-app` MIME type and `AppMeta` `_meta.ui`
+   metadata (parsing the extension into `AppResourceExtension` via the injected `ObjectMapper`). Such operations must
+   be `GET`, take no parameters, must not also carry `x-mcp-app`, and their `ui://` URI must be unique — any
+   violation is a startup-time configuration error. `getRegisteredAppResourceUris()` exposes the URIs for
+   `ToolRegistry`'s cross-check
 6. Tools, prompts and resources are registered with the Spring AI MCP server (SSE, Streamable HTTP, Stateless HTTP, or
    stdio transport)
 
 **Runtime tool call flow:**
 `ToolSpecBuilder` → `ToolCallFilterChain` (ordered `ToolCallFilter` beans) → `RegisteredTool` (lowest precedence, makes
-HTTP call via `ToolHandler`) → optional `JsonDoubleSerializationCorrector` retry logic
+HTTP call via `ToolHandler`) → optional `JsonDoubleSerializationCorrector` retry logic. For MCP Apps tools,
+`ToolHandler` additionally attaches `structuredContent` to successful responses, composed by
+`AppStructuredContent.compose` from the startup-time `DeclaredSchemaKind` (objects pass through, arrays/scalars are
+wrapped under `result`)
 
 **Runtime prompt call flow:**
 `PromptSpecBuilder` → `PromptCallFilterChain` (ordered `PromptCallFilter` beans) → `RegisteredPrompt` (lowest
@@ -166,6 +181,14 @@ rest are dropped with a warning.
 `ToolAnnotationResolver` infers MCP tool annotations (`readOnlyHint`, `destructiveHint`, `idempotentHint`,
 `openWorldHint`) from HTTP method semantics, then merges overrides from `x-mcp-annotations` vendor
 extension on the Operation and from YAML config properties (`infobip.openapi.mcp.tools.annotations.<tool-name>.*`).
+
+`AppStructuredContent` (in the `apps` package) supports MCP Apps: `declaredSchemaKind` picks the response schema of
+the first successful JSON response (preferring `200`, then other `2xx` in ascending order, then the `2XX` range) and
+classifies it as `OBJECT`, `NON_OBJECT`, or `UNKNOWN` (when a `$ref` or combinator makes it undecidable at startup);
+`compose` then produces the `structuredContent` object — object responses pass through as-is, everything else is
+wrapped under the `result` key, and for `UNKNOWN` the runtime value's shape decides. The `apps` package also holds
+the extension records (`AppResourceExtension`, `AppToolExtension`) and `AppMeta`, the single source of the extension
+constants and of the `_meta` maps emitted on tools, resources and resource contents.
 
 ## Code Style
 

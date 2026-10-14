@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Open-Meteo dashboard</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --accent: #0f62fe;
+      }
+      body {
+        margin: 0;
+        padding: 1rem;
+        font-family: system-ui, -apple-system, sans-serif;
+        background: Canvas;
+        color: CanvasText;
+      }
+      main {
+        border: 1px solid color-mix(in srgb, CanvasText 20%, transparent);
+        border-radius: 12px;
+        padding: 1rem 1.25rem;
+      }
+      h1 {
+        margin: 0 0 0.5rem;
+        font-size: 1.1rem;
+      }
+      p {
+        margin: 0.25rem 0;
+        font-size: 0.9rem;
+        opacity: 0.85;
+      }
+      code {
+        background: color-mix(in srgb, CanvasText 10%, transparent);
+        border-radius: 4px;
+        padding: 0.05rem 0.3rem;
+      }
+    </style>
+  </head>
+  <!--
+    Placeholder UI for this example. A production widget would load the MCP Apps bridge
+    and exchange notifications/requests with the host (tools/call, tool list, etc.) via
+    postMessage to render live data from the linked forecast tool.
+  -->
+  <body>
+    <main>
+      <h1>Open-Meteo dashboard</h1>
+      <p>
+        This UI resource is exposed by the example MCP server under the
+        <code>ui://open-meteo-dashboard</code> URI with the
+        <code>text/html;profile=mcp-app</code> media type.
+      </p>
+      <p>
+        The forecast tool is linked to this UI via <code>_meta.ui.resourceUri</code>. When the host
+        renders it, the tool's successful JSON responses also arrive as
+        <code>structuredContent</code> that a bridge script could read and visualize here.
+      </p>
+    </main>
+  </body>
+</html>

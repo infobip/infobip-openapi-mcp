@@ -1,6 +1,8 @@
 package com.infobip.openapi.mcp.resource;
 
 import com.infobip.openapi.mcp.McpRequestContext;
+import com.infobip.openapi.mcp.apps.AppMeta;
+import com.infobip.openapi.mcp.apps.AppResourceExtension;
 import com.infobip.openapi.mcp.openapi.OpenApiRegistry;
 import com.infobip.openapi.mcp.openapi.schema.Spec;
 import com.infobip.openapi.mcp.openapi.tool.FullOperation;
@@ -8,8 +10,14 @@ import com.infobip.openapi.mcp.openapi.tool.naming.NamingStrategy;
 import io.modelcontextprotocol.spec.McpSchema;
 import io.swagger.v3.oas.models.PathItem;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.function.BiFunction;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 
 /**
  * Registry for converting OpenAPI operations marked with the {@code x-mcp-resource} vendor extension into MCP
@@ -19,6 +27,10 @@ import java.util.function.BiFunction;
  * {@code ResourceTemplate} (path and/or query parameters present). The {@code uri}/{@code uriTemplate},
  * {@code name}, {@code title}, {@code description} and {@code mimeType} are all derived from the OpenAPI
  * operation.
+ * <p>
+ * Operations marked with the MCP Apps {@code x-mcp-app-resource} vendor extension are registered as static
+ * {@code ui://} resources with the MCP Apps MIME type and {@code _meta.ui} metadata. They never become resource
+ * templates, and their configuration is validated at registration time.
  */
 public class ResourceRegistry {
 
@@ -30,48 +42,86 @@ public class ResourceRegistry {
     private final NamingStrategy namingStrategy;
     private final ResourceUriBuilder resourceUriBuilder;
     private final ResourceHandler resourceHandler;
+    private final ObjectMapper objectMapper;
 
     private List<RegisteredResource> registeredResourcesCache = List.of();
+    private Set<String> appResourceUrisCache = Set.of();
 
     public ResourceRegistry(
             OpenApiRegistry openApiRegistry,
             NamingStrategy namingStrategy,
             ResourceUriBuilder resourceUriBuilder,
             ResourceHandler resourceHandler) {
+        this(
+                openApiRegistry,
+                namingStrategy,
+                resourceUriBuilder,
+                resourceHandler,
+                JsonMapper.builder().build());
+    }
+
+    public ResourceRegistry(
+            OpenApiRegistry openApiRegistry,
+            NamingStrategy namingStrategy,
+            ResourceUriBuilder resourceUriBuilder,
+            ResourceHandler resourceHandler,
+            ObjectMapper objectMapper) {
         this.openApiRegistry = openApiRegistry;
         this.namingStrategy = namingStrategy;
         this.resourceUriBuilder = resourceUriBuilder;
         this.resourceHandler = resourceHandler;
+        this.objectMapper = objectMapper;
     }
 
     /**
      * Retrieves all MCP resource specifications derived from OpenAPI operations marked with the
-     * {@code x-mcp-resource} vendor extension.
+     * {@code x-mcp-resource} or {@code x-mcp-app-resource} vendor extensions.
      *
      * @return a list of registered resources, one for each marked operation
-     * @throws ResourceRegistrationException if a marked operation is not a {@code GET} operation, or if a
-     *                                        resource name cannot be determined
+     * @throws ResourceRegistrationException if a marked operation is not a {@code GET} operation, if a
+     *                                       resource name cannot be determined, or if an MCP app resource is
+     *                                       configured invalidly (parameters present, duplicate {@code ui://}
+     *                                       URI, malformed extension)
      */
     public List<RegisteredResource> getResources() {
         var openApi = openApiRegistry.openApi();
         if (openApi.getPaths() == null || openApi.getPaths().isEmpty()) {
             this.registeredResourcesCache = List.of();
+            this.appResourceUrisCache = Set.of();
             return registeredResourcesCache;
         }
 
+        var appResourceUris = new LinkedHashMap<String, FullOperation>();
         var registeredResources = openApi.getPaths().entrySet().stream()
                 .flatMap(pathEntry -> pathEntry.getValue().readOperationsMap().entrySet().stream()
                         .map(operationEntry -> new FullOperation(
                                 pathEntry.getKey(), operationEntry.getKey(), operationEntry.getValue(), openApi)))
                 .filter(fullOperation -> Spec.isResourceOperation(fullOperation.operation()))
-                .map(this::toRegisteredResource)
+                .map(fullOperation -> toRegisteredResource(fullOperation, appResourceUris))
                 .toList();
 
         this.registeredResourcesCache = List.copyOf(registeredResources);
+        this.appResourceUrisCache = Set.copyOf(appResourceUris.keySet());
         return registeredResources;
     }
 
-    private RegisteredResource toRegisteredResource(FullOperation fullOperation) {
+    /**
+     * Returns the {@code ui://} URIs of the MCP app resources registered by the last {@link #getResources()}
+     * call, for consumers that validate references against the registered set.
+     */
+    public Set<String> getRegisteredAppResourceUris() {
+        return appResourceUrisCache;
+    }
+
+    private RegisteredResource toRegisteredResource(
+            FullOperation fullOperation, Map<String, FullOperation> appResourceUris) {
+        if (Spec.isAppResourceOperation(fullOperation.operation())) {
+            return toAppRegisteredResource(fullOperation, appResourceUris);
+        }
+        return toPlainRegisteredResource(fullOperation);
+    }
+
+    private RegisteredResource toPlainRegisteredResource(FullOperation fullOperation) {
         if (fullOperation.method() != PathItem.HttpMethod.GET) {
             throw ResourceRegistrationException.becauseNonGetMethodMarkedAsResource(fullOperation);
         }
@@ -103,6 +153,71 @@ public class ResourceRegistry {
                 .mimeType(mimeType)
                 .build();
         return RegisteredResource.ofResource(resource, handler);
+    }
+
+    private RegisteredResource toAppRegisteredResource(
+            FullOperation fullOperation, Map<String, FullOperation> appResourceUris) {
+        if (fullOperation.method() != PathItem.HttpMethod.GET) {
+            throw ResourceRegistrationException.becauseNonGetMethodMarkedAsAppResource(fullOperation);
+        }
+        if (Spec.isAppToolOperation(fullOperation.operation())) {
+            throw ResourceRegistrationException.becauseMarkedAsAppResourceAndAppTool(fullOperation);
+        }
+        if (resourceUriBuilder.isTemplate(fullOperation)) {
+            throw ResourceRegistrationException.becauseAppResourceOperationHasParameters(fullOperation);
+        }
+
+        var appResourceExtension = parseAppResourceExtension(fullOperation);
+        var uri = resolveAppResourceUri(fullOperation, appResourceExtension);
+        validateAppResourceUriIsUnique(uri, fullOperation, appResourceUris);
+
+        var resourceName = determineResourceName(fullOperation);
+        var title = resolveTitle(fullOperation, resourceName);
+        var description = fullOperation.operation().getDescription();
+        var uiMeta = AppMeta.resourceUiMeta(appResourceExtension);
+
+        var resourceBuilder = McpSchema.Resource.builder()
+                .uri(uri)
+                .name(resourceName)
+                .title(title)
+                .description(description)
+                .mimeType(AppMeta.MIME_TYPE);
+        if (!uiMeta.isEmpty()) {
+            resourceBuilder.meta(Map.of(AppMeta.UI_META_KEY, uiMeta));
+        }
+
+        BiFunction<McpRequestContext, McpSchema.ReadResourceRequest, McpSchema.ReadResourceResult> handler =
+                (context, request) -> resourceHandler.handleResourceRead(
+                        fullOperation, resourceName, AppMeta.MIME_TYPE, request, context, appResourceExtension);
+        return RegisteredResource.ofResource(resourceBuilder.build(), handler);
+    }
+
+    private AppResourceExtension parseAppResourceExtension(FullOperation fullOperation) {
+        var extensionValue = fullOperation.operation().getExtensions().get(Spec.MCP_APP_RESOURCE_EXTENSION);
+        if (extensionValue == null || Boolean.TRUE.equals(extensionValue)) {
+            return AppResourceExtension.defaults();
+        }
+        try {
+            return objectMapper.convertValue(extensionValue, AppResourceExtension.class);
+        } catch (JacksonException exception) {
+            throw ResourceRegistrationException.becauseInvalidAppResourceExtension(fullOperation, exception);
+        }
+    }
+
+    private String resolveAppResourceUri(FullOperation fullOperation, AppResourceExtension appResourceExtension) {
+        if (appResourceExtension.uri() != null) {
+            return appResourceExtension.uri();
+        }
+        var path = fullOperation.path();
+        return AppMeta.URI_SCHEME + (path.startsWith("/") ? path.substring(1) : path);
+    }
+
+    private void validateAppResourceUriIsUnique(
+            String uri, FullOperation fullOperation, Map<String, FullOperation> appResourceUris) {
+        var previous = appResourceUris.putIfAbsent(uri, fullOperation);
+        if (previous != null) {
+            throw ResourceRegistrationException.becauseDuplicateAppResourceUri(uri, previous, fullOperation);
+        }
     }
 
     private String determineResourceName(FullOperation fullOperation) {

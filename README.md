@@ -23,6 +23,8 @@ Some of the core features include:
   models. This is not allowed in pure JSON schema used by MCP, so the framework has a transformation step in which
   discriminators are resolved and embedded in a way compatible with JSON schema.
 - Mock mode in which MCP server returns examples from the OpenAPI specification instead of making HTTP API calls
+- [MCP Apps][22] support: tools can declare interactive HTML UIs and receive structured results, using
+  `x-mcp-app-resource` and `x-mcp-app` vendor extensions
 
 > [!IMPORTANT]
 > The OpenAPI MCP framework allows you to expose any HTTP API documented with OpenAPI to LLM agents. Since LLMs will
@@ -645,6 +647,79 @@ intercepted by implementing `ResourceCallFilter`.
 Resources are included in live reload in the same way as tools and prompts — when the OpenAPI specification changes,
 resource additions, removals and definition changes are detected and connected MCP clients are notified.
 
+### MCP Apps
+
+[MCP Apps][22] (extension `io.modelcontextprotocol/ui`) lets a tool declare an interactive HTML UI that
+[MCP Apps-capable hosts][23] render inline with the tool's results. The framework exposes it through two vendor
+extensions:
+
+```yaml
+paths:
+  /dashboard:
+    get:
+      operationId: getDashboard
+      x-mcp-app-resource:
+        uri: ui://users-dashboard            # optional, defaults to ui://<path>
+        csp:
+          connectDomains:
+            - https://api.example.com
+        permissions:
+          clipboardWrite: { }
+        domain: abc123.sandbox.example.com   # optional, host-assigned sandbox origin
+        prefersBorder: true                  # optional
+      responses:
+        "200":
+          content:
+            text/html:
+              schema: { type: string }
+  /users:
+    get:
+      operationId: getUsers
+      x-mcp-app:
+        resourceUri: ui://users-dashboard    # required, must start with ui://
+        visibility: [model, app]             # optional, defaults to host-defined
+      responses:
+        "200":
+          content:
+            application/json: { }
+```
+
+`x-mcp-app-resource` marks a `GET` operation whose response is an HTML document as a **UI resource**. Like
+`x-mcp-resource`, the operation is removed from the tool list, but the resource is always static (never a template),
+so a marked operation must not declare path or query parameters, must be a `GET`, and its `ui://` URI must be unique
+across all UI resources — violations fail at startup. The resource is listed with the exact MCP Apps media type
+`text/html;profile=mcp-app`, and reads return the downstream HTML with that media type and the declared `_meta.ui`
+metadata (CSP origins, permissions, `domain`, `prefersBorder`) merged into the contents. The shorthand
+`x-mcp-app-resource: true` uses the default URI (`ui://` + path without the leading slash) and no metadata. Hosts
+sandboxes the HTML and only allows the origins it declares under `csp` (`connectDomains` for fetch/XHR/WebSocket,
+`resourceDomains` for scripts, styles and images, `frameDomains` for nested iframes, `baseUriDomains` for
+`base-uri`), so declare every origin the UI itself contacts. If the HTML cannot come from the downstream API, an
+application `ResourceCallFilter` can short-circuit the read and serve the document from the application itself — the
+`open-meteo-mcp` example demonstrates this.
+
+`x-mcp-app` links a **tool** to a UI resource. The tool gains `_meta.ui.resourceUri` (plus the deprecated flat
+`_meta["ui/resourceUri"]` key for older hosts), and the optional `visibility` list (`model`, `app`) controls whether
+the tool result is shown to the model, to the app, or both. A `resourceUri` that does not match any UI resource
+registered from the specification logs a startup warning instead of failing, because application code may still
+register that resource itself.
+
+In addition to the usual text content, a successful call of an app-linked tool also returns `structuredContent` —
+a JSON object the rendered UI can read:
+
+| Declared JSON response schema                  | `structuredContent`                              |
+|------------------------------------------------|--------------------------------------------------|
+| object                                         | the response, as-is                              |
+| array or scalar                                | wrapped as `{"result": <response>}`              |
+| not decidable upfront (e.g. `$ref`, combinators) | decided by the runtime response shape          |
+
+Structured content is omitted for error responses, non-JSON responses and empty bodies; the text content is always
+kept as a fallback for clients without MCP Apps support.
+
+> [!NOTE]
+> The framework always emits the MCP Apps metadata, regardless of whether the connecting client declared the
+> `io.modelcontextprotocol/ui` extension — clients ignore unknown `_meta` keys, so this is safe. The MCP Java SDK does
+> not yet expose the negotiated client capabilities needed to gate emission ([java-sdk#999][24]).
+
 ### Properties
 
 [External configuration properties][11] that can be used to configure framework behavior:
@@ -760,3 +835,9 @@ This project is licensed under the [MIT License](LICENSE).
 [20]: https://modelcontextprotocol.io/specification/2025-11-25/server/resources "Resources in MCP specification"
 
 [21]: https://datatracker.ietf.org/doc/html/rfc6570 "RFC 6570 — URI Template"
+
+[22]: https://github.com/modelcontextprotocol/ext-apps/blob/main/specification/2026-01-26/apps.mdx "MCP Apps (SEP-1865) specification"
+
+[23]: https://modelcontextprotocol.io/extensions/client-matrix "MCP Apps client support matrix"
+
+[24]: https://github.com/modelcontextprotocol/java-sdk/issues/999 "MCP Java SDK issue #999 — extension capability support"

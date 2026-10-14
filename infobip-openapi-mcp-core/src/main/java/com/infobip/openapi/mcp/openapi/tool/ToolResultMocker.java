@@ -1,7 +1,9 @@
 package com.infobip.openapi.mcp.openapi.tool;
 
 import com.infobip.openapi.mcp.McpRequestContext;
+import com.infobip.openapi.mcp.apps.AppStructuredContent;
 import com.infobip.openapi.mcp.config.OpenApiMcpProperties;
+import com.infobip.openapi.mcp.openapi.schema.Spec;
 import com.infobip.openapi.mcp.util.OpenApiMapperFactory;
 import io.modelcontextprotocol.spec.McpSchema;
 import io.swagger.v3.oas.models.OpenAPI;
@@ -68,8 +70,8 @@ public class ToolResultMocker implements ToolCallFilter, Ordered {
             return callToolResult(MISSING_EXAMPLE_ERR_MSG, true);
         }
 
-        var responseBody = pickExample(fullOperation.operation(), fullOperation.openApi());
-        if (responseBody == null) {
+        var examplePick = pickExample(fullOperation.operation(), fullOperation.openApi());
+        if (examplePick == null) {
             LOGGER.error(
                     "Missing examples in OpenAPI operation {}: {} for tool {}, returning MCP error response",
                     fullOperation.method(),
@@ -78,12 +80,17 @@ public class ToolResultMocker implements ToolCallFilter, Ordered {
             return callToolResult(MISSING_EXAMPLE_ERR_MSG, true);
         }
 
-        LOGGER.trace("Returning mock to tool call {}:\n{}", req.name(), responseBody);
-        return callToolResult(responseBody, false);
+        LOGGER.trace("Returning mock to tool call {}:\n{}", req.name(), examplePick.json());
+        if (Spec.isAppToolOperation(fullOperation.operation())) {
+            var structuredContent = AppStructuredContent.compose(
+                    AppStructuredContent.declaredSchemaKind(fullOperation.operation()), examplePick.value());
+            return callToolResult(examplePick.json(), false, structuredContent);
+        }
+        return callToolResult(examplePick.json(), false);
     }
 
     @Nullable
-    private String pickExample(Operation operation, OpenAPI openApi) {
+    private ExamplePick pickExample(Operation operation, OpenAPI openApi) {
         var responses = operation.getResponses();
         if (responses == null || responses.isEmpty()) {
             return null;
@@ -95,11 +102,26 @@ public class ToolResultMocker implements ToolCallFilter, Ordered {
                 .map(ApiResponse::getContent)
                 .map(this::extractSupportedMediaType)
                 .map(this::extractExampleValue)
-                .map(exampleValue -> serializeToString(exampleValue, openApi))
+                .map(exampleValue -> toExamplePick(exampleValue, openApi))
                 .filter(Objects::nonNull)
                 .findFirst()
                 .orElse(null);
     }
+
+    @Nullable
+    private ExamplePick toExamplePick(@Nullable Object exampleValue, OpenAPI openApi) {
+        var json = serializeToString(exampleValue, openApi);
+        if (json == null) {
+            return null;
+        }
+        return new ExamplePick(Objects.requireNonNull(exampleValue), json);
+    }
+
+    /**
+     * A picked OpenAPI example: the serialized JSON becomes the mock's text content, and the raw example
+     * value is the base for the MCP Apps {@code structuredContent}.
+     */
+    private record ExamplePick(Object value, String json) {}
 
     private static Stream<Function<ApiResponses, @Nullable ApiResponse>> successfulResponseExtractors() {
         return Stream.concat(
@@ -144,9 +166,17 @@ public class ToolResultMocker implements ToolCallFilter, Ordered {
     }
 
     private static McpSchema.CallToolResult callToolResult(String text, boolean isError) {
-        return McpSchema.CallToolResult.builder()
+        return callToolResult(text, isError, null);
+    }
+
+    private static McpSchema.CallToolResult callToolResult(
+            String text, boolean isError, @Nullable Object structuredContent) {
+        var builder = McpSchema.CallToolResult.builder()
                 .content(List.of(new McpSchema.TextContent(text)))
-                .isError(isError)
-                .build();
+                .isError(isError);
+        if (structuredContent != null && !isError) {
+            builder.structuredContent(structuredContent);
+        }
+        return builder.build();
     }
 }

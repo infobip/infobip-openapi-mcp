@@ -3,6 +3,7 @@ package com.infobip.openapi.mcp.openapi.tool;
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
 import static org.assertj.core.api.BDDAssertions.then;
+import static org.junit.jupiter.params.provider.Arguments.arguments;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
@@ -13,6 +14,7 @@ import static org.mockito.Mockito.when;
 
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.infobip.openapi.mcp.McpRequestContext;
+import com.infobip.openapi.mcp.apps.DeclaredSchemaKind;
 import com.infobip.openapi.mcp.auth.HttpServletRequestCredentialProvider;
 import com.infobip.openapi.mcp.config.DownstreamApiRestClients;
 import com.infobip.openapi.mcp.config.OpenApiMcpProperties;
@@ -37,11 +39,15 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Semaphore;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpHeaders;
@@ -659,6 +665,94 @@ class ToolHandlerTest {
             // Then
             then(extractTextContent(result.content())).isEqualTo(responseBody);
             then(result.isError()).isFalse();
+        }
+    }
+
+    @Nested
+    class AppStructuredContent {
+
+        private final ObjectMapper jsonMapper = new ObjectMapper();
+
+        static Stream<Arguments> structuredContentCases() {
+            return Stream.of(
+                    // declared object schema: JSON objects pass as-is, everything else is wrapped
+                    arguments(DeclaredSchemaKind.OBJECT, "{\"id\":1}", "application/json", "{\"id\":1}"),
+                    arguments(DeclaredSchemaKind.OBJECT, "[1,2]", "application/json", "{\"result\":[1,2]}"),
+                    // declared non-object schema: the value is wrapped
+                    arguments(DeclaredSchemaKind.NON_OBJECT, "[1,2]", "application/json", "{\"result\":[1,2]}"),
+                    arguments(DeclaredSchemaKind.NON_OBJECT, "\"ok\"", "application/json", "{\"result\":\"ok\"}"),
+                    // undecidable schema: the runtime value decides
+                    arguments(DeclaredSchemaKind.UNKNOWN, "{\"id\":1}", "application/json", "{\"id\":1}"),
+                    arguments(DeclaredSchemaKind.UNKNOWN, "42", "application/json", "{\"result\":42}"),
+                    // +json suffixed media types carry JSON
+                    arguments(DeclaredSchemaKind.OBJECT, "{\"id\":1}", "application/problem+json", "{\"id\":1}"));
+        }
+
+        @ParameterizedTest
+        @MethodSource("structuredContentCases")
+        void shouldComposeStructuredContentForSuccessfulJsonResponses(
+                DeclaredSchemaKind declaredSchemaKind, String body, String contentType, String expectedStructured) {
+            // Given
+            stubAppResponse(body, contentType, 200);
+
+            // When
+            var result = handleAppToolCall(declaredSchemaKind);
+
+            // Then
+            then(result.isError()).isFalse();
+            then(extractTextContent(result.content())).isEqualTo(body);
+            then(result.structuredContent()).isEqualTo(jsonMapper.readValue(expectedStructured, Object.class));
+        }
+
+        static Stream<Arguments> omittedStructuredContentCases() {
+            return Stream.of(
+                    arguments(DeclaredSchemaKind.OBJECT, "not json", "application/json"),
+                    arguments(DeclaredSchemaKind.NON_OBJECT, "", "application/json"),
+                    arguments(DeclaredSchemaKind.OBJECT, "<html/>", "text/html"),
+                    arguments(null, "{\"id\":1}", "application/json"));
+        }
+
+        @ParameterizedTest
+        @MethodSource("omittedStructuredContentCases")
+        void shouldOmitStructuredContentWhenItCannotBeProduced(
+                DeclaredSchemaKind declaredSchemaKind, String body, String contentType) {
+            // Given
+            stubAppResponse(body, contentType, 200);
+
+            // When
+            var result = handleAppToolCall(declaredSchemaKind);
+
+            // Then
+            then(result.isError()).isFalse();
+            then(result.structuredContent()).isNull();
+        }
+
+        @Test
+        void shouldOmitStructuredContentForErrorResponses() {
+            // Given
+            stubAppResponse("{\"error\":\"bad request\"}", "application/json", 400);
+
+            // When
+            var result = handleAppToolCall(DeclaredSchemaKind.OBJECT);
+
+            // Then
+            then(result.isError()).isTrue();
+            then(result.structuredContent()).isNull();
+        }
+
+        private void stubAppResponse(String body, String contentType, int status) {
+            var response = aResponse().withStatus(status).withBody(body);
+            if (contentType != null) {
+                response = response.withHeader(HttpHeaders.CONTENT_TYPE, contentType);
+            }
+            wireMockServer.stubFor(get(urlPathEqualTo("/app")).willReturn(response));
+        }
+
+        private McpSchema.CallToolResult handleAppToolCall(DeclaredSchemaKind declaredSchemaKind) {
+            var fullOperation = new FullOperation("/app", PathItem.HttpMethod.GET, new Operation(), new OpenAPI());
+            var decomposedSchema = new DecomposedRequestData(
+                    new DecomposedRequestData.ParametersByType(Map.of(), Map.of(), Map.of(), Map.of()), null);
+            return toolHandler.handleToolCall(fullOperation, decomposedSchema, createTestContext(), declaredSchemaKind);
         }
     }
 

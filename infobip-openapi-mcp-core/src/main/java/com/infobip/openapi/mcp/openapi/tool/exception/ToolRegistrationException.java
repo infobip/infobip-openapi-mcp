@@ -29,4 +29,13 @@ public final class ToolRegistrationException extends RuntimeException {
                         operation.method(), operation.path(), cause.getMessage()),
                 cause);
     }
+
+    public static @NonNull ToolRegistrationException becauseInvalidAppToolExtension(
+            @NonNull FullOperation operation, Throwable cause) {
+        return new ToolRegistrationException(
+                String.format(
+                        "Unable to register tool for operation: %s %s. Invalid 'x-mcp-app' extension: %s",
+                        operation.method(), operation.path(), cause.getMessage()),
+                cause);
+    }
 }

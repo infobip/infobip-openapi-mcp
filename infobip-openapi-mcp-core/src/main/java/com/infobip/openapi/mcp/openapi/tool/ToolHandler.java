@@ -1,6 +1,8 @@
 package com.infobip.openapi.mcp.openapi.tool;
 
 import com.infobip.openapi.mcp.McpRequestContext;
+import com.infobip.openapi.mcp.apps.AppStructuredContent;
+import com.infobip.openapi.mcp.apps.DeclaredSchemaKind;
 import com.infobip.openapi.mcp.auth.CredentialProvider;
 import com.infobip.openapi.mcp.config.OpenApiMcpProperties;
 import com.infobip.openapi.mcp.enricher.ApiRequestEnricherChain;
@@ -26,6 +28,9 @@ import org.springframework.http.MediaType;
 import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.util.UriBuilder;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 
 /**
  * Handles the execution of tool calls by calling the downstream HTTP APIs as defined in the OpenAPI specification.
@@ -73,6 +78,7 @@ public class ToolHandler {
     private final CredentialProvider credentialProvider;
     private final ProgressUpdateProvider progressUpdateProvider;
     private final NotificationTicker ticker;
+    private final ObjectMapper objectMapper;
 
     public ToolHandler(
             RestClient restClient,
@@ -90,6 +96,27 @@ public class ToolHandler {
                 metricService,
                 credentialProvider,
                 progressUpdateProvider,
+                JsonMapper.builder().build());
+    }
+
+    public ToolHandler(
+            RestClient restClient,
+            ErrorModelWriter errorModelWriter,
+            OpenApiMcpProperties properties,
+            ApiRequestEnricherChain enricherChain,
+            MetricService metricService,
+            CredentialProvider credentialProvider,
+            ProgressUpdateProvider progressUpdateProvider,
+            ObjectMapper objectMapper) {
+        this(
+                restClient,
+                errorModelWriter,
+                properties,
+                enricherChain,
+                metricService,
+                credentialProvider,
+                progressUpdateProvider,
+                objectMapper,
                 () -> Thread.sleep(properties.progressNotificationsInterval().toMillis()));
     }
 
@@ -107,6 +134,33 @@ public class ToolHandler {
             CredentialProvider credentialProvider,
             ProgressUpdateProvider progressUpdateProvider,
             NotificationTicker ticker) {
+        this(
+                restClient,
+                errorModelWriter,
+                properties,
+                enricherChain,
+                metricService,
+                credentialProvider,
+                progressUpdateProvider,
+                JsonMapper.builder().build(),
+                ticker);
+    }
+
+    /**
+     * Internal constructor used in tests only. Allows for mocking the passage of
+     * time in tests by overriding the default Thread.sleep implementation of
+     * the ticker.
+     */
+    ToolHandler(
+            RestClient restClient,
+            ErrorModelWriter errorModelWriter,
+            OpenApiMcpProperties properties,
+            ApiRequestEnricherChain enricherChain,
+            MetricService metricService,
+            CredentialProvider credentialProvider,
+            ProgressUpdateProvider progressUpdateProvider,
+            ObjectMapper objectMapper,
+            NotificationTicker ticker) {
         this.restClient = restClient;
         this.errorModelWriter = errorModelWriter;
         this.properties = properties;
@@ -115,6 +169,7 @@ public class ToolHandler {
         this.credentialProvider = credentialProvider;
         this.progressUpdateProvider = progressUpdateProvider;
         this.ticker = ticker;
+        this.objectMapper = objectMapper;
         this.serializationCorrector = new JsonDoubleSerializationCorrector();
     }
 
@@ -127,6 +182,27 @@ public class ToolHandler {
      */
     public McpSchema.CallToolResult handleToolCall(
             FullOperation fullOperation, DecomposedRequestData decomposedRequestData, McpRequestContext context) {
+        return handleToolCall(fullOperation, decomposedRequestData, context, null);
+    }
+
+    /**
+     * Handles the tool call, additionally composing {@code structuredContent} for MCP Apps when
+     * {@code declaredSchemaKind} is present. The declared schema kind is decided once at tool registration
+     * time so that the shape of the structured content is stable per tool; the value itself is derived from
+     * the downstream response at call time and omitted whenever it cannot be produced (error responses,
+     * empty bodies, non-JSON content types, unparseable bodies).
+     *
+     * @param fullOperation         The full operation details including path, method, and operation object.
+     * @param decomposedRequestData The decomposed schema containing parameters and request body.
+     * @param context               The MCP request context containing HTTP request and session info.
+     * @param declaredSchemaKind    The declared response shape for MCP Apps, or {@code null} for plain tools.
+     * @return The result of the tool call including response body and error status.
+     */
+    public McpSchema.CallToolResult handleToolCall(
+            FullOperation fullOperation,
+            DecomposedRequestData decomposedRequestData,
+            McpRequestContext context,
+            @Nullable DeclaredSchemaKind declaredSchemaKind) {
         Optional<String> credential;
         try {
             credential = credentialProvider.provide(context);
@@ -148,7 +224,10 @@ public class ToolHandler {
             var responseBody = getResponseBodyOrDefault(response.getBody());
 
             toolCallTimer.timeToolCall(fullOperation, response.getStatusCode().isError());
-            return callToolResult(responseBody, response.getStatusCode().isError());
+            return callToolResult(
+                    responseBody,
+                    response.getStatusCode().isError(),
+                    structuredContentOrNull(response, declaredSchemaKind));
         } catch (HttpStatusCodeException exception) {
             httpCallTimer.timeApiCall(fullOperation, exception.getStatusCode());
 
@@ -167,7 +246,9 @@ public class ToolHandler {
                     toolCallTimer.timeToolCall(
                             fullOperation, retryResponse.getStatusCode().isError());
                     return callToolResult(
-                            responseBody, retryResponse.getStatusCode().isError());
+                            responseBody,
+                            retryResponse.getStatusCode().isError(),
+                            structuredContentOrNull(retryResponse, declaredSchemaKind));
                 } catch (HttpStatusCodeException retryException) {
                     httpCallRetryTimer.timeApiCall(fullOperation, retryException.getStatusCode());
                     metricService.recordApiCall(fullOperation, retryException.getStatusCode());
@@ -210,6 +291,36 @@ public class ToolHandler {
 
     private String getResponseBodyOrDefault(@Nullable String responseBody) {
         return responseBody != null ? responseBody : DEFAULT_SUCCESS_RESPONSE;
+    }
+
+    /**
+     * Composes the {@code structuredContent} value for MCP Apps from a downstream response, or returns
+     * {@code null} when it must be omitted: plain tools (no declared schema kind), empty bodies (including
+     * the synthetic default success response), non-JSON content types, and unparseable bodies.
+     */
+    private @Nullable Object structuredContentOrNull(
+            org.springframework.http.ResponseEntity<String> response, @Nullable DeclaredSchemaKind declaredSchemaKind) {
+        if (declaredSchemaKind == null) {
+            return null;
+        }
+
+        var body = response.getBody();
+        if (body == null || body.isBlank()) {
+            return null;
+        }
+
+        var contentType = response.getHeaders().getContentType();
+        if (contentType != null && !AppStructuredContent.isJsonMediaType(contentType)) {
+            LOGGER.debug("Response content type '{}' does not carry JSON, omitting structuredContent", contentType);
+            return null;
+        }
+
+        try {
+            return AppStructuredContent.compose(declaredSchemaKind, objectMapper.readValue(body, Object.class));
+        } catch (JacksonException exception) {
+            LOGGER.debug("Response body is not valid JSON, omitting structuredContent: {}", exception.getMessage());
+            return null;
+        }
     }
 
     /**
@@ -503,9 +614,17 @@ public class ToolHandler {
     }
 
     private static McpSchema.CallToolResult callToolResult(String text, boolean isError) {
-        return McpSchema.CallToolResult.builder()
+        return callToolResult(text, isError, null);
+    }
+
+    private static McpSchema.CallToolResult callToolResult(
+            String text, boolean isError, @Nullable Object structuredContent) {
+        var builder = McpSchema.CallToolResult.builder()
                 .content(List.of(new McpSchema.TextContent(text)))
-                .isError(isError)
-                .build();
+                .isError(isError);
+        if (structuredContent != null && !isError) {
+            builder.structuredContent(structuredContent);
+        }
+        return builder.build();
     }
 }

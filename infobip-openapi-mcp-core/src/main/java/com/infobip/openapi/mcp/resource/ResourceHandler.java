@@ -1,6 +1,8 @@
 package com.infobip.openapi.mcp.resource;
 
 import com.infobip.openapi.mcp.McpRequestContext;
+import com.infobip.openapi.mcp.apps.AppMeta;
+import com.infobip.openapi.mcp.apps.AppResourceExtension;
 import com.infobip.openapi.mcp.auth.CredentialProvider;
 import com.infobip.openapi.mcp.enricher.ApiRequestEnricherChain;
 import com.infobip.openapi.mcp.infrastructure.metrics.MetricService;
@@ -11,6 +13,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
 import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
@@ -57,6 +60,23 @@ public class ResourceHandler {
             String mimeType,
             McpSchema.ReadResourceRequest request,
             McpRequestContext context) {
+        return handleResourceRead(fullOperation, resourceName, mimeType, request, context, null);
+    }
+
+    /**
+     * Handles a resource read, optionally for an MCP Apps UI resource. When {@code appResourceExtension} is
+     * present, the MIME type of the converted contents is forced to the exact MCP Apps media type and the
+     * extension's {@code _meta.ui} metadata is merged into each contents item. Custom
+     * {@link ResourceContentsConverter} implementations keep working unchanged: their output is post-processed
+     * here rather than requiring them to know about MCP Apps.
+     */
+    public McpSchema.ReadResourceResult handleResourceRead(
+            FullOperation fullOperation,
+            String resourceName,
+            String mimeType,
+            McpSchema.ReadResourceRequest request,
+            McpRequestContext context,
+            @Nullable AppResourceExtension appResourceExtension) {
         metricService.recordResourceCall(resourceName);
         var resourceCallTimer = metricService.startResourceTimer();
 
@@ -72,6 +92,9 @@ public class ResourceHandler {
 
             var response = readFromBackend(fullOperation, resourceName, request, context, credential);
             var contents = convert(fullOperation, resourceName, mimeType, request, context, response);
+            if (appResourceExtension != null) {
+                contents = toAppContents(contents, appResourceExtension);
+            }
 
             resourceCallTimer.timeResourceCall(resourceName, false);
             return new McpSchema.ReadResourceResult(List.of(contents));
@@ -79,6 +102,24 @@ public class ResourceHandler {
             resourceCallTimer.timeResourceCall(resourceName, true);
             throw exception;
         }
+    }
+
+    private McpSchema.ResourceContents toAppContents(
+            McpSchema.ResourceContents contents, AppResourceExtension appResourceExtension) {
+        var mergedMeta = AppMeta.contentMeta(contents.meta(), appResourceExtension);
+        var meta = mergedMeta.isEmpty() ? null : mergedMeta;
+
+        if (contents instanceof McpSchema.TextResourceContents textContents) {
+            return new McpSchema.TextResourceContents(textContents.uri(), AppMeta.MIME_TYPE, textContents.text(), meta);
+        }
+        if (contents instanceof McpSchema.BlobResourceContents blobContents) {
+            return new McpSchema.BlobResourceContents(blobContents.uri(), AppMeta.MIME_TYPE, blobContents.blob(), meta);
+        }
+        LOGGER.warn(
+                "Resource contents of type '{}' are not a known text or blob type, "
+                        + "returning them unchanged without MCP Apps metadata",
+                contents.getClass().getName());
+        return contents;
     }
 
     private McpSchema.ResourceContents convert(

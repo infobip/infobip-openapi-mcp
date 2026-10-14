@@ -6,6 +6,7 @@ import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 
+import com.infobip.openapi.mcp.apps.AppMeta;
 import com.infobip.openapi.mcp.auth.scope.ScopeDiscoveryService;
 import com.infobip.openapi.mcp.config.OpenApiMcpProperties;
 import com.infobip.openapi.mcp.infrastructure.metrics.MetricService;
@@ -56,6 +57,7 @@ class ToolLiveReloadTest {
     private static final String MULTIPLE_TOOLS_SPEC = "/openapi/live-reload/multiple-tools.json";
     private static final String WITH_EDITED_ANNOTATIONS_SPEC = "/openapi/live-reload/with-edited-annotations.json";
     private static final String MULTIPLE_TOOLS_EDITED_SPEC = "/openapi/live-reload/multiple-tools-edited.json";
+    private static final String WITH_ADDED_APP_META_SPEC = "/openapi/live-reload/with-added-app-meta.json";
 
     private static final OpenApiMcpProperties PROPERTIES = new OpenApiMcpProperties(
             URI.create("file:///dummy"),
@@ -368,6 +370,37 @@ class ToolLiveReloadTest {
             var capturedAnnotations = syncToolSpecCaptor.getValue().tool().annotations();
             var expected = new McpSchema.ToolAnnotations(null, false, true, true, true, null);
             BDDAssertions.then(capturedAnnotations).usingRecursiveComparison().isEqualTo(expected);
+        }
+
+        @Test
+        void shouldDetectChangeWhenToolAppMetaChanges() throws InterruptedException {
+            // Given
+            var givenBaseOpenApi = loadOpenApi(BASE_SPEC);
+            var givenEditedOpenApi = loadOpenApi(WITH_ADDED_APP_META_SPEC);
+
+            given(givenOpenApiRegistry.openApi())
+                    .willReturn(givenBaseOpenApi)
+                    .willReturn(givenBaseOpenApi)
+                    .willReturn(givenEditedOpenApi);
+
+            givenToolRegistry.getTools();
+            var givenOpenApiLiveReload = givenOpenApiLiveReload();
+            setupToolSpecBuilderForNewTools();
+
+            // When
+            givenOpenApiLiveReload.reloadOnSchedule();
+
+            // Then
+            then(givenOpenApiRegistry).should().reload();
+            then(givenMcpSyncServer).should().addTool(syncToolSpecCaptor.capture());
+            then(givenMcpSyncServer).should(never()).removeTool(any());
+
+            var capturedMeta = syncToolSpecCaptor.getValue().tool().meta();
+            BDDAssertions.then(capturedMeta)
+                    .containsEntry(
+                            AppMeta.UI_META_KEY,
+                            Map.of("resourceUri", "ui://users-dashboard", "visibility", List.of("model", "app")))
+                    .containsEntry(AppMeta.DEPRECATED_TOOL_RESOURCE_URI_KEY, "ui://users-dashboard");
         }
 
         @Test

@@ -224,7 +224,8 @@ class OpenApiMcpConfiguration {
             ToolHandler toolHandler,
             OpenApiMapperFactory openApiMapperFactory,
             ToolAnnotationResolver toolAnnotationResolver,
-            OpenApiMcpProperties properties) {
+            OpenApiMcpProperties properties,
+            ResourceRegistry resourceRegistry) {
         return new ToolRegistry(
                 openApiRegistry,
                 namingStrategy,
@@ -233,7 +234,8 @@ class OpenApiMcpConfiguration {
                 toolHandler,
                 openApiMapperFactory,
                 toolAnnotationResolver,
-                properties);
+                properties,
+                resourceRegistry);
     }
 
     @Bean
@@ -459,8 +461,9 @@ class OpenApiMcpConfiguration {
             OpenApiRegistry openApiRegistry,
             NamingStrategy namingStrategy,
             ResourceUriBuilder resourceUriBuilder,
-            ResourceHandler resourceHandler) {
-        return new ResourceRegistry(openApiRegistry, namingStrategy, resourceUriBuilder, resourceHandler);
+            ResourceHandler resourceHandler,
+            ObjectMapper objectMapper) {
+        return new ResourceRegistry(openApiRegistry, namingStrategy, resourceUriBuilder, resourceHandler, objectMapper);
     }
 
     @Bean

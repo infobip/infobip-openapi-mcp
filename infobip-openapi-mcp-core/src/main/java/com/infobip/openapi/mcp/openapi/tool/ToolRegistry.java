@@ -2,6 +2,9 @@ package com.infobip.openapi.mcp.openapi.tool;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import com.infobip.openapi.mcp.apps.AppMeta;
+import com.infobip.openapi.mcp.apps.AppStructuredContent;
+import com.infobip.openapi.mcp.apps.AppToolExtension;
 import com.infobip.openapi.mcp.config.OpenApiMcpProperties;
 import com.infobip.openapi.mcp.openapi.OpenApiRegistry;
 import com.infobip.openapi.mcp.openapi.schema.ComposedExample;
@@ -10,10 +13,13 @@ import com.infobip.openapi.mcp.openapi.schema.InputSchemaComposer;
 import com.infobip.openapi.mcp.openapi.schema.Spec;
 import com.infobip.openapi.mcp.openapi.tool.exception.ToolRegistrationException;
 import com.infobip.openapi.mcp.openapi.tool.naming.NamingStrategy;
+import com.infobip.openapi.mcp.resource.ResourceRegistry;
 import com.infobip.openapi.mcp.util.OpenApiMapperFactory;
 import io.modelcontextprotocol.spec.McpSchema;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import tools.jackson.core.JacksonException;
@@ -55,6 +61,7 @@ public class ToolRegistry {
     private final ToolAnnotationResolver toolAnnotationResolver;
     private final JsonMapper jsonSchemaMapper = JsonMapper.builder().build();
     private final OpenApiMcpProperties properties;
+    private final @Nullable ResourceRegistry resourceRegistry;
 
     private List<RegisteredTool> registeredToolsCache = List.of();
 
@@ -67,6 +74,33 @@ public class ToolRegistry {
             OpenApiMapperFactory openApiMapperFactory,
             ToolAnnotationResolver toolAnnotationResolver,
             OpenApiMcpProperties properties) {
+        this(
+                openApiRegistry,
+                namingStrategy,
+                inputSchemaComposer,
+                inputExampleComposer,
+                toolHandler,
+                openApiMapperFactory,
+                toolAnnotationResolver,
+                properties,
+                null);
+    }
+
+    /**
+     * Creates a registry that additionally cross-checks {@code x-mcp-app} links against the app resources of the
+     * given {@link ResourceRegistry}. The cross-check only produces warnings: app resources may also be registered
+     * by application code, outside of the OpenAPI specification.
+     */
+    public ToolRegistry(
+            OpenApiRegistry openApiRegistry,
+            NamingStrategy namingStrategy,
+            InputSchemaComposer inputSchemaComposer,
+            InputExampleComposer inputExampleComposer,
+            ToolHandler toolHandler,
+            OpenApiMapperFactory openApiMapperFactory,
+            ToolAnnotationResolver toolAnnotationResolver,
+            OpenApiMcpProperties properties,
+            @Nullable ResourceRegistry resourceRegistry) {
         this.openApiRegistry = openApiRegistry;
         this.namingStrategy = namingStrategy;
         this.inputSchemaComposer = inputSchemaComposer;
@@ -75,6 +109,7 @@ public class ToolRegistry {
         this.openApiMapperFactory = openApiMapperFactory;
         this.toolAnnotationResolver = toolAnnotationResolver;
         this.properties = properties;
+        this.resourceRegistry = resourceRegistry;
     }
 
     /**
@@ -98,6 +133,7 @@ public class ToolRegistry {
         if (openApi.getPaths() == null || openApi.getPaths().isEmpty()) {
             return List.of();
         }
+        var appLinkedTools = new LinkedHashMap<String, AppToolExtension>();
         var registeredTools = openApi.getPaths().entrySet().stream()
                 .flatMap(pathEntry -> pathEntry.getValue().readOperationsMap().entrySet().stream()
                         .map(operationEntry -> new FullOperation(
@@ -105,26 +141,72 @@ public class ToolRegistry {
                 .filter(fullOperation -> !Spec.isResourceOperation(fullOperation.operation()))
                 .map(fullOperation -> {
                     var toolName = determineToolName(fullOperation);
-                    var tool = McpSchema.Tool.builder()
+                    var appToolExtension = parseAppToolExtension(fullOperation);
+
+                    var toolBuilder = McpSchema.Tool.builder()
                             .name(toolName)
                             .title(resolveTitle(fullOperation, toolName))
                             .description(buildDescription(fullOperation))
                             .inputSchema(resolveJsonSchema(fullOperation))
-                            .annotations(toolAnnotationResolver.resolve(fullOperation, toolName))
-                            .build();
+                            .annotations(toolAnnotationResolver.resolve(fullOperation, toolName));
+                    if (appToolExtension != null) {
+                        toolBuilder.meta(AppMeta.toolMeta(appToolExtension));
+                        appLinkedTools.put(toolName, appToolExtension);
+                    }
+                    var tool = toolBuilder.build();
+
+                    // Decided once here, so that the structuredContent shape of a tool is fixed at registration
+                    // time and predictable for MCP Apps UI authors.
+                    var declaredSchemaKind = appToolExtension == null
+                            ? null
+                            : AppStructuredContent.declaredSchemaKind(fullOperation.operation());
 
                     return new RegisteredTool(
                             tool,
                             (callToolRequest, context) -> {
                                 var decomposedArguments =
                                         inputSchemaComposer.decompose(callToolRequest, fullOperation.operation());
-                                return toolHandler.handleToolCall(fullOperation, decomposedArguments, context);
+                                return toolHandler.handleToolCall(
+                                        fullOperation, decomposedArguments, context, declaredSchemaKind);
                             },
                             fullOperation);
                 })
                 .toList();
+        warnAboutUnknownAppResourceUris(appLinkedTools);
         this.registeredToolsCache = List.copyOf(registeredTools);
         return registeredTools;
+    }
+
+    private @Nullable AppToolExtension parseAppToolExtension(FullOperation fullOperation) {
+        var extensions = fullOperation.operation().getExtensions();
+        if (extensions == null || extensions.get(Spec.MCP_APP_EXTENSION) == null) {
+            return null;
+        }
+
+        try {
+            return jsonSchemaMapper.convertValue(extensions.get(Spec.MCP_APP_EXTENSION), AppToolExtension.class);
+        } catch (JacksonException exception) {
+            throw ToolRegistrationException.becauseInvalidAppToolExtension(fullOperation, exception);
+        }
+    }
+
+    private void warnAboutUnknownAppResourceUris(Map<String, AppToolExtension> appLinkedTools) {
+        if (resourceRegistry == null || appLinkedTools.isEmpty()) {
+            return;
+        }
+
+        resourceRegistry.getResources();
+        var knownUris = resourceRegistry.getRegisteredAppResourceUris();
+        appLinkedTools.forEach((toolName, extension) -> {
+            if (!knownUris.contains(extension.resourceUri())) {
+                LOGGER.warn(
+                        "Tool '{}' is linked to MCP app resource '{}', which is not among the app resources"
+                                + " registered from the OpenAPI spec. Unless application code registers it,"
+                                + " MCP Apps-capable hosts will not find the UI resource.",
+                        toolName,
+                        extension.resourceUri());
+            }
+        });
     }
 
     private String determineToolName(FullOperation operation) {

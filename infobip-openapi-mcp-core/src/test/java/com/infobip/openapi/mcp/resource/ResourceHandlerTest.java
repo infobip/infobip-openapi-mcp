@@ -11,6 +11,8 @@ import static org.assertj.core.api.BDDAssertions.thenThrownBy;
 
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.infobip.openapi.mcp.McpRequestContext;
+import com.infobip.openapi.mcp.apps.AppMeta;
+import com.infobip.openapi.mcp.apps.AppResourceExtension;
 import com.infobip.openapi.mcp.auth.CredentialProvider;
 import com.infobip.openapi.mcp.config.DownstreamApiRestClients;
 import com.infobip.openapi.mcp.enricher.ApiRequestEnricherChain;
@@ -27,9 +29,11 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -522,6 +526,126 @@ class ResourceHandlerTest {
                         .find("com.infobip.openapi.resource.read.call.duration")
                         .timer())
                 .isNull();
+    }
+
+    @Nested
+    class McpApps {
+
+        @Test
+        void shouldForceAppMimeTypeAndMergeUiMetaForTextContents() {
+            // Given
+            wireMockServer.stubFor(get(urlPathEqualTo("/dashboard"))
+                    .willReturn(aResponse()
+                            .withHeader(HttpHeaders.CONTENT_TYPE, "text/html")
+                            .withBody("<html><body>dashboard</body></html>")));
+            var fullOperation = fullOperation("""
+                {
+                  "openapi": "3.1.0",
+                  "info": { "title": "Test API", "version": "1.0.0" },
+                  "paths": {
+                    "/dashboard": { "get": { "operationId": "getDashboard" } }
+                  }
+                }
+                """);
+            var handler = handlerWithCredential(context -> Optional.empty());
+            var request = new McpSchema.ReadResourceRequest("ui://dashboard");
+            var extension = new AppResourceExtension(
+                    "ui://dashboard",
+                    null,
+                    new AppResourceExtension.Permissions(Map.of(), null, null, null),
+                    null,
+                    Boolean.TRUE);
+
+            // When
+            var result = handler.handleResourceRead(
+                    fullOperation, "getDashboard", AppMeta.MIME_TYPE, request, new McpRequestContext(), extension);
+
+            // Then
+            var contents = (McpSchema.TextResourceContents) result.contents().getFirst();
+            then(contents.uri()).isEqualTo("ui://dashboard");
+            then(contents.mimeType()).isEqualTo(AppMeta.MIME_TYPE);
+            then(contents.text()).isEqualTo("<html><body>dashboard</body></html>");
+            then(contents.meta())
+                    .isEqualTo(Map.of("ui", Map.of("permissions", Map.of("camera", Map.of()), "prefersBorder", true)));
+        }
+
+        @Test
+        void shouldForceAppMimeTypeAndOmitEmptyMetaForBlobContentsWithDefaultExtension() {
+            // Given
+            var pngBytes = new byte[] {(byte) 0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A};
+            wireMockServer.stubFor(get(urlPathEqualTo("/icon"))
+                    .willReturn(aResponse()
+                            .withHeader(HttpHeaders.CONTENT_TYPE, "image/png")
+                            .withBody(pngBytes)));
+            var fullOperation = fullOperation("""
+                {
+                  "openapi": "3.1.0",
+                  "info": { "title": "Test API", "version": "1.0.0" },
+                  "paths": {
+                    "/icon": { "get": { "operationId": "getIcon" } }
+                  }
+                }
+                """);
+            var handler = handlerWithCredential(context -> Optional.empty());
+            var request = new McpSchema.ReadResourceRequest("ui://icon");
+
+            // When
+            var result = handler.handleResourceRead(
+                    fullOperation,
+                    "getIcon",
+                    AppMeta.MIME_TYPE,
+                    request,
+                    new McpRequestContext(),
+                    AppResourceExtension.defaults());
+
+            // Then
+            var contents = (McpSchema.BlobResourceContents) result.contents().getFirst();
+            then(contents.uri()).isEqualTo("ui://icon");
+            then(contents.mimeType()).isEqualTo(AppMeta.MIME_TYPE);
+            then(contents.blob()).isEqualTo(Base64.getEncoder().encodeToString(pngBytes));
+            then(contents.meta()).isNull();
+        }
+
+        @Test
+        void shouldPreserveCustomConverterMetaWithUiWinning() {
+            // Given
+            wireMockServer.stubFor(
+                    get(urlPathEqualTo("/dashboard")).willReturn(aResponse().withBody("UP")));
+            var fullOperation = fullOperation("""
+                {
+                  "openapi": "3.1.0",
+                  "info": { "title": "Test API", "version": "1.0.0" },
+                  "paths": {
+                    "/dashboard": { "get": { "operationId": "getDashboard" } }
+                  }
+                }
+                """);
+            ResourceContentsConverter converter = (response, context) -> new McpSchema.TextResourceContents(
+                    response.uri(),
+                    "text/custom",
+                    "converted",
+                    new java.util.LinkedHashMap<>(Map.of("custom", "value", "ui", "stale value")));
+            var handler = new ResourceHandler(
+                    restClient,
+                    context -> Optional.empty(),
+                    noOpEnricherChain,
+                    metricService,
+                    resourceUriBuilder,
+                    converter);
+            var request = new McpSchema.ReadResourceRequest("ui://dashboard");
+            var extension = new AppResourceExtension(null, null, null, "sandbox.example.com", null);
+
+            // When
+            var result = handler.handleResourceRead(
+                    fullOperation, "getDashboard", AppMeta.MIME_TYPE, request, new McpRequestContext(), extension);
+
+            // Then
+            var contents = (McpSchema.TextResourceContents) result.contents().getFirst();
+            then(contents.mimeType()).isEqualTo(AppMeta.MIME_TYPE);
+            then(contents.meta())
+                    .containsEntry("custom", "value")
+                    .containsEntry("ui", Map.of("domain", "sandbox.example.com"));
+        }
     }
 
     private ResourceHandler handlerWithCredential(CredentialProvider credentialProvider) {
