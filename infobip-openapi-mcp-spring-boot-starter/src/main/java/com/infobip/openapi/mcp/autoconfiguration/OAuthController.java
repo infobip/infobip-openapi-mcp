@@ -56,6 +56,9 @@ public class OAuthController {
     public static final String OPENID_CONFIGURATION_WELL_KNOWN_PATH = "/.well-known/openid-configuration";
     public static final String OAUTH_PROTECTED_RESOURCE_WELL_KNOWN_PATH = "/.well-known/oauth-protected-resource";
 
+    private static final String REGISTRATION_ENDPOINT = "registration_endpoint";
+    private static final String MTLS_ENDPOINT_ALIASES = "mtls_endpoint_aliases";
+
     /**
      * @see <a href="https://www.rfc-editor.org/rfc/rfc9728.txt">RFC 9728</a>
      */
@@ -92,22 +95,31 @@ public class OAuthController {
         this.mcpServerProperties = mcpServerProperties;
     }
 
-    @GetMapping(path = OAUTH_AUTHORIZATION_SERVER_WELL_KNOWN_PATH)
+    /**
+     * Also mapped with a path suffix, so that the metadata can be discovered with path insertion (RFC 8414 section
+     * 3.1) when the MCP server itself is advertised as the authorization server.
+     */
+    @GetMapping(path = {OAUTH_AUTHORIZATION_SERVER_WELL_KNOWN_PATH, OAUTH_AUTHORIZATION_SERVER_WELL_KNOWN_PATH + "/**"})
     public ResponseEntity<String> getOauthAuthorizationServer(HttpServletRequest request) {
         return proxy(OAUTH_AUTHORIZATION_SERVER_WELL_KNOWN_PATH, request);
     }
 
-    @GetMapping(path = OPENID_CONFIGURATION_WELL_KNOWN_PATH)
+    @GetMapping(path = {OPENID_CONFIGURATION_WELL_KNOWN_PATH, OPENID_CONFIGURATION_WELL_KNOWN_PATH + "/**"})
     public ResponseEntity<String> getOpenidConfiguration(HttpServletRequest request) {
         return proxy(OPENID_CONFIGURATION_WELL_KNOWN_PATH, request);
     }
 
     @GetMapping(path = OAUTH_PROTECTED_RESOURCE_WELL_KNOWN_PATH, produces = "application/json;charset=UTF-8")
     public ProtectedResource getProtectedResource(HttpServletRequest request) {
+        var resource = xForwardedHostCalculator.hostWithRootPathBuilder(request).toUriString();
+        // With the registration proxy, the MCP server acts as the authorization server so that clients discover the
+        // proxied registration endpoint instead of the one from the authorization server.
+        var authorizationServer =
+                oAuthProperties.registrationProxy().enabled() ? URI.create(resource) : oAuthProperties.url();
         return new ProtectedResource(
-                xForwardedHostCalculator.hostWithRootPathBuilder(request).toUriString(),
+                resource,
                 mcpServerProperties.getName(),
-                oAuthProperties.url(),
+                authorizationServer,
                 scopeDiscoveryServiceOptional
                         .map(ScopeDiscoveryService::getDiscoveredScopes)
                         .filter(scopes -> !scopes.isEmpty())
@@ -123,15 +135,18 @@ public class OAuthController {
 
         try {
             var jsonResponse = spec.retrieve().body(String.class);
+            var registrationProxyEnabled = oAuthProperties.registrationProxy().enabled();
 
-            if (scopeDiscoveryServiceOptional.isEmpty()) {
+            if (scopeDiscoveryServiceOptional.isEmpty() && !registrationProxyEnabled) {
                 return ResponseEntity.ok().contentType(responseContentType).body(jsonResponse);
             }
 
-            var discoveredScopes = scopeDiscoveryServiceOptional.get().getDiscoveredScopes();
-
             var json = (ObjectNode) objectMapper.readTree(jsonResponse);
-            json.putPOJO("scopes_supported", discoveredScopes);
+            scopeDiscoveryServiceOptional.ifPresent(
+                    service -> json.putPOJO("scopes_supported", service.getDiscoveredScopes()));
+            if (registrationProxyEnabled) {
+                rewriteRegistrationEndpoint(json, request);
+            }
             return ResponseEntity.ok().contentType(responseContentType).body(json.toString());
         } catch (JacksonException | RestClientException e) {
             LOGGER.error("Error proxying well-known endpoint: {}", path, e);
@@ -139,6 +154,18 @@ public class OAuthController {
             return ResponseEntity.internalServerError()
                     .contentType(responseContentType)
                     .body(errorResponse);
+        }
+    }
+
+    private void rewriteRegistrationEndpoint(ObjectNode json, HttpServletRequest request) {
+        var registrationEndpoint = xForwardedHostCalculator
+                .hostWithRootPathBuilder(request)
+                .path(oAuthProperties.registrationProxy().path())
+                .toUriString();
+        json.put(REGISTRATION_ENDPOINT, registrationEndpoint);
+        if (json.get(MTLS_ENDPOINT_ALIASES) instanceof ObjectNode mtlsEndpointAliases
+                && mtlsEndpointAliases.has(REGISTRATION_ENDPOINT)) {
+            mtlsEndpointAliases.put(REGISTRATION_ENDPOINT, registrationEndpoint);
         }
     }
 

@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Optional proxy for OAuth dynamic client registration that makes sure MCP clients register with the scopes the MCP
+  server requires. Some MCP clients register OAuth clients without (or with the wrong) scopes and then end up with
+  unusable tokens. When `infobip.openapi.mcp.security.auth.oauth.registration-proxy.enabled` is `true`, the MCP server
+  advertises itself as the authorization server, exposes a client registration endpoint (by default
+  `<mcp-endpoint>/oauth/register`, configurable with `registration-proxy.path`), and forwards registrations to the
+  authorization server with `scope` set to the scopes discovered for the server. Authorization, token and all other
+  OAuth endpoints keep pointing to the authorization server. The upstream registration endpoint is read from the
+  authorization server's OpenID configuration, or can be set with `registration-proxy.upstream-url`.
+
 ## 1.1.0
 
 ### Added

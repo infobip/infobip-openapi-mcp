@@ -45,6 +45,8 @@ specification in few key ways:
 - The framework exposes required `/.well-known` HTTP endpoints. Two of them (`/.well-known/openid-configuration` and
   `/.well-known/oauth-authorization-server`) are proxied to your [authorization server][5], and one (the
   `/.well-known/oauth-protected-resource`) is handled by the framework itself.
+- Optionally, OAuth dynamic client registration can be proxied through the MCP server, so that MCP clients always
+  register with the scopes the server requires.
 - There is the option of supporting authorization checking API endpoint that framework invokes before processing MCP
   interactions to validate client credentials.
 
@@ -311,6 +313,24 @@ You can configure what set from all discovered scopes are requested during login
 configuration property `infobip.openapi.mcp.security.auth.oauth.scope-discovery.calculate-minimal-scopes`. When `NONE`
 is used, which is the default, all discovered scopes are requested. When `GREEDY` is used an optimistic greedy algorithm
 picks a subset of scopes which still covers all operations.
+
+Some MCP clients ignore the advertised scopes when they register an OAuth client using
+[dynamic client registration][13], and end up with tokens that can't be used with the MCP server. To fix that, enable the
+client registration proxy with `infobip.openapi.mcp.security.auth.oauth.registration-proxy.enabled: true`. The
+framework then:
+
+- advertises the MCP server itself in `authorization_servers` of the `/.well-known/oauth-protected-resource` metadata,
+- serves the authorization server metadata (also at the path-inserted locations, e.g.
+  `/.well-known/oauth-authorization-server/mcp`) with `registration_endpoint` pointing to the MCP server, while
+  `issuer` and all other endpoints (authorization, token, etc.) still point to the authorization server,
+- accepts client registration requests at `<mcp-endpoint>/oauth/register` (configurable with
+  `infobip.openapi.mcp.security.auth.oauth.registration-proxy.path`), replaces the `scope` field with the discovered
+  scopes, and forwards the request to the authorization server. The response, including errors, is returned to the
+  client as is.
+
+The upstream registration endpoint is read from the `registration_endpoint` of the authorization server's
+`/.well-known/openid-configuration`, or can be configured explicitly with
+`infobip.openapi.mcp.security.auth.oauth.registration-proxy.upstream-url`.
 
 ### ApiRequestEnricher
 
@@ -765,6 +785,9 @@ kept as a fallback for clients without MCP Apps support.
 | `infobip.openapi.mcp.security.auth.oauth.scope-discovery.scope-extensions`         | Scope extensions to read scopes from. Default is an empty string.                                                                                                                                                                                                                                                                                                                                          | `-`                            |
 | `infobip.openapi.mcp.security.auth.oauth.scope-discovery.mandatory-scopes`         | Mandatory scopes that must be present. Scopes should be comma-separated. Default is an empty string.                                                                                                                                                                                                                                                                                                       | `-`                            |
 | `infobip.openapi.mcp.security.auth.oauth.scope-discovery.calculate-minimal-scopes` | Algorithm for calculating the minimal set of scopes that can access all API endpoints. Two values are supported: NONE, which skips calculation and requests all discovered scopes, and GREEDY which uses a greedy algorithm to find a smaller set of scopes that sill covers all operations. Default is NONE.                                                                                              | `NONE`                         |
+| `infobip.openapi.mcp.security.auth.oauth.registration-proxy.enabled`               | Proxy OAuth dynamic client registration through the MCP server and replace the requested scopes with the discovered scopes. Default is false.                                                                                                                                                                                                                                                              | `false`                        |
+| `infobip.openapi.mcp.security.auth.oauth.registration-proxy.path`                  | Path of the client registration endpoint, relative to the MCP endpoint. Default is /oauth/register.                                                                                                                                                                                                                                                                                                        | `/oauth/register`              |
+| `infobip.openapi.mcp.security.auth.oauth.registration-proxy.upstream-url`          | Client registration endpoint of the authorization server. When not set, it is read from the registration_endpoint of the authorization server's OpenID configuration.                                                                                                                                                                                                                                      | `-`                            |
 
 ## Architecture
 

@@ -5,6 +5,9 @@ public class Qualifiers {
     public static final String OAUTH_REST_CLIENT_QUALIFIER =
             "com.infobip.openapi.mcp.autoconfiguration.OAuthConfiguration.oauthRestClient";
 
+    public static final String OAUTH_REGISTRATION_REST_CLIENT_QUALIFIER =
+            "com.infobip.openapi.mcp.autoconfiguration.OAuthConfiguration.oauthRegistrationRestClient";
+
     public static final String AUTHORIZATION_REST_CLIENT_QUALIFIER =
             "com.infobip.openapi.mcp.autoconfiguration.AuthConfiguration.authorizationRestClient";
 
