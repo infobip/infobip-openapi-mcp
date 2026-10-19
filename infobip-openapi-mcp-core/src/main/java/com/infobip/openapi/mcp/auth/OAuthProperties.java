@@ -51,13 +51,13 @@ public record OAuthProperties(
     }
 
     /**
-     * OAuth dynamic client registration (RFC 7591) proxy properties.
+     * OAuth authorization server proxy properties.
      * <p>
      * When enabled, the MCP server advertises itself as the authorization server in the protected resource metadata.
-     * In the proxied authorization server metadata, {@code issuer} and {@code registration_endpoint} point to the MCP
-     * server and {@code authorization_response_iss_parameter_supported} is removed. Client registration requests are
-     * forwarded to the authorization server with the {@code scope} replaced by the scopes required by the MCP server.
-     * All other OAuth endpoints (authorization, token, etc.) keep pointing to the authorization server.
+     * In the proxied authorization server metadata, {@code issuer} and the client registration (RFC 7591),
+     * authorization and token endpoints point to the MCP server, which statelessly proxies them to the authorization
+     * server. Client registration requests are forwarded with the {@code scope} replaced by the scopes required by the
+     * MCP server. All other OAuth endpoints (userinfo, revocation, etc.) keep pointing to the authorization server.
      * </p>
      *
      * @param enabled     Enable the client registration proxy. Default is false.

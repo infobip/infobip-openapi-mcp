@@ -8,6 +8,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.infobip.openapi.mcp.McpRequestContextFactory;
 import com.infobip.openapi.mcp.auth.OAuthProperties;
 import com.infobip.openapi.mcp.auth.scope.ScopeDiscoveryService;
+import com.infobip.openapi.mcp.auth.web.AuthorizationServerProxy;
 import com.infobip.openapi.mcp.enricher.XForwardedForEnricher;
 import com.infobip.openapi.mcp.error.ErrorModelWriter;
 import com.infobip.openapi.mcp.util.XForwardedHostCalculator;
@@ -15,6 +16,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.net.URI;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -57,8 +59,10 @@ public class OAuthController {
     public static final String OAUTH_PROTECTED_RESOURCE_WELL_KNOWN_PATH = "/.well-known/oauth-protected-resource";
 
     private static final String ISSUER = "issuer";
-    private static final String AUTHORIZATION_RESPONSE_ISS_PARAMETER_SUPPORTED =
-            "authorization_response_iss_parameter_supported";
+    private static final String AUTHORIZATION_ENDPOINT = "authorization_endpoint";
+    private static final String TOKEN_ENDPOINT = "token_endpoint";
+    private static final String PUSHED_AUTHORIZATION_REQUEST_ENDPOINT = "pushed_authorization_request_endpoint";
+    private static final String REQUIRE_PUSHED_AUTHORIZATION_REQUESTS = "require_pushed_authorization_requests";
     private static final String REGISTRATION_ENDPOINT = "registration_endpoint";
     private static final String MTLS_ENDPOINT_ALIASES = "mtls_endpoint_aliases";
 
@@ -116,8 +120,8 @@ public class OAuthController {
     public ProtectedResource getProtectedResource(HttpServletRequest request) {
         var resource = xForwardedHostCalculator.hostWithRootPathBuilder(request).toUriString();
         // With the registration proxy, the MCP server acts as the authorization server so that clients discover the
-        // proxied registration endpoint instead of the one from the authorization server. The proxied authorization
-        // server metadata advertises the same URL as its issuer.
+        // proxied endpoints instead of the ones from the authorization server. The proxied authorization server
+        // metadata advertises the same URL as its issuer.
         var authorizationServer =
                 oAuthProperties.registrationProxy().enabled() ? URI.create(resource) : oAuthProperties.url();
         return new ProtectedResource(
@@ -165,24 +169,33 @@ public class OAuthController {
      * Presents the MCP server as the authorization server whose metadata is being served.
      * <p>
      * The issuer must be identical to the authorization server URL advertised in the protected resource metadata
-     * (RFC 8414 section 3.3), otherwise clients reject the metadata. Since the authorization server keeps issuing
-     * authorization responses with its own {@code iss} parameter, the RFC 9207 support flag is removed so that clients
-     * don't compare it to the rewritten issuer. All other endpoints keep pointing to the authorization server.
+     * (RFC 8414 section 3.3), otherwise clients reject the metadata. Registration, authorization and token endpoints
+     * point to the {@link AuthorizationServerProxy}, which makes sure that authorization responses carry the same
+     * issuer (RFC 9207). Pushed authorization requests are not advertised, since they would bypass the proxy. All other
+     * endpoints keep pointing to the authorization server.
      * </p>
      */
     private void rewriteForRegistrationProxy(ObjectNode json, HttpServletRequest request) {
         var issuer = xForwardedHostCalculator.hostWithRootPathBuilder(request).toUriString();
-        json.put(ISSUER, issuer);
-        json.remove(AUTHORIZATION_RESPONSE_ISS_PARAMETER_SUPPORTED);
+        var proxiedEndpoints = Map.of(
+                REGISTRATION_ENDPOINT,
+                        issuer + oAuthProperties.registrationProxy().path(),
+                AUTHORIZATION_ENDPOINT, issuer + AuthorizationServerProxy.AUTHORIZE_PATH,
+                TOKEN_ENDPOINT, issuer + AuthorizationServerProxy.TOKEN_PATH);
 
-        var registrationEndpoint = UriComponentsBuilder.fromUriString(issuer)
-                .path(oAuthProperties.registrationProxy().path())
-                .toUriString();
-        json.put(REGISTRATION_ENDPOINT, registrationEndpoint);
-        if (json.get(MTLS_ENDPOINT_ALIASES) instanceof ObjectNode mtlsEndpointAliases
-                && mtlsEndpointAliases.has(REGISTRATION_ENDPOINT)) {
-            mtlsEndpointAliases.put(REGISTRATION_ENDPOINT, registrationEndpoint);
+        json.put(ISSUER, issuer);
+        json.remove(PUSHED_AUTHORIZATION_REQUEST_ENDPOINT);
+        json.remove(REQUIRE_PUSHED_AUTHORIZATION_REQUESTS);
+        var mtlsEndpointAliases = json.get(MTLS_ENDPOINT_ALIASES) instanceof ObjectNode objectNode ? objectNode : null;
+        if (mtlsEndpointAliases != null) {
+            mtlsEndpointAliases.remove(PUSHED_AUTHORIZATION_REQUEST_ENDPOINT);
         }
+        proxiedEndpoints.forEach((name, endpoint) -> {
+            json.put(name, endpoint);
+            if (mtlsEndpointAliases != null && mtlsEndpointAliases.has(name)) {
+                mtlsEndpointAliases.put(name, endpoint);
+            }
+        });
     }
 
     private URI getWellKnownUri(String path) {

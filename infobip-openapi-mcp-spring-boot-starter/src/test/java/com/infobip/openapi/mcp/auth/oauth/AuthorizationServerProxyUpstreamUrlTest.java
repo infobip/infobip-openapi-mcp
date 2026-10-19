@@ -16,7 +16,7 @@ import org.springframework.test.context.DynamicPropertySource;
 
 @ActiveProfiles("test-http")
 @DirtiesContext
-public class ClientRegistrationProxyUpstreamUrlTest extends OAuthTestBase {
+public class AuthorizationServerProxyUpstreamUrlTest extends OAuthTestBase {
 
     private static final String CONFIGURED_REGISTRATION_PATH = "/custom/register";
 

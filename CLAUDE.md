@@ -158,12 +158,14 @@ customize framework functionality. Take **extra care** to maintain backwards com
 Authentication is handled by `InitialAuthenticationFilter`. When `infobip.openapi.mcp.security.auth.enabled: true`,
 every MCP interaction delegates credential validation to the endpoint at `infobip.openapi.mcp.security.auth.auth-url`.
 OAuth support (`OAuthConfiguration`, `OAuthController`) proxies `/.well-known` endpoints to the authorization server.
-When `infobip.openapi.mcp.security.auth.oauth.registration-proxy.enabled: true`, `ClientRegistrationProxy` (wired as a
-`RouterFunction` at `<mcp-endpoint><registration-proxy.path>`) forwards RFC 7591 dynamic client registration requests to
-the authorization server with `scope` replaced by the discovered scopes; `OAuthController` then advertises the MCP
-server as the authorization server in the protected resource metadata, and in the proxied authorization server
-metadata rewrites `issuer` and `registration_endpoint` (and its `mtls_endpoint_aliases` entry) to the MCP server and
-removes `authorization_response_iss_parameter_supported`.
+When `infobip.openapi.mcp.security.auth.oauth.registration-proxy.enabled: true`, `AuthorizationServerProxy` (wired as a
+`RouterFunction` under the MCP endpoint) statelessly proxies client registration (`<registration-proxy.path>`, with
+`scope` replaced by the discovered scopes), authorization (`/oauth/authorize`), callback (`/oauth/callback/{base64url}`)
+and token (`/oauth/token`, `id_token` removed) endpoints. Client redirect URIs are swapped for callback URIs that embed
+the original redirect URI, so the callback can set `iss` to the MCP server issuer without session state.
+`OAuthController` advertises the MCP server as the authorization server in the protected resource metadata, and in the
+proxied authorization server metadata rewrites `issuer` and the registration, authorization and token endpoints (and
+their `mtls_endpoint_aliases` entries) to the MCP server and removes pushed authorization request endpoints.
 
 ### Schema Transformation
 

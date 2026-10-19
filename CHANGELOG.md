@@ -9,15 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Optional proxy for OAuth dynamic client registration that makes sure MCP clients register with the scopes the MCP
+- Optional stateless OAuth authorization server proxy that makes sure MCP clients register with the scopes the MCP
   server requires. Some MCP clients register OAuth clients without (or with the wrong) scopes and then end up with
   unusable tokens. When `infobip.openapi.mcp.security.auth.oauth.registration-proxy.enabled` is `true`, the MCP server
-  advertises itself as the authorization server, exposes a client registration endpoint (by default
-  `<mcp-endpoint>/oauth/register`, configurable with `registration-proxy.path`), and forwards registrations to the
-  authorization server with `scope` set to the scopes discovered for the server. The proxied authorization server
-  metadata advertises the MCP server as `issuer` (as required by RFC 8414 when the MCP server is the advertised
-  authorization server) and omits `authorization_response_iss_parameter_supported`. Authorization, token and all other
-  OAuth endpoints keep pointing to the authorization server. The upstream registration endpoint is read from the
+  advertises itself as the authorization server (including the `issuer` of the proxied metadata) and exposes client
+  registration (by default `<mcp-endpoint>/oauth/register`, configurable with `registration-proxy.path`),
+  authorization (`<mcp-endpoint>/oauth/authorize`), callback (`<mcp-endpoint>/oauth/callback/...`) and token
+  (`<mcp-endpoint>/oauth/token`) endpoints. Registrations are forwarded with `scope` set to the scopes discovered for
+  the server. Client redirect URIs are replaced by callback URIs of the MCP server that embed the original redirect URI,
+  so that authorization responses can carry the MCP server as `iss` without any server-side state. The `id_token` is
+  removed from token responses. Userinfo, revocation, JWKS and other OAuth endpoints keep pointing to the authorization
+  server. The upstream registration endpoint is read from the
   authorization server's OpenID configuration, or can be set with `registration-proxy.upstream-url`.
 
 ## 1.1.0
