@@ -29,6 +29,7 @@ import org.springframework.test.context.TestPropertySource;
 @TestPropertySource(
         properties = {
             "infobip.openapi.mcp.security.auth.oauth.scope-discovery.scope-extensions=x-scopes",
+            "infobip.openapi.mcp.security.auth.oauth.scope-discovery.mandatory-scopes=profile,offline_access",
             "infobip.openapi.mcp.security.auth.oauth.registration-proxy.enabled=true"
         })
 public class ClientRegistrationProxyTest extends OAuthTestBase {
@@ -99,7 +100,8 @@ public class ClientRegistrationProxyTest extends OAuthTestBase {
                         .withHeader("X-Forwarded-For", equalTo("203.0.113.7, 127.0.0.1")));
         then(forwardedRequests).hasSize(1);
         var forwardedScope = new JSONObject(forwardedRequests.getFirst().getBodyAsString()).getString("scope");
-        then(forwardedScope.split(" ")).containsExactlyInAnyOrder("user:read", "user:write");
+        then(forwardedScope.split(" "))
+                .containsExactlyInAnyOrder("user:read", "user:write", "profile", "offline_access");
         JSONAssert.assertEquals("""
                 {"client_name": "Test client", "redirect_uris": ["http://localhost:3000/cb"]}
                 """, forwardedRequests.getFirst().getBodyAsString(), JSONCompareMode.LENIENT);
@@ -124,7 +126,7 @@ public class ClientRegistrationProxyTest extends OAuthTestBase {
                 .getFirst()
                 .getBodyAsString();
         then(new JSONObject(forwardedBody).getString("scope").split(" "))
-                .containsExactlyInAnyOrder("user:read", "user:write");
+                .containsExactlyInAnyOrder("user:read", "user:write", "profile", "offline_access");
     }
 
     @ParameterizedTest
@@ -219,7 +221,7 @@ public class ClientRegistrationProxyTest extends OAuthTestBase {
                     "token_endpoint": "%1$s/token",
                     "registration_endpoint": "https://mcp.example.com/mcp/oauth/register"
                   },
-                  "scopes_supported": ["user:read", "user:write"]
+                  "scopes_supported": ["user:read", "user:write", "profile", "offline_access"]
                 }
                 """.formatted(upstream);
         JSONAssert.assertEquals(expectedJson, response.getBody(), JSONCompareMode.NON_EXTENSIBLE);
