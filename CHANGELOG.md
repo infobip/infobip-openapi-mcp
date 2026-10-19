@@ -14,7 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   unusable tokens. When `infobip.openapi.mcp.security.auth.oauth.registration-proxy.enabled` is `true`, the MCP server
   advertises itself as the authorization server, exposes a client registration endpoint (by default
   `<mcp-endpoint>/oauth/register`, configurable with `registration-proxy.path`), and forwards registrations to the
-  authorization server with `scope` set to the scopes discovered for the server. Authorization, token and all other
+  authorization server with `scope` set to the scopes discovered for the server. The proxied authorization server
+  metadata advertises the MCP server as `issuer` (as required by RFC 8414 when the MCP server is the advertised
+  authorization server) and omits `authorization_response_iss_parameter_supported`. Authorization, token and all other
   OAuth endpoints keep pointing to the authorization server. The upstream registration endpoint is read from the
   authorization server's OpenID configuration, or can be set with `registration-proxy.upstream-url`.
 

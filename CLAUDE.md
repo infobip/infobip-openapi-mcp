@@ -161,8 +161,9 @@ OAuth support (`OAuthConfiguration`, `OAuthController`) proxies `/.well-known` e
 When `infobip.openapi.mcp.security.auth.oauth.registration-proxy.enabled: true`, `ClientRegistrationProxy` (wired as a
 `RouterFunction` at `<mcp-endpoint><registration-proxy.path>`) forwards RFC 7591 dynamic client registration requests to
 the authorization server with `scope` replaced by the discovered scopes; `OAuthController` then advertises the MCP
-server as the authorization server in the protected resource metadata and rewrites only `registration_endpoint`
-(and its `mtls_endpoint_aliases` entry) in the proxied authorization server metadata.
+server as the authorization server in the protected resource metadata, and in the proxied authorization server
+metadata rewrites `issuer` and `registration_endpoint` (and its `mtls_endpoint_aliases` entry) to the MCP server and
+removes `authorization_response_iss_parameter_supported`.
 
 ### Schema Transformation
 

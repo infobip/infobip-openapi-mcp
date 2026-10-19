@@ -321,8 +321,11 @@ framework then:
 
 - advertises the MCP server itself in `authorization_servers` of the `/.well-known/oauth-protected-resource` metadata,
 - serves the authorization server metadata (also at the path-inserted locations, e.g.
-  `/.well-known/oauth-authorization-server/mcp`) with `registration_endpoint` pointing to the MCP server, while
-  `issuer` and all other endpoints (authorization, token, etc.) still point to the authorization server,
+  `/.well-known/oauth-authorization-server/mcp`) with `issuer` and `registration_endpoint` pointing to the MCP server,
+  while all other endpoints (authorization, token, etc.) still point to the authorization server. The issuer has to
+  match the advertised authorization server ([RFC 8414][25], section 3.3), otherwise clients reject the metadata.
+  `authorization_response_iss_parameter_supported` is removed, because the authorization server keeps sending its own
+  issuer in authorization responses ([RFC 9207][26]),
 - accepts client registration requests at `<mcp-endpoint>/oauth/register` (configurable with
   `infobip.openapi.mcp.security.auth.oauth.registration-proxy.path`), replaces the `scope` field with the discovered
   scopes, and forwards the request to the authorization server. The response, including errors, is returned to the
@@ -864,3 +867,7 @@ This project is licensed under the [MIT License](LICENSE).
 [23]: https://modelcontextprotocol.io/extensions/client-matrix "MCP Apps client support matrix"
 
 [24]: https://github.com/modelcontextprotocol/java-sdk/issues/999 "MCP Java SDK issue #999 — extension capability support"
+
+[25]: https://www.rfc-editor.org/rfc/rfc8414 "RFC 8414 OAuth 2.0 Authorization Server Metadata"
+
+[26]: https://www.rfc-editor.org/rfc/rfc9207 "RFC 9207 OAuth 2.0 Authorization Server Issuer Identification"

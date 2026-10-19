@@ -192,7 +192,7 @@ public class ClientRegistrationProxyTest extends OAuthTestBase {
                 "/.well-known/openid-configuration",
                 "/.well-known/openid-configuration/mcp"
             })
-    void shouldRewriteOnlyRegistrationEndpointInMetadata(String givenWellKnownEndpoint) throws JSONException {
+    void shouldRewriteIssuerAndRegistrationEndpointInMetadata(String givenWellKnownEndpoint) throws JSONException {
         // Given
         getStaticWireMockServer()
                 .stubFor(get(urlEqualTo("/.well-known/oauth-authorization-server"))
@@ -213,7 +213,7 @@ public class ClientRegistrationProxyTest extends OAuthTestBase {
         var upstream = staticWireMockServer.baseUrl();
         var expectedJson = """
                 {
-                  "issuer": "%1$s",
+                  "issuer": "https://mcp.example.com/mcp",
                   "authorization_endpoint": "%1$s/auth",
                   "token_endpoint": "%1$s/token",
                   "registration_endpoint": "https://mcp.example.com/mcp/oauth/register",
@@ -264,6 +264,7 @@ public class ClientRegistrationProxyTest extends OAuthTestBase {
                   "authorization_endpoint": "%1$s/auth",
                   "token_endpoint": "%1$s/token",
                   "registration_endpoint": "%1$s%2$s",
+                  "authorization_response_iss_parameter_supported": true,
                   "mtls_endpoint_aliases": {
                     "token_endpoint": "%1$s/token",
                     "registration_endpoint": "%1$s%2$s"

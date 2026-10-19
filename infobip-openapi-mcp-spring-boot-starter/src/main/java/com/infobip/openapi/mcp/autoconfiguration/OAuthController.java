@@ -56,6 +56,9 @@ public class OAuthController {
     public static final String OPENID_CONFIGURATION_WELL_KNOWN_PATH = "/.well-known/openid-configuration";
     public static final String OAUTH_PROTECTED_RESOURCE_WELL_KNOWN_PATH = "/.well-known/oauth-protected-resource";
 
+    private static final String ISSUER = "issuer";
+    private static final String AUTHORIZATION_RESPONSE_ISS_PARAMETER_SUPPORTED =
+            "authorization_response_iss_parameter_supported";
     private static final String REGISTRATION_ENDPOINT = "registration_endpoint";
     private static final String MTLS_ENDPOINT_ALIASES = "mtls_endpoint_aliases";
 
@@ -113,7 +116,8 @@ public class OAuthController {
     public ProtectedResource getProtectedResource(HttpServletRequest request) {
         var resource = xForwardedHostCalculator.hostWithRootPathBuilder(request).toUriString();
         // With the registration proxy, the MCP server acts as the authorization server so that clients discover the
-        // proxied registration endpoint instead of the one from the authorization server.
+        // proxied registration endpoint instead of the one from the authorization server. The proxied authorization
+        // server metadata advertises the same URL as its issuer.
         var authorizationServer =
                 oAuthProperties.registrationProxy().enabled() ? URI.create(resource) : oAuthProperties.url();
         return new ProtectedResource(
@@ -145,7 +149,7 @@ public class OAuthController {
             scopeDiscoveryServiceOptional.ifPresent(
                     service -> json.putPOJO("scopes_supported", service.getDiscoveredScopes()));
             if (registrationProxyEnabled) {
-                rewriteRegistrationEndpoint(json, request);
+                rewriteForRegistrationProxy(json, request);
             }
             return ResponseEntity.ok().contentType(responseContentType).body(json.toString());
         } catch (JacksonException | RestClientException e) {
@@ -157,9 +161,21 @@ public class OAuthController {
         }
     }
 
-    private void rewriteRegistrationEndpoint(ObjectNode json, HttpServletRequest request) {
-        var registrationEndpoint = xForwardedHostCalculator
-                .hostWithRootPathBuilder(request)
+    /**
+     * Presents the MCP server as the authorization server whose metadata is being served.
+     * <p>
+     * The issuer must be identical to the authorization server URL advertised in the protected resource metadata
+     * (RFC 8414 section 3.3), otherwise clients reject the metadata. Since the authorization server keeps issuing
+     * authorization responses with its own {@code iss} parameter, the RFC 9207 support flag is removed so that clients
+     * don't compare it to the rewritten issuer. All other endpoints keep pointing to the authorization server.
+     * </p>
+     */
+    private void rewriteForRegistrationProxy(ObjectNode json, HttpServletRequest request) {
+        var issuer = xForwardedHostCalculator.hostWithRootPathBuilder(request).toUriString();
+        json.put(ISSUER, issuer);
+        json.remove(AUTHORIZATION_RESPONSE_ISS_PARAMETER_SUPPORTED);
+
+        var registrationEndpoint = UriComponentsBuilder.fromUriString(issuer)
                 .path(oAuthProperties.registrationProxy().path())
                 .toUriString();
         json.put(REGISTRATION_ENDPOINT, registrationEndpoint);
