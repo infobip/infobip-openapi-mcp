@@ -9,7 +9,7 @@ import com.infobip.openapi.mcp.McpRequestContextFactory;
 import com.infobip.openapi.mcp.auth.OAuthProperties;
 import com.infobip.openapi.mcp.auth.scope.ScopeDiscoveryService;
 import com.infobip.openapi.mcp.auth.web.AuthorizationServerProxy;
-import com.infobip.openapi.mcp.enricher.XForwardedForEnricher;
+import com.infobip.openapi.mcp.enricher.ApiRequestEnricherChain;
 import com.infobip.openapi.mcp.error.ErrorModelWriter;
 import com.infobip.openapi.mcp.util.XForwardedHostCalculator;
 import jakarta.servlet.http.HttpServletRequest;
@@ -49,7 +49,7 @@ public class OAuthController {
     private final ObjectMapper objectMapper;
     private final ErrorModelWriter errorModelWriter;
     private final Optional<ScopeDiscoveryService> scopeDiscoveryServiceOptional;
-    private final XForwardedForEnricher xForwardedForEnricher;
+    private final ApiRequestEnricherChain enricherChain;
     private final McpRequestContextFactory contextFactory;
     private final XForwardedHostCalculator xForwardedHostCalculator;
     private final McpServerProperties mcpServerProperties;
@@ -87,7 +87,7 @@ public class OAuthController {
             ObjectMapper objectMapper,
             ErrorModelWriter errorModelWriter,
             Optional<ScopeDiscoveryService> scopeDiscoveryServiceOptional,
-            XForwardedForEnricher xForwardedForEnricher,
+            ApiRequestEnricherChain enricherChain,
             McpRequestContextFactory contextFactory,
             XForwardedHostCalculator xForwardedHostCalculator,
             McpServerProperties mcpServerProperties) {
@@ -96,7 +96,7 @@ public class OAuthController {
         this.objectMapper = objectMapper;
         this.errorModelWriter = errorModelWriter;
         this.scopeDiscoveryServiceOptional = scopeDiscoveryServiceOptional;
-        this.xForwardedForEnricher = xForwardedForEnricher;
+        this.enricherChain = enricherChain;
         this.contextFactory = contextFactory;
         this.xForwardedHostCalculator = xForwardedHostCalculator;
         this.mcpServerProperties = mcpServerProperties;
@@ -139,7 +139,7 @@ public class OAuthController {
         var context = contextFactory.forServletFilter(request);
         var spec = restClient.get().uri(getWellKnownUri(path));
 
-        spec = xForwardedForEnricher.enrich(spec, context);
+        spec = enricherChain.enrich(spec, context);
 
         try {
             var jsonResponse = spec.retrieve().body(String.class);

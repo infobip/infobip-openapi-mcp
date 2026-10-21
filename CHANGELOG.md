@@ -24,6 +24,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   to the authorization server pass through the same `ApiRequestEnricher` beans as the credential validation requests, so
   the original client IP and any custom headers reach the authorization server.
 
+### Changed
+
+- The proxied `/.well-known/openid-configuration` and `/.well-known/oauth-authorization-server` requests to the
+  authorization server now pass through all registered `ApiRequestEnricher` beans, the same as the credential
+  validation requests, instead of only the one that forwards the client IP in `X-Forwarded-For`. The authorization
+  server now also receives `X-Forwarded-Host`, `X-Forwarded-Proto`, `User-Agent` and any headers added by custom
+  enrichers.
+
 ## 1.1.0
 
 ### Added

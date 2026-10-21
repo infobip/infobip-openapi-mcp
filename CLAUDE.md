@@ -157,7 +157,8 @@ customize framework functionality. Take **extra care** to maintain backwards com
 
 Authentication is handled by `InitialAuthenticationFilter`. When `infobip.openapi.mcp.security.auth.enabled: true`,
 every MCP interaction delegates credential validation to the endpoint at `infobip.openapi.mcp.security.auth.auth-url`.
-OAuth support (`OAuthConfiguration`, `OAuthController`) proxies `/.well-known` endpoints to the authorization server.
+OAuth support (`OAuthConfiguration`, `OAuthController`) proxies `/.well-known` endpoints to the authorization server
+(through `ApiRequestEnricherChain`).
 When `infobip.openapi.mcp.security.auth.oauth.registration-proxy.enabled: true`, `AuthorizationServerProxy` (wired as a
 `RouterFunction` under the MCP endpoint) statelessly proxies client registration (`<registration-proxy.path>`, with
 `scope` replaced by the discovered scopes), authorization (`/oauth/authorize`), callback (`/oauth/callback/{base64url}`)

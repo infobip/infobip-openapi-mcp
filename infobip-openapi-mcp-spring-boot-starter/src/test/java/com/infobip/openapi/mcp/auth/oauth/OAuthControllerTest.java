@@ -46,7 +46,7 @@ public class OAuthControllerTest extends OAuthTestBase {
 
     @ParameterizedTest
     @ValueSource(strings = {"/.well-known/oauth-authorization-server", "/.well-known/openid-configuration"})
-    void shouldApplyOnlyXFFEnricherToWellKnownEndpoint(String givenWellKnownEndpoint) {
+    void shouldApplyEnricherChainToWellKnownEndpoint(String givenWellKnownEndpoint) {
         // Given
         var givenXForwardedFor = "www.example.com";
         var givenXForwardedHost = "forwarded.example.com";
@@ -67,6 +67,7 @@ public class OAuthControllerTest extends OAuthTestBase {
         var headers = new HttpHeaders();
         headers.set("X-Forwarded-For", givenXForwardedFor);
         headers.set("X-Forwarded-Host", givenXForwardedHost);
+        headers.set("X-Forwarded-Proto", "https");
         var requestEntity = new HttpEntity<>(headers);
         var response = restTemplate.exchange(
                 "http://localhost:" + port + givenWellKnownEndpoint, HttpMethod.GET, requestEntity, String.class);
@@ -79,7 +80,9 @@ public class OAuthControllerTest extends OAuthTestBase {
         getStaticWireMockServer()
                 .verify(getRequestedFor(urlEqualTo(givenWellKnownEndpoint))
                         .withHeader("X-Forwarded-For", equalTo(givenXForwardedFor + ", 127.0.0.1"))
-                        .withoutHeader("X-Forwarded-Host"));
+                        .withHeader("X-Forwarded-Host", equalTo(givenXForwardedHost))
+                        .withHeader("X-Forwarded-Proto", equalTo("https"))
+                        .withHeader("User-Agent", equalTo("openapi-mcp-test")));
     }
 
     @ParameterizedTest
