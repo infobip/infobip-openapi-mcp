@@ -20,7 +20,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   so that authorization responses can carry the MCP server as `iss` without any server-side state. The `id_token` is
   removed from token responses. Userinfo, revocation, JWKS and other OAuth endpoints keep pointing to the authorization
   server. The upstream registration endpoint is read from the
-  authorization server's OpenID configuration, or can be set with `registration-proxy.upstream-url`.
+  authorization server's OpenID configuration, or can be set with `registration-proxy.upstream-url`. Requests forwarded
+  to the authorization server pass through the same `ApiRequestEnricher` beans as the credential validation requests, so
+  the original client IP and any custom headers reach the authorization server.
 
 ## 1.1.0
 

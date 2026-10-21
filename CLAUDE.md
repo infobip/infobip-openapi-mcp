@@ -139,7 +139,7 @@ values itself via `PlusAwareUriEncoder` before building the request URI.
 | Interface            | Purpose                                                                                                                  |
 |----------------------|--------------------------------------------------------------------------------------------------------------------------|
 | `OpenApiFilter`           | Transform the OpenAPI spec before tool metadata is built; disable via `infobip.openapi.mcp.filters.[filter-name]: false` |
-| `ApiRequestEnricher`      | Modify HTTP requests to the downstream API (headers, metadata); failures are swallowed                                   |
+| `ApiRequestEnricher`      | Modify HTTP requests to the downstream API and the OAuth proxy (headers, metadata); failures are swallowed              |
 | `ToolCallFilter`          | Intercept tool calls; can abort the chain unlike enrichers                                                               |
 | `PromptCallFilter`        | Intercept prompt calls; can abort the chain, add observability, or short-circuit resolution                              |
 | `ResourceCallFilter`      | Intercept resource reads; can abort the chain, add observability, or short-circuit resolution                            |
@@ -162,7 +162,10 @@ When `infobip.openapi.mcp.security.auth.oauth.registration-proxy.enabled: true`,
 `RouterFunction` under the MCP endpoint) statelessly proxies client registration (`<registration-proxy.path>`, with
 `scope` replaced by the discovered scopes), authorization (`/oauth/authorize`), callback (`/oauth/callback/{base64url}`)
 and token (`/oauth/token`, `id_token` removed) endpoints. Client redirect URIs are swapped for callback URIs that embed
-the original redirect URI, so the callback can set `iss` to the MCP server issuer without session state.
+the original redirect URI, so the callback can set `iss` to the MCP server issuer without session state. Requests the
+proxy forwards upstream (registration and token) go through `ApiRequestEnricherChain`, like `InitialAuthenticationFilter`
+does; the client's `Authorization` and `Accept` headers are copied explicitly, since credentials are deliberately not
+handled by enrichers.
 `OAuthController` advertises the MCP server as the authorization server in the protected resource metadata, and in the
 proxied authorization server metadata rewrites `issuer` and the registration, authorization and token endpoints (and
 their `mtls_endpoint_aliases` entries) to the MCP server and removes pushed authorization request endpoints.

@@ -3,7 +3,7 @@ package com.infobip.openapi.mcp.auth.web;
 import com.infobip.openapi.mcp.McpRequestContextFactory;
 import com.infobip.openapi.mcp.auth.OAuthProperties;
 import com.infobip.openapi.mcp.auth.scope.ScopeDiscoveryService;
-import com.infobip.openapi.mcp.enricher.XForwardedForEnricher;
+import com.infobip.openapi.mcp.enricher.ApiRequestEnricherChain;
 import com.infobip.openapi.mcp.error.ErrorModelWriter;
 import com.infobip.openapi.mcp.util.XForwardedHostCalculator;
 import jakarta.servlet.http.HttpServletRequest;
@@ -87,7 +87,7 @@ public class AuthorizationServerProxy {
     private final ObjectMapper objectMapper;
     private final ErrorModelWriter errorModelWriter;
     private final Optional<ScopeDiscoveryService> scopeDiscoveryService;
-    private final XForwardedForEnricher xForwardedForEnricher;
+    private final ApiRequestEnricherChain enricherChain;
     private final McpRequestContextFactory contextFactory;
     private final XForwardedHostCalculator xForwardedHostCalculator;
 
@@ -105,7 +105,7 @@ public class AuthorizationServerProxy {
             ObjectMapper objectMapper,
             ErrorModelWriter errorModelWriter,
             Optional<ScopeDiscoveryService> scopeDiscoveryService,
-            XForwardedForEnricher xForwardedForEnricher,
+            ApiRequestEnricherChain enricherChain,
             McpRequestContextFactory contextFactory,
             XForwardedHostCalculator xForwardedHostCalculator) {
         this.upstreamRestClient = upstreamRestClient;
@@ -114,7 +114,7 @@ public class AuthorizationServerProxy {
         this.objectMapper = objectMapper;
         this.errorModelWriter = errorModelWriter;
         this.scopeDiscoveryService = scopeDiscoveryService;
-        this.xForwardedForEnricher = xForwardedForEnricher;
+        this.enricherChain = enricherChain;
         this.contextFactory = contextFactory;
         this.xForwardedHostCalculator = xForwardedHostCalculator;
         if (scopeDiscoveryService.isEmpty()) {
@@ -269,9 +269,9 @@ public class AuthorizationServerProxy {
                 spec.header(headerName, headerValue);
             }
         }
-        xForwardedForEnricher.enrich(spec, contextFactory.forServletFilter(request));
+        var enrichedSpec = enricherChain.enrich(spec, contextFactory.forServletFilter(request));
 
-        var upstreamResponse = spec.retrieve().toEntity(byte[].class);
+        var upstreamResponse = enrichedSpec.retrieve().toEntity(byte[].class);
         var responseHeaders = new HttpHeaders();
         for (var headerName : FORWARDED_RESPONSE_HEADERS) {
             var headerValues = upstreamResponse.getHeaders().get(headerName);

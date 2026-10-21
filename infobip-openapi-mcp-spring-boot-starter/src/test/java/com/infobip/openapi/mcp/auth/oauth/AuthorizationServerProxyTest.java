@@ -4,7 +4,9 @@ import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static org.assertj.core.api.BDDAssertions.then;
 
 import com.github.tomakehurst.wiremock.http.Fault;
+import com.infobip.openapi.mcp.McpRequestContext;
 import com.infobip.openapi.mcp.auth.scope.ScopeDiscoveryService;
+import com.infobip.openapi.mcp.enricher.ApiRequestEnricher;
 import java.net.URI;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
@@ -12,16 +14,21 @@ import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.stream.Stream;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.skyscreamer.jsonassert.JSONAssert;
 import org.skyscreamer.jsonassert.JSONCompareMode;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.http.client.HttpRedirects;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -31,6 +38,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.TestPropertySource;
+import org.springframework.web.client.RestClient;
 import org.springframework.web.util.UriComponentsBuilder;
 
 @ActiveProfiles("test-http")
@@ -59,6 +67,24 @@ public class AuthorizationServerProxyTest extends OAuthTestBase {
                 }
             }
             """;
+
+    @TestConfiguration
+    static class TestConfig {
+
+        @Bean
+        ApiRequestEnricher testHeaderEnricher() {
+            return new TestHeaderEnricher();
+        }
+    }
+
+    static class TestHeaderEnricher implements ApiRequestEnricher {
+
+        @Override
+        public RestClient.RequestHeadersSpec<?> enrich(
+                RestClient.RequestHeadersSpec<?> spec, McpRequestContext context) {
+            return spec.header("X-Test-Enricher", "applied");
+        }
+    }
 
     @Autowired
     private ScopeDiscoveryService scopeDiscoveryService;
@@ -438,6 +464,54 @@ public class AuthorizationServerProxyTest extends OAuthTestBase {
         // Then
         then(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         JSONAssert.assertEquals(givenError, response.getBody(), JSONCompareMode.STRICT);
+    }
+
+    static Stream<Arguments> proxiedPostRequests() {
+        return Stream.of(
+                Arguments.of(
+                        "/mcp/oauth/register",
+                        UPSTREAM_REGISTRATION_PATH,
+                        MediaType.APPLICATION_JSON,
+                        "{\"redirect_uris\": [\"http://localhost:3000/cb\"]}"),
+                Arguments.of(
+                        "/mcp/oauth/token",
+                        UPSTREAM_TOKEN_PATH,
+                        MediaType.APPLICATION_FORM_URLENCODED,
+                        "grant_type=refresh_token&refresh_token=rt&client_id=abc"));
+    }
+
+    @ParameterizedTest
+    @MethodSource("proxiedPostRequests")
+    void shouldApplyEnricherChainToUpstreamRequest(
+            String givenPath, String givenUpstreamPath, MediaType givenContentType, String givenBody) {
+        // Given
+        getStaticWireMockServer()
+                .stubFor(post(urlEqualTo(givenUpstreamPath))
+                        .willReturn(aResponse().withStatus(200).withBody("{}")));
+        var headers = new HttpHeaders();
+        headers.setContentType(givenContentType);
+        headers.set("X-Forwarded-For", "203.0.113.7");
+        headers.set("X-Forwarded-Host", "mcp.example.com");
+        headers.set("X-Forwarded-Proto", "https");
+
+        // When
+        var response = restTemplate.exchange(
+                "http://localhost:" + port + givenPath,
+                HttpMethod.POST,
+                new HttpEntity<>(givenBody, headers),
+                String.class);
+
+        // Then
+        then(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        getStaticWireMockServer()
+                .verify(
+                        1,
+                        postRequestedFor(urlEqualTo(givenUpstreamPath))
+                                .withHeader("X-Forwarded-For", equalTo("203.0.113.7, 127.0.0.1"))
+                                .withHeader("X-Forwarded-Host", equalTo("mcp.example.com"))
+                                .withHeader("X-Forwarded-Proto", equalTo("https"))
+                                .withHeader("User-Agent", equalTo("openapi-mcp-test"))
+                                .withHeader("X-Test-Enricher", equalTo("applied")));
     }
 
     private ResponseEntity<String> postForm(String path, String form) {

@@ -10,7 +10,7 @@ import com.infobip.openapi.mcp.auth.scope.WwwAuthenticateProvider;
 import com.infobip.openapi.mcp.auth.web.AuthorizationServerProxy;
 import com.infobip.openapi.mcp.config.ApiBaseUrlProvider;
 import com.infobip.openapi.mcp.config.HttpRequestFactories;
-import com.infobip.openapi.mcp.enricher.XForwardedForEnricher;
+import com.infobip.openapi.mcp.enricher.ApiRequestEnricherChain;
 import com.infobip.openapi.mcp.error.ErrorModelWriter;
 import com.infobip.openapi.mcp.util.XForwardedHostCalculator;
 import java.util.Optional;
@@ -79,7 +79,7 @@ class OAuthConfiguration {
             ObjectMapper objectMapper,
             ErrorModelWriter errorModelWriter,
             Optional<ScopeDiscoveryService> scopeDiscoveryService,
-            XForwardedForEnricher xForwardedForEnricher,
+            ApiRequestEnricherChain enricherChain,
             McpRequestContextFactory contextFactory,
             XForwardedHostCalculator xForwardedHostCalculator) {
         return new AuthorizationServerProxy(
@@ -89,7 +89,7 @@ class OAuthConfiguration {
                 objectMapper,
                 errorModelWriter,
                 scopeDiscoveryService,
-                xForwardedForEnricher,
+                enricherChain,
                 contextFactory,
                 xForwardedHostCalculator);
     }

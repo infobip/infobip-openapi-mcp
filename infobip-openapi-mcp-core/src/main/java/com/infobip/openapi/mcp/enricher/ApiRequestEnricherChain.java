@@ -55,7 +55,8 @@ import org.springframework.web.client.RestClient;
  * <ul>
  *   <li>{@code ToolHandler} - Enriches downstream API calls when MCP tools are invoked</li>
  *   <li>{@code InitialAuthenticationFilter} - Enriches auth validation requests</li>
- *   <li>{@code OAuthRouter} - Enriches OAuth well-known endpoint proxy calls</li>
+ *   <li>{@code AuthorizationServerProxy} - Enriches client registration and token requests forwarded to the
+ *   authorization server</li>
  * </ul>
  *
  * <h3>Thread Safety:</h3>

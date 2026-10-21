@@ -343,6 +343,11 @@ Responses of the authorization server, including errors, are otherwise returned 
 endpoints are read from the authorization server's `/.well-known/openid-configuration`. The registration endpoint can
 also be configured explicitly with `infobip.openapi.mcp.security.auth.oauth.registration-proxy.upstream-url`.
 
+Registration and token requests forwarded to the authorization server pass through the registered
+[`ApiRequestEnricher`](#apirequestenricher) beans, the same as the credential validation requests, so for example the
+original client IP is forwarded in `X-Forwarded-For`. The `Authorization` and `Accept` headers of the client request are
+forwarded as they are.
+
 ### ApiRequestEnricher
 
 If you need to customize HTTP requests that the framework is making towards the API you can implement and register beans
