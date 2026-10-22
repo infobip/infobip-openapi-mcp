@@ -316,7 +316,7 @@ picks a subset of scopes which still covers all operations.
 
 Some MCP clients ignore the advertised scopes when they register an OAuth client using
 [dynamic client registration][13], and end up with tokens that can't be used with the MCP server. To fix that, enable the
-authorization server proxy with `infobip.openapi.mcp.security.auth.oauth.registration-proxy.enabled: true`. The MCP
+authorization server proxy with `infobip.openapi.mcp.security.auth.oauth.proxy-enabled: true`. The MCP
 server then presents itself as the authorization server, while the actual authorization server still authenticates
 users and issues tokens. The proxy is stateless, so it works with any number of MCP server instances. The framework:
 
@@ -326,8 +326,7 @@ users and issues tokens. The proxy is stateless, so it works with any number of 
   `token_endpoint` pointing to the MCP server. The issuer has to match the advertised authorization server
   ([RFC 8414][25], section 3.3), otherwise clients reject the metadata. Pushed authorization requests are not
   advertised. All other endpoints (userinfo, revocation, JWKS, etc.) still point to the authorization server,
-- accepts client registration requests at `<mcp-endpoint>/oauth/register` (configurable with
-  `infobip.openapi.mcp.security.auth.oauth.registration-proxy.path`), replaces the `scope` field with the discovered
+- accepts client registration requests at `<mcp-endpoint>/oauth/register`, replaces the `scope` field with the discovered
   scopes and each redirect URI with a callback URI of the MCP server
   (`<mcp-endpoint>/oauth/callback/<base64url-encoded redirect URI>`), and forwards the request to the authorization
   server. In the response, the callback URIs are replaced back with the client's redirect URIs,
@@ -340,8 +339,9 @@ users and issues tokens. The proxy is stateless, so it works with any number of 
   MCP server issuer.
 
 Responses of the authorization server, including errors, are otherwise returned to the client as is. The upstream
-endpoints are read from the authorization server's `/.well-known/openid-configuration`. The registration endpoint can
-also be configured explicitly with `infobip.openapi.mcp.security.auth.oauth.registration-proxy.upstream-url`.
+endpoints are read once from the authorization server's `/.well-known/openid-configuration` when the application
+starts, so the application fails to start if the authorization server is unreachable or its metadata lacks the
+registration, authorization or token endpoint.
 
 Registration and token requests forwarded to the authorization server pass through the registered
 [`ApiRequestEnricher`](#apirequestenricher) beans, the same as the credential validation requests and the proxied
@@ -801,9 +801,7 @@ kept as a fallback for clients without MCP Apps support.
 | `infobip.openapi.mcp.security.auth.oauth.scope-discovery.scope-extensions`         | Scope extensions to read scopes from. Default is an empty string.                                                                                                                                                                                                                                                                                                                                          | `-`                            |
 | `infobip.openapi.mcp.security.auth.oauth.scope-discovery.mandatory-scopes`         | Mandatory scopes that must be present. Scopes should be comma-separated. Default is an empty string.                                                                                                                                                                                                                                                                                                       | `-`                            |
 | `infobip.openapi.mcp.security.auth.oauth.scope-discovery.calculate-minimal-scopes` | Algorithm for calculating the minimal set of scopes that can access all API endpoints. Two values are supported: NONE, which skips calculation and requests all discovered scopes, and GREEDY which uses a greedy algorithm to find a smaller set of scopes that sill covers all operations. Default is NONE.                                                                                              | `NONE`                         |
-| `infobip.openapi.mcp.security.auth.oauth.registration-proxy.enabled`               | Proxy OAuth client registration, authorization and token endpoints through the MCP server and replace the requested scopes with the discovered scopes. Default is false.                                                                                                                                                                                                                                                              | `false`                        |
-| `infobip.openapi.mcp.security.auth.oauth.registration-proxy.path`                  | Path of the client registration endpoint, relative to the MCP endpoint. Default is /oauth/register.                                                                                                                                                                                                                                                                                                        | `/oauth/register`              |
-| `infobip.openapi.mcp.security.auth.oauth.registration-proxy.upstream-url`          | Client registration endpoint of the authorization server. When not set, it is read from the registration_endpoint of the authorization server's OpenID configuration.                                                                                                                                                                                                                                      | `-`                            |
+| `infobip.openapi.mcp.security.auth.oauth.proxy-enabled`                                | Proxy OAuth client registration, authorization and token endpoints through the MCP server and replace the requested scopes with the discovered scopes. Default is false.                                                                                                                                                                                                                                                              | `false`                        |
 
 ## Architecture
 

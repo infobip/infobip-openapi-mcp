@@ -37,6 +37,8 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -47,7 +49,7 @@ import org.springframework.web.util.UriComponentsBuilder;
         properties = {
             "infobip.openapi.mcp.security.auth.oauth.scope-discovery.scope-extensions=x-scopes",
             "infobip.openapi.mcp.security.auth.oauth.scope-discovery.mandatory-scopes=profile,offline_access",
-            "infobip.openapi.mcp.security.auth.oauth.registration-proxy.enabled=true"
+            "infobip.openapi.mcp.security.auth.oauth.proxy-enabled=true"
         })
 public class AuthorizationServerProxyTest extends OAuthTestBase {
 
@@ -84,6 +86,13 @@ public class AuthorizationServerProxyTest extends OAuthTestBase {
                 RestClient.RequestHeadersSpec<?> spec, McpRequestContext context) {
             return spec.header("X-Test-Enricher", "applied");
         }
+    }
+
+    @DynamicPropertySource
+    static void stubAuthorizationServerMetadata(DynamicPropertyRegistry registry) {
+        startWireMockServer();
+        staticWireMockServer.stubFor(
+                get(urlEqualTo(OPENID_CONFIGURATION)).willReturn(okJson(authorizationServerMetadata())));
     }
 
     @Autowired
@@ -555,7 +564,7 @@ public class AuthorizationServerProxyTest extends OAuthTestBase {
                 String.class);
     }
 
-    private String authorizationServerMetadata() {
+    private static String authorizationServerMetadata() {
         var upstream = staticWireMockServer.baseUrl();
         return """
                 {

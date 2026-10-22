@@ -9,6 +9,7 @@ import com.infobip.openapi.mcp.McpRequestContextFactory;
 import com.infobip.openapi.mcp.auth.OAuthProperties;
 import com.infobip.openapi.mcp.auth.scope.ScopeDiscoveryService;
 import com.infobip.openapi.mcp.auth.web.AuthorizationServerProxy;
+import com.infobip.openapi.mcp.auth.web.Spec;
 import com.infobip.openapi.mcp.enricher.ApiRequestEnricherChain;
 import com.infobip.openapi.mcp.error.ErrorModelWriter;
 import com.infobip.openapi.mcp.util.XForwardedHostCalculator;
@@ -122,8 +123,7 @@ public class OAuthController {
         // With the registration proxy, the MCP server acts as the authorization server so that clients discover the
         // proxied endpoints instead of the ones from the authorization server. The proxied authorization server
         // metadata advertises the same URL as its issuer.
-        var authorizationServer =
-                oAuthProperties.registrationProxy().enabled() ? URI.create(resource) : oAuthProperties.url();
+        var authorizationServer = oAuthProperties.proxyEnabled() ? URI.create(resource) : oAuthProperties.url();
         return new ProtectedResource(
                 resource,
                 mcpServerProperties.getName(),
@@ -143,16 +143,16 @@ public class OAuthController {
 
         try {
             var jsonResponse = spec.retrieve().body(String.class);
-            var registrationProxyEnabled = oAuthProperties.registrationProxy().enabled();
+            var proxyEnabled = oAuthProperties.proxyEnabled();
 
-            if (scopeDiscoveryServiceOptional.isEmpty() && !registrationProxyEnabled) {
+            if (scopeDiscoveryServiceOptional.isEmpty() && !proxyEnabled) {
                 return ResponseEntity.ok().contentType(responseContentType).body(jsonResponse);
             }
 
             var json = (ObjectNode) objectMapper.readTree(jsonResponse);
             scopeDiscoveryServiceOptional.ifPresent(
                     service -> json.putPOJO("scopes_supported", service.getDiscoveredScopes()));
-            if (registrationProxyEnabled) {
+            if (proxyEnabled) {
                 rewriteForRegistrationProxy(json, request);
             }
             return ResponseEntity.ok().contentType(responseContentType).body(json.toString());
@@ -178,10 +178,9 @@ public class OAuthController {
     private void rewriteForRegistrationProxy(ObjectNode json, HttpServletRequest request) {
         var issuer = xForwardedHostCalculator.hostWithRootPathBuilder(request).toUriString();
         var proxiedEndpoints = Map.of(
-                REGISTRATION_ENDPOINT,
-                        issuer + oAuthProperties.registrationProxy().path(),
-                AUTHORIZATION_ENDPOINT, issuer + AuthorizationServerProxy.AUTHORIZE_PATH,
-                TOKEN_ENDPOINT, issuer + AuthorizationServerProxy.TOKEN_PATH);
+                REGISTRATION_ENDPOINT, issuer + Spec.REGISTER_PATH,
+                AUTHORIZATION_ENDPOINT, issuer + Spec.AUTHORIZE_PATH,
+                TOKEN_ENDPOINT, issuer + Spec.TOKEN_PATH);
 
         json.put(ISSUER, issuer);
         json.remove(PUSHED_AUTHORIZATION_REQUEST_ENDPOINT);

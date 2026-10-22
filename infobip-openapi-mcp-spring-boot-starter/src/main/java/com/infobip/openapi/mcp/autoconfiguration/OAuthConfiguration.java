@@ -8,6 +8,9 @@ import com.infobip.openapi.mcp.auth.OAuthProperties;
 import com.infobip.openapi.mcp.auth.scope.ScopeDiscoveryService;
 import com.infobip.openapi.mcp.auth.scope.WwwAuthenticateProvider;
 import com.infobip.openapi.mcp.auth.web.AuthorizationServerProxy;
+import com.infobip.openapi.mcp.auth.web.Spec;
+import com.infobip.openapi.mcp.auth.web.UpstreamEndpoints;
+import com.infobip.openapi.mcp.auth.web.UpstreamEndpointsLoader;
 import com.infobip.openapi.mcp.config.ApiBaseUrlProvider;
 import com.infobip.openapi.mcp.config.HttpRequestFactories;
 import com.infobip.openapi.mcp.enricher.ApiRequestEnricherChain;
@@ -58,7 +61,7 @@ class OAuthConfiguration {
     @Bean
     @Qualifier(OAUTH_REGISTRATION_REST_CLIENT_QUALIFIER)
     @ConditionalOnMissingBean(name = OAUTH_REGISTRATION_REST_CLIENT_QUALIFIER)
-    @ConditionalOnProperty(prefix = OAuthProperties.RegistrationProxyProperties.PREFIX, name = "enabled")
+    @ConditionalOnProperty(prefix = OAuthProperties.PREFIX, name = OAuthProperties.PROXY_ENABLED)
     public RestClient oauthRegistrationRestClient(OAuthProperties oAuthProperties) {
         var factory = HttpRequestFactories.create(oAuthProperties.connectTimeout(), oAuthProperties.readTimeout());
 
@@ -70,12 +73,24 @@ class OAuthConfiguration {
                 .build();
     }
 
+    /**
+     * Reads the authorization server metadata while the context is being created, so the application fails to start
+     * if it is unreachable or incomplete, and request threads only ever read the resolved endpoints.
+     */
     @Bean
-    @ConditionalOnProperty(prefix = OAuthProperties.RegistrationProxyProperties.PREFIX, name = "enabled")
-    public AuthorizationServerProxy authorizationServerProxy(
-            @Qualifier(OAUTH_REGISTRATION_REST_CLIENT_QUALIFIER) RestClient upstreamRestClient,
+    @ConditionalOnProperty(prefix = OAuthProperties.PREFIX, name = OAuthProperties.PROXY_ENABLED)
+    public UpstreamEndpoints upstreamEndpoints(
             @Qualifier(OAUTH_REST_CLIENT_QUALIFIER) RestClient metadataRestClient,
             OAuthProperties oAuthProperties,
+            ObjectMapper objectMapper) {
+        return UpstreamEndpointsLoader.load(metadataRestClient, oAuthProperties, objectMapper);
+    }
+
+    @Bean
+    @ConditionalOnProperty(prefix = OAuthProperties.PREFIX, name = OAuthProperties.PROXY_ENABLED)
+    public AuthorizationServerProxy authorizationServerProxy(
+            @Qualifier(OAUTH_REGISTRATION_REST_CLIENT_QUALIFIER) RestClient upstreamRestClient,
+            UpstreamEndpoints upstreamEndpoints,
             ObjectMapper objectMapper,
             ErrorModelWriter errorModelWriter,
             Optional<ScopeDiscoveryService> scopeDiscoveryService,
@@ -84,8 +99,7 @@ class OAuthConfiguration {
             XForwardedHostCalculator xForwardedHostCalculator) {
         return new AuthorizationServerProxy(
                 upstreamRestClient,
-                metadataRestClient,
-                oAuthProperties,
+                upstreamEndpoints,
                 objectMapper,
                 errorModelWriter,
                 scopeDiscoveryService,
@@ -95,26 +109,24 @@ class OAuthConfiguration {
     }
 
     @Bean
-    @ConditionalOnProperty(prefix = OAuthProperties.RegistrationProxyProperties.PREFIX, name = "enabled")
+    @ConditionalOnProperty(prefix = OAuthProperties.PREFIX, name = OAuthProperties.PROXY_ENABLED)
     public RouterFunction<ServerResponse> authorizationServerProxyRouterFunction(
-            AuthorizationServerProxy authorizationServerProxy,
-            OAuthProperties oAuthProperties,
-            XForwardedHostCalculator xForwardedHostCalculator) {
+            AuthorizationServerProxy authorizationServerProxy, XForwardedHostCalculator xForwardedHostCalculator) {
         var rootPath = xForwardedHostCalculator.rootPath();
         return RouterFunctions.route()
                 .POST(
-                        rootPath + oAuthProperties.registrationProxy().path(),
+                        rootPath + Spec.REGISTER_PATH,
                         request -> toServerResponse(authorizationServerProxy.register(
                                 request.servletRequest(), request.body(byte[].class))))
                 .GET(
-                        rootPath + AuthorizationServerProxy.AUTHORIZE_PATH,
+                        rootPath + Spec.AUTHORIZE_PATH,
                         request -> toServerResponse(authorizationServerProxy.authorize(request.servletRequest())))
                 .GET(
-                        rootPath + AuthorizationServerProxy.CALLBACK_PATH + "/{encodedRedirectUri}",
+                        rootPath + Spec.CALLBACK_PATH + "/{encodedRedirectUri}",
                         request -> toServerResponse(authorizationServerProxy.callback(
                                 request.servletRequest(), request.pathVariable("encodedRedirectUri"))))
                 .POST(
-                        rootPath + AuthorizationServerProxy.TOKEN_PATH,
+                        rootPath + Spec.TOKEN_PATH,
                         request -> toServerResponse(authorizationServerProxy.token(request.servletRequest())))
                 .build();
     }

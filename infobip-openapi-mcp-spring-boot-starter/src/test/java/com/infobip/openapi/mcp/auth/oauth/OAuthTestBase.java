@@ -14,15 +14,23 @@ public abstract class OAuthTestBase extends OpenApiTestBase {
 
     @DynamicPropertySource
     static void configureAuthProperties(DynamicPropertyRegistry registry) {
+        startWireMockServer();
+
+        String oAuthUrl = staticWireMockServer.baseUrl();
+        registry.add("infobip.openapi.mcp.security.auth.oauth.url", () -> oAuthUrl);
+    }
+
+    /**
+     * Makes sure the shared WireMock server is running. {@code @DynamicPropertySource} methods of subclasses may run
+     * before the ones declared here, so they must call this before stubbing anything that is read at startup.
+     */
+    protected static void startWireMockServer() {
         if (staticWireMockServer == null) {
             staticWireMockServer = new WireMockServer(0);
         }
         if (!staticWireMockServer.isRunning()) {
             staticWireMockServer.start();
         }
-
-        String oAuthUrl = staticWireMockServer.baseUrl();
-        registry.add("infobip.openapi.mcp.security.auth.oauth.url", () -> oAuthUrl);
     }
 
     protected void reloadOpenApi(String customOpenApiSpec) {

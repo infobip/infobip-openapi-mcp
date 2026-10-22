@@ -11,17 +11,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Optional stateless OAuth authorization server proxy that makes sure MCP clients register with the scopes the MCP
   server requires. Some MCP clients register OAuth clients without (or with the wrong) scopes and then end up with
-  unusable tokens. When `infobip.openapi.mcp.security.auth.oauth.registration-proxy.enabled` is `true`, the MCP server
+  unusable tokens. When `infobip.openapi.mcp.security.auth.oauth.proxy-enabled` is `true`, the MCP server
   advertises itself as the authorization server (including the `issuer` of the proxied metadata) and exposes client
-  registration (by default `<mcp-endpoint>/oauth/register`, configurable with `registration-proxy.path`),
+  registration (`<mcp-endpoint>/oauth/register`),
   authorization (`<mcp-endpoint>/oauth/authorize`), callback (`<mcp-endpoint>/oauth/callback/...`) and token
   (`<mcp-endpoint>/oauth/token`) endpoints. Registrations are forwarded with `scope` set to the scopes discovered for
   the server. Client redirect URIs are replaced by callback URIs of the MCP server that embed the original redirect URI,
   so that authorization responses can carry the MCP server as `iss` without any server-side state. The `id_token` is
   removed from token responses. Userinfo, revocation, JWKS and other OAuth endpoints keep pointing to the authorization
-  server. The upstream registration endpoint is read from the
-  authorization server's OpenID configuration, or can be set with `registration-proxy.upstream-url`. Requests forwarded
-  to the authorization server pass through the same `ApiRequestEnricher` beans as the credential validation requests, so
+  server. The upstream registration, authorization and token endpoints are read from the authorization server's OpenID
+  configuration once at startup (the application fails to start if it can't be read or lacks one of them). Requests
+  forwarded to the authorization server pass through the same `ApiRequestEnricher` beans as the credential validation requests, so
   the original client IP and any custom headers reach the authorization server.
 
 ### Changed

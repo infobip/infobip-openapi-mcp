@@ -1,7 +1,15 @@
 package com.infobip.openapi.mcp.auth.web;
 
+import static com.infobip.openapi.mcp.auth.web.Spec.AUTHORIZATION_CODE;
+import static com.infobip.openapi.mcp.auth.web.Spec.CALLBACK_PATH;
+import static com.infobip.openapi.mcp.auth.web.Spec.GRANT_TYPE;
+import static com.infobip.openapi.mcp.auth.web.Spec.ID_TOKEN;
+import static com.infobip.openapi.mcp.auth.web.Spec.ISS;
+import static com.infobip.openapi.mcp.auth.web.Spec.REDIRECT_URI;
+import static com.infobip.openapi.mcp.auth.web.Spec.REDIRECT_URIS;
+import static com.infobip.openapi.mcp.auth.web.Spec.SCOPE;
+
 import com.infobip.openapi.mcp.McpRequestContextFactory;
-import com.infobip.openapi.mcp.auth.OAuthProperties;
 import com.infobip.openapi.mcp.auth.scope.ScopeDiscoveryService;
 import com.infobip.openapi.mcp.enricher.ApiRequestEnricherChain;
 import com.infobip.openapi.mcp.error.ErrorModelWriter;
@@ -25,9 +33,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
-import org.springframework.web.util.UriComponentsBuilder;
 import tools.jackson.core.JacksonException;
-import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.node.ArrayNode;
 import tools.jackson.databind.node.ObjectNode;
@@ -51,29 +57,13 @@ import tools.jackson.databind.node.ObjectNode;
  * while clients only ever see their own redirect URIs.
  * </p>
  * <p>
- * The upstream endpoints are read from the authorization server's OpenID configuration and cached. The registration
- * endpoint can also be configured explicitly.
+ * The upstream endpoints are resolved by the caller (see {@link UpstreamEndpointsLoader}) and never change afterwards.
  * </p>
  */
 public class AuthorizationServerProxy {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AuthorizationServerProxy.class);
 
-    public static final String AUTHORIZE_PATH = "/oauth/authorize";
-    public static final String TOKEN_PATH = "/oauth/token";
-    public static final String CALLBACK_PATH = "/oauth/callback";
-
-    private static final String OPENID_CONFIGURATION_PATH = "/.well-known/openid-configuration";
-    private static final String REGISTRATION_ENDPOINT = "registration_endpoint";
-    private static final String AUTHORIZATION_ENDPOINT = "authorization_endpoint";
-    private static final String TOKEN_ENDPOINT = "token_endpoint";
-    private static final String SCOPE = "scope";
-    private static final String REDIRECT_URIS = "redirect_uris";
-    private static final String REDIRECT_URI = "redirect_uri";
-    private static final String GRANT_TYPE = "grant_type";
-    private static final String AUTHORIZATION_CODE = "authorization_code";
-    private static final String ISS = "iss";
-    private static final String ID_TOKEN = "id_token";
     private static final List<String> FORWARDED_REQUEST_HEADERS =
             List.of(HttpHeaders.AUTHORIZATION, HttpHeaders.ACCEPT);
     private static final List<String> FORWARDED_RESPONSE_HEADERS =
@@ -82,8 +72,6 @@ public class AuthorizationServerProxy {
     private static final Base64.Decoder BASE64_DECODER = Base64.getUrlDecoder();
 
     private final RestClient upstreamRestClient;
-    private final RestClient metadataRestClient;
-    private final OAuthProperties oAuthProperties;
     private final ObjectMapper objectMapper;
     private final ErrorModelWriter errorModelWriter;
     private final Optional<ScopeDiscoveryService> scopeDiscoveryService;
@@ -91,17 +79,16 @@ public class AuthorizationServerProxy {
     private final McpRequestContextFactory contextFactory;
     private final XForwardedHostCalculator xForwardedHostCalculator;
 
-    private volatile @Nullable JsonNode upstreamMetadata;
+    private final UpstreamEndpoints upstreamEndpoints;
 
     /**
      * @param upstreamRestClient client used to forward registration and token requests; must not throw on non-2xx
      *                           responses
-     * @param metadataRestClient client used to read the authorization server metadata
+     * @param upstreamEndpoints  endpoints of the authorization server that requests are forwarded to
      */
     public AuthorizationServerProxy(
             RestClient upstreamRestClient,
-            RestClient metadataRestClient,
-            OAuthProperties oAuthProperties,
+            UpstreamEndpoints upstreamEndpoints,
             ObjectMapper objectMapper,
             ErrorModelWriter errorModelWriter,
             Optional<ScopeDiscoveryService> scopeDiscoveryService,
@@ -109,8 +96,7 @@ public class AuthorizationServerProxy {
             McpRequestContextFactory contextFactory,
             XForwardedHostCalculator xForwardedHostCalculator) {
         this.upstreamRestClient = upstreamRestClient;
-        this.metadataRestClient = metadataRestClient;
-        this.oAuthProperties = oAuthProperties;
+        this.upstreamEndpoints = upstreamEndpoints;
         this.objectMapper = objectMapper;
         this.errorModelWriter = errorModelWriter;
         this.scopeDiscoveryService = scopeDiscoveryService;
@@ -169,12 +155,9 @@ public class AuthorizationServerProxy {
                 clientMetadata.path(SCOPE).asString(null));
 
         try {
-            var registrationEndpoint = Optional.ofNullable(
-                            oAuthProperties.registrationProxy().upstreamUrl())
-                    .orElseGet(() -> upstreamEndpoint(REGISTRATION_ENDPOINT));
             var spec = upstreamRestClient
                     .post()
-                    .uri(registrationEndpoint)
+                    .uri(upstreamEndpoints.registration())
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(objectMapper.writeValueAsBytes(clientMetadata));
             var upstreamResponse = exchange(spec, request);
@@ -182,7 +165,7 @@ public class AuthorizationServerProxy {
                 mapRedirectUris(json, redirectUri -> decodeRedirectUri(issuer, redirectUri));
                 return json;
             });
-        } catch (RestClientException | JacksonException | IllegalStateException e) {
+        } catch (RestClientException | JacksonException e) {
             return badGateway("client registration", request, e);
         }
     }
@@ -192,19 +175,14 @@ public class AuthorizationServerProxy {
      * URI of the MCP server.
      *
      * @param request the incoming authorization request
-     * @return a redirect to the authorization server, or an error response if its endpoint could not be resolved
+     * @return a redirect to the authorization server
      */
     public ResponseEntity<byte[]> authorize(HttpServletRequest request) {
-        try {
-            var issuer = issuer(request);
-            var authorizationEndpoint = upstreamEndpoint(AUTHORIZATION_ENDPOINT);
-            var query = encodeParameters(
-                    request.getParameterMap(),
-                    (name, value) -> REDIRECT_URI.equals(name) ? encodeRedirectUri(issuer, value) : value);
-            return redirect(appendQuery(authorizationEndpoint.toString(), query));
-        } catch (RestClientException | JacksonException | IllegalStateException e) {
-            return badGateway("authorization request", request, e);
-        }
+        var issuer = issuer(request);
+        var query = encodeParameters(
+                request.getParameterMap(),
+                (name, value) -> REDIRECT_URI.equals(name) ? encodeRedirectUri(issuer, value) : value);
+        return redirect(appendQuery(upstreamEndpoints.authorization().toString(), query));
     }
 
     /**
@@ -249,7 +227,7 @@ public class AuthorizationServerProxy {
                             : value);
             var spec = upstreamRestClient
                     .post()
-                    .uri(upstreamEndpoint(TOKEN_ENDPOINT))
+                    .uri(upstreamEndpoints.token())
                     .contentType(MediaType.APPLICATION_FORM_URLENCODED)
                     .body(form.getBytes(StandardCharsets.UTF_8));
             var upstreamResponse = exchange(spec, request);
@@ -257,7 +235,7 @@ public class AuthorizationServerProxy {
                 json.remove(ID_TOKEN);
                 return json;
             });
-        } catch (RestClientException | JacksonException | IllegalStateException e) {
+        } catch (RestClientException e) {
             return badGateway("token request", request, e);
         }
     }
@@ -335,33 +313,6 @@ public class AuthorizationServerProxy {
         }
     }
 
-    private URI upstreamEndpoint(String name) {
-        var metadata = upstreamMetadata;
-        if (metadata == null) {
-            var openIdConfigurationUri = UriComponentsBuilder.fromUri(oAuthProperties.url())
-                    .path(OPENID_CONFIGURATION_PATH)
-                    .build()
-                    .toUri();
-            var metadataBody = metadataRestClient
-                    .get()
-                    .uri(openIdConfigurationUri)
-                    .retrieve()
-                    .body(String.class);
-            if (metadataBody == null) {
-                throw new IllegalStateException(
-                        "Authorization server metadata at " + openIdConfigurationUri + " is empty");
-            }
-            metadata = objectMapper.readTree(metadataBody);
-            upstreamMetadata = metadata;
-        }
-
-        var endpoint = metadata.path(name).asString(null);
-        if (endpoint == null || endpoint.isBlank()) {
-            throw new IllegalStateException("Authorization server metadata has no " + name);
-        }
-        return URI.create(endpoint);
-    }
-
     private interface ParameterMapping {
         String map(String name, String value);
     }
@@ -393,7 +344,6 @@ public class AuthorizationServerProxy {
 
     private ResponseEntity<byte[]> badGateway(String operation, HttpServletRequest request, Exception e) {
         LOGGER.error("Error proxying OAuth {}.", operation, e);
-        upstreamMetadata = null;
         var errorResponse = errorModelWriter.writeErrorModelAsJson(HttpStatus.BAD_GATEWAY, request, e);
         return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
                 .contentType(MediaType.APPLICATION_JSON)
