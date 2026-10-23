@@ -139,7 +139,7 @@ values itself via `PlusAwareUriEncoder` before building the request URI.
 | Interface            | Purpose                                                                                                                  |
 |----------------------|--------------------------------------------------------------------------------------------------------------------------|
 | `OpenApiFilter`           | Transform the OpenAPI spec before tool metadata is built; disable via `infobip.openapi.mcp.filters.[filter-name]: false` |
-| `ApiRequestEnricher`      | Modify HTTP requests to the downstream API (headers, metadata); failures are swallowed                                   |
+| `ApiRequestEnricher`      | Modify HTTP requests to the downstream API and the OAuth proxy (headers, metadata); failures are swallowed              |
 | `ToolCallFilter`          | Intercept tool calls; can abort the chain unlike enrichers                                                               |
 | `PromptCallFilter`        | Intercept prompt calls; can abort the chain, add observability, or short-circuit resolution                              |
 | `ResourceCallFilter`      | Intercept resource reads; can abort the chain, add observability, or short-circuit resolution                            |
@@ -157,7 +157,32 @@ customize framework functionality. Take **extra care** to maintain backwards com
 
 Authentication is handled by `InitialAuthenticationFilter`. When `infobip.openapi.mcp.security.auth.enabled: true`,
 every MCP interaction delegates credential validation to the endpoint at `infobip.openapi.mcp.security.auth.auth-url`.
-OAuth support (`OAuthConfiguration`, `OAuthController`) proxies `/.well-known` endpoints to the authorization server.
+OAuth support proxies `/.well-known` endpoints to the authorization server (through `ApiRequestEnricherChain`). The
+logic lives in `WellKnownEndpoints` in the core module; `OAuthConfiguration` in the starter instantiates it and defines
+its routes as a `RouterFunction` (the authorization server metadata paths also match a `/**` suffix for RFC 8414 path
+insertion, and every path answers `HEAD`/`OPTIONS` and rejects other methods with 405 like an annotated `GET` handler).
+Nothing of it is registered unless OAuth is enabled.
+`WellKnownEndpoints`, `UpstreamEndpointsLoader` and `AuthorizationServerProxy` all share the single OAuth `RestClient`
+bean (`Qualifiers.OAUTH_REST_CLIENT_QUALIFIER`), which does **not** throw on non-2xx responses, so every caller must
+check the status itself: `WellKnownEndpoints` answers 500 and `UpstreamEndpointsLoader` fails startup on an upstream
+error, while the proxy passes the authorization server's error responses through to the client.
+When `infobip.openapi.mcp.security.auth.oauth.proxy-enabled: true`, `AuthorizationServerProxy` (wired as a
+`RouterFunction` under the MCP endpoint) statelessly proxies client registration (`/oauth/register`, with
+`scope` replaced by the discovered scopes), authorization (`/oauth/authorize`), callback (`/oauth/callback/{base64url}`)
+and token (`/oauth/token`, `id_token` removed) endpoints. These paths are fixed constants (not configurable). All OAuth
+string constants live in `auth.web.Spec`, grouped by use in nested classes: `Paths` (proxied endpoints),
+`WellKnownPaths`, `ServerMetadata` (authorization server metadata properties), `ClientMetadata` (registration body),
+`Parameters` (query/form parameters), `GrantTypes` and `TokenResponse`. Client redirect URIs are swapped for callback
+URIs that embed the original redirect URI, so the callback can set `iss` to the MCP server issuer without session state. Requests the
+proxy forwards upstream (registration and token) go through `ApiRequestEnricherChain`, like `InitialAuthenticationFilter`
+does; the client's `Authorization` and `Accept` headers are copied explicitly, since credentials are deliberately not
+handled by enrichers. The upstream registration, authorization and token endpoints are an immutable `UpstreamEndpoints`
+bean, resolved by `UpstreamEndpointsLoader` from the authorization server's OpenID configuration while the Spring
+context is created and injected into `AuthorizationServerProxy`, so request threads only read them and the proxy itself
+does no I/O at construction; an unreachable or incomplete authorization server fails application startup.
+`WellKnownEndpoints` advertises the MCP server as the authorization server in the protected resource metadata, and in the
+proxied authorization server metadata rewrites `issuer` and the registration, authorization and token endpoints (and
+their `mtls_endpoint_aliases` entries) to the MCP server and removes pushed authorization request endpoints.
 
 ### Schema Transformation
 

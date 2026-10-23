@@ -45,6 +45,8 @@ specification in few key ways:
 - The framework exposes required `/.well-known` HTTP endpoints. Two of them (`/.well-known/openid-configuration` and
   `/.well-known/oauth-authorization-server`) are proxied to your [authorization server][5], and one (the
   `/.well-known/oauth-protected-resource`) is handled by the framework itself.
+- Optionally, the OAuth client registration, authorization and token endpoints can be proxied through the MCP server,
+  so that MCP clients always register with the scopes the server requires.
 - There is the option of supporting authorization checking API endpoint that framework invokes before processing MCP
   interactions to validate client credentials.
 
@@ -230,7 +232,8 @@ mirroring the tool's input schema structure. The behavior is controlled by the
         validityPeriod: 720
   ```
 
-> [!TIP] Be mindful that examples add to the context size consumed by tool descriptions. If the examples in your OpenAPI
+> [!TIP] 
+> Be mindful that examples add to the context size consumed by tool descriptions. If the examples in your OpenAPI
 > specification are large or numerous, `ANNOTATED` mode is the recommended approach — it lets you selectively expose
 > only the examples that are most useful for the LLM, without needing OpenAPI overlays or custom filters.
 
@@ -311,6 +314,54 @@ You can configure what set from all discovered scopes are requested during login
 configuration property `infobip.openapi.mcp.security.auth.oauth.scope-discovery.calculate-minimal-scopes`. When `NONE`
 is used, which is the default, all discovered scopes are requested. When `GREEDY` is used an optimistic greedy algorithm
 picks a subset of scopes which still covers all operations.
+
+#### OAuth DCR Proxy
+
+Some MCP clients ignore the advertised scopes when they register an OAuth client using
+[dynamic client registration (DCR)][13], and end up with tokens that can't be used with the MCP server. To fix that, 
+enable the authorization server proxy with `infobip.openapi.mcp.security.auth.oauth.proxy-enabled: true`. The MCP
+server then presents itself as the authorization server, while the actual authorization server still authenticates
+users and issues tokens. The proxy is stateless, so it works with any number of MCP server instances. 
+
+> [!TIP]
+> This problem is likely to occur with large HTTP APIs that split access to their operations across many different 
+> OAuth scopes. If the same OAuth realm is used for both classic HTTP API and MCP access it might be impractical or 
+> impossible to define separate set of staring scopes for different OAuth clients created for each MCP server. The
+> proxy feature enables MCP server to override the scopes advertised and requested by MCP clients, in order to 
+> narrow them down to needs of that specific MCP server.
+>
+> Use this feature only if you are experiencing issues with the list of scopes in dynamically created OAuth clients.
+
+The framework behavior in details:
+
+- Advertises the MCP server itself in `authorization_servers` of the `/.well-known/oauth-protected-resource` metadata.
+- Serves the authorization server metadata (also at the path-inserted locations, e.g.
+  `/.well-known/oauth-authorization-server/mcp`) with `issuer`, `registration_endpoint`, `authorization_endpoint` and
+  `token_endpoint` pointing to the MCP server. All other endpoints (userinfo, revocation, JWKS, etc.) still point to the
+  authorization server.
+- Accepts client registration requests at `<mcp-endpoint>/oauth/register`, replaces the `scope` field with the discovered
+  scopes and each redirect URI with a callback URI of the MCP server
+  (`<mcp-endpoint>/oauth/callback/<base64url-encoded redirect URI>`), and forwards the request to the authorization
+  server. In the response, the callback URIs are replaced back with the client's redirect URIs.
+- Redirects authorization requests from `<mcp-endpoint>/oauth/authorize` to the authorization server, with the
+  redirect URI replaced by the callback URI.
+- Redirects authorization responses from the callback URI to the client's redirect URI, with the `iss` parameter
+  replaced by the MCP server issuer.
+- Forwards token requests from `<mcp-endpoint>/oauth/token` to the authorization server, with the redirect URI
+  replaced by the callback URI, and removes the `id_token` from the response, since its `iss` claim doesn't match the
+  MCP server issuer.
+- The resulting JWT issued by the authorization server remains intact, including its original `iss` claim.
+
+Responses of the authorization server, including errors, are otherwise returned to the client as is. The upstream
+endpoints are read once from the authorization server's `/.well-known/openid-configuration` when the application
+starts, so the application fails to start if the authorization server is unreachable or its metadata lacks the
+registration, authorization or token endpoint.
+
+> [!WARNING]
+> The OAuth DCR Proxy flow is heavyhanded and modifies parts of both the OAuth well-known metadata and the runtime
+> requests and responses for DCR flow. The modifications are not guaranteed to work across all clients. This flow has 
+> been tested with OpenAI's ChatGPT (for which it was specifically developed) and Anthropic's Claude desktop apps. 
+> Before using this feature in production, perform thorough testing with specific MCP clients you intend to support.
 
 ### ApiRequestEnricher
 
@@ -765,6 +816,7 @@ kept as a fallback for clients without MCP Apps support.
 | `infobip.openapi.mcp.security.auth.oauth.scope-discovery.scope-extensions`         | Scope extensions to read scopes from. Default is an empty string.                                                                                                                                                                                                                                                                                                                                          | `-`                            |
 | `infobip.openapi.mcp.security.auth.oauth.scope-discovery.mandatory-scopes`         | Mandatory scopes that must be present. Scopes should be comma-separated. Default is an empty string.                                                                                                                                                                                                                                                                                                       | `-`                            |
 | `infobip.openapi.mcp.security.auth.oauth.scope-discovery.calculate-minimal-scopes` | Algorithm for calculating the minimal set of scopes that can access all API endpoints. Two values are supported: NONE, which skips calculation and requests all discovered scopes, and GREEDY which uses a greedy algorithm to find a smaller set of scopes that sill covers all operations. Default is NONE.                                                                                              | `NONE`                         |
+| `infobip.openapi.mcp.security.auth.oauth.proxy-enabled`                                | Proxy OAuth client registration, authorization and token endpoints through the MCP server and replace the requested scopes with the discovered scopes. Default is false.                                                                                                                                                                                                                                                              | `false`                        |
 
 ## Architecture
 
