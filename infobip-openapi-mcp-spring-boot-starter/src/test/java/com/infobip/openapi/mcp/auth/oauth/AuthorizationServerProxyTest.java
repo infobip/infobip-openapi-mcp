@@ -6,6 +6,7 @@ import static org.assertj.core.api.BDDAssertions.then;
 import com.github.tomakehurst.wiremock.http.Fault;
 import com.infobip.openapi.mcp.McpRequestContext;
 import com.infobip.openapi.mcp.auth.scope.ScopeDiscoveryService;
+import com.infobip.openapi.mcp.auth.web.CallbackPolicy;
 import com.infobip.openapi.mcp.enricher.ApiRequestEnricher;
 import java.net.URI;
 import java.net.URLDecoder;
@@ -76,6 +77,11 @@ public class AuthorizationServerProxyTest extends OAuthTestBase {
         @Bean
         ApiRequestEnricher testHeaderEnricher() {
             return new TestHeaderEnricher();
+        }
+
+        @Bean
+        CallbackPolicy testCallbackPolicy() {
+            return new HostnameCallbackPolicy("localhost", "127.0.0.1");
         }
     }
 
@@ -382,6 +388,118 @@ public class AuthorizationServerProxyTest extends OAuthTestBase {
 
         // Then
         then(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    }
+
+    static Stream<String> rejectedRedirectUris() {
+        return Stream.of(
+                "https://evil.example/cb",
+                "http://localhost.evil.example/cb",
+                "http://localhost@evil.example/cb",
+                "http://evil.example/cb#localhost",
+                "/relative/cb",
+                "not a uri");
+    }
+
+    @ParameterizedTest
+    @MethodSource("rejectedRedirectUris")
+    void shouldRejectRegistrationWithRejectedRedirectUri(String givenRedirectUri) throws JSONException {
+        // When
+        var response = postRegistration("""
+                {"redirect_uris": ["%s"]}
+                """.formatted(givenRedirectUri));
+
+        // Then
+        then(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        then(response.getHeaders().getContentType()).isEqualTo(MediaType.APPLICATION_JSON);
+        JSONAssert.assertEquals("""
+                {"error": "invalid_redirect_uri"}
+                """, response.getBody(), JSONCompareMode.LENIENT);
+        getStaticWireMockServer().verify(0, postRequestedFor(urlEqualTo(UPSTREAM_REGISTRATION_PATH)));
+    }
+
+    @Test
+    void shouldRejectRegistrationWhenOnlyOneOfRedirectUrisIsRejected() throws JSONException {
+        // When
+        var response = postRegistration("""
+                {"redirect_uris": ["http://localhost:3000/cb", "https://evil.example/cb"]}
+                """);
+
+        // Then
+        then(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        JSONAssert.assertEquals("""
+                {"error": "invalid_redirect_uri"}
+                """, response.getBody(), JSONCompareMode.LENIENT);
+        getStaticWireMockServer().verify(0, postRequestedFor(urlEqualTo(UPSTREAM_REGISTRATION_PATH)));
+    }
+
+    @ParameterizedTest
+    @MethodSource("rejectedRedirectUris")
+    void shouldRejectAuthorizationRequestWithRejectedRedirectUri(String givenRedirectUri) throws JSONException {
+        // When
+        var response = restTemplate
+                .withRedirects(HttpRedirects.DONT_FOLLOW)
+                .getForEntity(
+                        URI.create("http://localhost:" + port + "/mcp/oauth/authorize?response_type=code&client_id=abc"
+                                + "&redirect_uri=" + urlEncode(givenRedirectUri)),
+                        String.class);
+
+        // Then
+        then(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        then(response.getHeaders().getLocation()).isNull();
+        JSONAssert.assertEquals("""
+                {"error": "invalid_request"}
+                """, response.getBody(), JSONCompareMode.LENIENT);
+    }
+
+    @ParameterizedTest
+    @MethodSource("rejectedRedirectUris")
+    void shouldRejectCallbackWithRejectedRedirectUri(String givenRedirectUri) throws JSONException {
+        // When
+        var response = restTemplate
+                .withRedirects(HttpRedirects.DONT_FOLLOW)
+                .getForEntity(URI.create(callbackUri(givenRedirectUri) + "?code=the-code&state=s"), String.class);
+
+        // Then
+        then(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        then(response.getHeaders().getLocation()).isNull();
+        JSONAssert.assertEquals("""
+                {"error": "invalid_request"}
+                """, response.getBody(), JSONCompareMode.LENIENT);
+    }
+
+    @ParameterizedTest
+    @MethodSource("rejectedRedirectUris")
+    void shouldRejectAuthorizationCodeTokenRequestWithRejectedRedirectUri(String givenRedirectUri)
+            throws JSONException {
+        // When
+        var response = postForm(
+                "/mcp/oauth/token",
+                "grant_type=authorization_code&code=the-code&client_id=abc&redirect_uri="
+                        + urlEncode(givenRedirectUri));
+
+        // Then
+        then(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        JSONAssert.assertEquals("""
+                {"error": "invalid_request"}
+                """, response.getBody(), JSONCompareMode.LENIENT);
+        getStaticWireMockServer().verify(0, postRequestedFor(urlEqualTo(UPSTREAM_TOKEN_PATH)));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"http://LOCALHOST:3000/cb", "http://127.0.0.1:1455/callback"})
+    void shouldAcceptRedirectUriWithExpectedHostname(String givenRedirectUri) {
+        // When
+        var response = restTemplate
+                .withRedirects(HttpRedirects.DONT_FOLLOW)
+                .getForEntity(
+                        URI.create("http://localhost:" + port + "/mcp/oauth/authorize?response_type=code&client_id=abc"
+                                + "&redirect_uri=" + urlEncode(givenRedirectUri)),
+                        String.class);
+
+        // Then
+        then(response.getStatusCode()).isEqualTo(HttpStatus.FOUND);
+        then(decodedQueryParameters(response.getHeaders().getLocation()))
+                .containsEntry("redirect_uri", callbackUri(givenRedirectUri));
     }
 
     @Test

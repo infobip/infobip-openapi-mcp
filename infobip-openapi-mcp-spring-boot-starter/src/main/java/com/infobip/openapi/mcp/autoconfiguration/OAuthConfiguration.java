@@ -8,6 +8,8 @@ import com.infobip.openapi.mcp.auth.OAuthProperties;
 import com.infobip.openapi.mcp.auth.scope.ScopeDiscoveryService;
 import com.infobip.openapi.mcp.auth.scope.WwwAuthenticateProvider;
 import com.infobip.openapi.mcp.auth.web.AuthorizationServerProxy;
+import com.infobip.openapi.mcp.auth.web.CallbackPolicy;
+import com.infobip.openapi.mcp.auth.web.RejectedCallbackException;
 import com.infobip.openapi.mcp.auth.web.Spec;
 import com.infobip.openapi.mcp.auth.web.UpstreamEndpoints;
 import com.infobip.openapi.mcp.auth.web.UpstreamEndpointsLoader;
@@ -158,7 +160,8 @@ class OAuthConfiguration {
             Optional<ScopeDiscoveryService> scopeDiscoveryService,
             ApiRequestEnricherChain enricherChain,
             McpRequestContextFactory contextFactory,
-            XForwardedHostCalculator xForwardedHostCalculator) {
+            XForwardedHostCalculator xForwardedHostCalculator,
+            CallbackPolicy callbackPolicy) {
         return new AuthorizationServerProxy(
                 oauthRestClient,
                 upstreamEndpoints,
@@ -167,7 +170,8 @@ class OAuthConfiguration {
                 scopeDiscoveryService,
                 enricherChain,
                 contextFactory,
-                xForwardedHostCalculator);
+                xForwardedHostCalculator,
+                callbackPolicy);
     }
 
     @Bean
@@ -190,6 +194,10 @@ class OAuthConfiguration {
                 .POST(
                         rootPath + Spec.Paths.TOKEN,
                         request -> toServerResponse(authorizationServerProxy.token(request.servletRequest())))
+                .onError(
+                        RejectedCallbackException.class,
+                        (e, request) -> toServerResponse(authorizationServerProxy.rejectedCallback(
+                                request.servletRequest(), (RejectedCallbackException) e)))
                 .build();
     }
 

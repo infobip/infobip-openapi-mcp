@@ -77,6 +77,7 @@ public class AuthorizationServerProxy {
     private final ApiRequestEnricherChain enricherChain;
     private final McpRequestContextFactory contextFactory;
     private final XForwardedHostCalculator xForwardedHostCalculator;
+    private final CallbackPolicy callbackPolicy;
 
     private final UpstreamEndpoints upstreamEndpoints;
 
@@ -93,7 +94,8 @@ public class AuthorizationServerProxy {
             Optional<ScopeDiscoveryService> scopeDiscoveryService,
             ApiRequestEnricherChain enricherChain,
             McpRequestContextFactory contextFactory,
-            XForwardedHostCalculator xForwardedHostCalculator) {
+            XForwardedHostCalculator xForwardedHostCalculator,
+            CallbackPolicy callbackPolicy) {
         this.upstreamRestClient = upstreamRestClient;
         this.upstreamEndpoints = upstreamEndpoints;
         this.objectMapper = objectMapper;
@@ -102,6 +104,7 @@ public class AuthorizationServerProxy {
         this.enricherChain = enricherChain;
         this.contextFactory = contextFactory;
         this.xForwardedHostCalculator = xForwardedHostCalculator;
+        this.callbackPolicy = callbackPolicy;
         if (scopeDiscoveryService.isEmpty()) {
             LOGGER.warn("OAuth scope discovery is disabled, client registration requests will be proxied without "
                     + "changing the requested scopes.");
@@ -146,7 +149,7 @@ public class AuthorizationServerProxy {
             }
         });
         var issuer = issuer(request);
-        mapRedirectUris(clientMetadata, redirectUri -> encodeRedirectUri(issuer, redirectUri));
+        mapRedirectUris(clientMetadata, redirectUri -> validateAndEncodeRedirectUri(issuer, redirectUri));
         LOGGER.info(
                 "Proxying OAuth client registration for client '{}', requested scope '{}', forwarded scope '{}'.",
                 clientMetadata.path("client_name").asString(null),
@@ -180,7 +183,7 @@ public class AuthorizationServerProxy {
         var issuer = issuer(request);
         var query = encodeParameters(
                 request.getParameterMap(),
-                (name, value) -> REDIRECT_URI.equals(name) ? encodeRedirectUri(issuer, value) : value);
+                (name, value) -> REDIRECT_URI.equals(name) ? validateAndEncodeRedirectUri(issuer, value) : value);
         return redirect(appendQuery(upstreamEndpoints.authorization().toString(), query));
     }
 
@@ -196,9 +199,12 @@ public class AuthorizationServerProxy {
         String redirectUri;
         try {
             redirectUri = new String(BASE64_DECODER.decode(encodedRedirectUri), StandardCharsets.UTF_8);
-            URI.create(redirectUri);
+            var uri = URI.create(redirectUri);
+            if (!callbackPolicy.test(uri)) {
+                throw RejectedCallbackException.becausePolicyFailed(uri);
+            }
         } catch (IllegalArgumentException e) {
-            return oauthError(HttpStatus.BAD_REQUEST, "invalid_request", "Invalid callback URI.");
+            throw RejectedCallbackException.becauseUriIsInvalid(encodedRedirectUri, e);
         }
 
         var issuer = issuer(request);
@@ -222,7 +228,7 @@ public class AuthorizationServerProxy {
             var form = encodeParameters(
                     request.getParameterMap(),
                     (name, value) -> authorizationCodeGrant && REDIRECT_URI.equals(name)
-                            ? encodeRedirectUri(issuer, value)
+                            ? validateAndEncodeRedirectUri(issuer, value)
                             : value);
             var spec = upstreamRestClient
                     .post()
@@ -237,6 +243,26 @@ public class AuthorizationServerProxy {
         } catch (RestClientException e) {
             return badGateway("token request", request, e);
         }
+    }
+
+    /**
+     * Builds the response for a request whose redirect URI was rejected by the {@link CallbackPolicy} or is not a valid
+     * URI. It is an error response and never a redirect, since the redirect URI can't be trusted.
+     * <p>
+     * Registration requests are answered with {@code invalid_redirect_uri} (RFC 7591), all other requests with
+     * {@code invalid_request} (RFC 6749).
+     * </p>
+     *
+     * @param request the request that was rejected
+     * @param e       the rejection raised while handling the request
+     * @return a bad request response with an OAuth error
+     */
+    public ResponseEntity<byte[]> rejectedCallback(HttpServletRequest request, RejectedCallbackException e) {
+        LOGGER.warn("Rejected OAuth request to '{}': {}", request.getRequestURI(), e.getMessage());
+        if (request.getRequestURI().endsWith(Spec.Paths.REGISTER)) {
+            return oauthError(HttpStatus.BAD_REQUEST, "invalid_redirect_uri", "Redirect URI is not allowed.");
+        }
+        return oauthError(HttpStatus.BAD_REQUEST, "invalid_request", "Redirect URI is not allowed.");
     }
 
     private ResponseEntity<byte[]> exchange(RestClient.RequestBodySpec spec, HttpServletRequest request) {
@@ -292,9 +318,17 @@ public class AuthorizationServerProxy {
         }
     }
 
-    private String encodeRedirectUri(String issuer, String redirectUri) {
-        return issuer + Spec.Paths.CALLBACK + "/"
-                + BASE64_ENCODER.encodeToString(redirectUri.getBytes(StandardCharsets.UTF_8));
+    private String validateAndEncodeRedirectUri(String issuer, String redirectUri) {
+        try {
+            var uri = URI.create(redirectUri);
+            if (!callbackPolicy.test(uri)) {
+                throw RejectedCallbackException.becausePolicyFailed(uri);
+            }
+            return issuer + Spec.Paths.CALLBACK + "/"
+                    + BASE64_ENCODER.encodeToString(redirectUri.getBytes(StandardCharsets.UTF_8));
+        } catch (IllegalArgumentException e) {
+            throw RejectedCallbackException.becauseUriIsInvalid(redirectUri, e);
+        }
     }
 
     /**

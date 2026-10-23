@@ -357,6 +357,26 @@ endpoints are read once from the authorization server's `/.well-known/openid-con
 starts, so the application fails to start if the authorization server is unreachable or its metadata lacks the
 registration, authorization or token endpoint.
 
+Because the callback URI embeds the client's redirect URI and the MCP server later redirects the user's browser to it,
+the proxy must not accept arbitrary redirect URIs, otherwise it would act as an open redirect. The framework therefore
+asks you to decide which redirect URIs are acceptable, by providing a bean of type
+`com.infobip.openapi.mcp.auth.web.CallbackPolicy`. It is a `Predicate<URI>` that returns `true` for redirect URIs the
+MCP server may redirect to. There is no default implementation, so the application fails to start with the proxy enabled
+until you define one:
+
+```java
+@Bean
+CallbackPolicy callbackPolicy() {
+    return uri -> "https".equals(uri.getScheme()) && "client.example.com".equalsIgnoreCase(uri.getHost());
+}
+```
+
+The policy is applied to every redirect URI that comes from a client: the `redirect_uris` of client registration
+requests, the `redirect_uri` of authorization requests and of authorization code token requests, and the redirect URI
+embedded in a callback URI. Requests with a redirect URI that is rejected by the policy, or that is not a valid URI, are
+not forwarded to the authorization server. They are answered with `400 Bad Request` and an OAuth error response
+(`invalid_redirect_uri` for client registration, `invalid_request` for the other endpoints) and are never redirected.
+
 > [!WARNING]
 > The OAuth DCR Proxy flow is heavyhanded and modifies parts of both the OAuth well-known metadata and the runtime
 > requests and responses for DCR flow. The modifications are not guaranteed to work across all clients. This flow has 
