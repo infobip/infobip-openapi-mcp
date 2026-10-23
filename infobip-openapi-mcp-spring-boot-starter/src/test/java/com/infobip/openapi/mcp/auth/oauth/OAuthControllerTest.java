@@ -46,6 +46,24 @@ public class OAuthControllerTest extends OAuthTestBase {
 
     @ParameterizedTest
     @ValueSource(strings = {"/.well-known/oauth-authorization-server", "/.well-known/openid-configuration"})
+    void shouldReturnInternalServerErrorWhenAuthServerRespondsWithErrorStatus(String givenWellKnownEndpoint) {
+        // Given
+        getStaticWireMockServer()
+                .stubFor(get(urlEqualTo(givenWellKnownEndpoint))
+                        .willReturn(aResponse().withStatus(404).withBody("{\"error\": \"not_found\"}")));
+
+        // When
+        var response = restTemplate.exchange(
+                "http://localhost:" + port + givenWellKnownEndpoint, HttpMethod.GET, null, String.class);
+
+        // Then
+        then(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+        then(response.getHeaders().getContentType().toString()).isEqualTo("application/json;charset=UTF-8");
+        then(response.getBody()).doesNotContain("not_found");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"/.well-known/oauth-authorization-server", "/.well-known/openid-configuration"})
     void shouldApplyEnricherChainToWellKnownEndpoint(String givenWellKnownEndpoint) {
         // Given
         var givenXForwardedFor = "www.example.com";

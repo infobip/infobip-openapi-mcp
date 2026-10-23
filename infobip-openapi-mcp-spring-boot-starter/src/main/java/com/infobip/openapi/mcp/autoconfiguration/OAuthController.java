@@ -142,7 +142,15 @@ public class OAuthController {
         spec = enricherChain.enrich(spec, context);
 
         try {
-            var jsonResponse = spec.retrieve().body(String.class);
+            var upstreamResponse = spec.retrieve().toEntity(String.class);
+            if (!upstreamResponse.getStatusCode().is2xxSuccessful()) {
+                LOGGER.error(
+                        "Authorization server responded with status {} to well-known endpoint: {}",
+                        upstreamResponse.getStatusCode(),
+                        path);
+                return internalServerError(responseContentType);
+            }
+            var jsonResponse = upstreamResponse.getBody();
             var proxyEnabled = oAuthProperties.proxyEnabled();
 
             if (scopeDiscoveryServiceOptional.isEmpty() && !proxyEnabled) {
@@ -158,11 +166,15 @@ public class OAuthController {
             return ResponseEntity.ok().contentType(responseContentType).body(json.toString());
         } catch (JacksonException | RestClientException e) {
             LOGGER.error("Error proxying well-known endpoint: {}", path, e);
-            var errorResponse = errorModelWriter.writeErrorModelAsJson(HttpStatus.INTERNAL_SERVER_ERROR);
-            return ResponseEntity.internalServerError()
-                    .contentType(responseContentType)
-                    .body(errorResponse);
+            return internalServerError(responseContentType);
         }
+    }
+
+    private ResponseEntity<String> internalServerError(MediaType responseContentType) {
+        var errorResponse = errorModelWriter.writeErrorModelAsJson(HttpStatus.INTERNAL_SERVER_ERROR);
+        return ResponseEntity.internalServerError()
+                .contentType(responseContentType)
+                .body(errorResponse);
     }
 
     /**

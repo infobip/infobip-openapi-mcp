@@ -115,6 +115,22 @@ class UpstreamEndpointsLoaderTest {
     }
 
     @Test
+    void shouldFailWhenMetadataIsNotAvailableAndRestClientDoesNotThrowOnErrorStatus() {
+        // Given
+        wireMockServer.stubFor(
+                get(urlEqualTo(OPENID_CONFIGURATION)).willReturn(aResponse().withStatus(500)));
+        var givenRestClient = RestClient.builder()
+                .defaultStatusHandler(status -> !status.is2xxSuccessful(), (request, response) -> {})
+                .build();
+
+        // When & Then
+        thenThrownBy(() -> load(givenRestClient))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("Authorization server metadata at " + wireMockServer.baseUrl() + OPENID_CONFIGURATION
+                        + " could not be read, status 500 INTERNAL_SERVER_ERROR");
+    }
+
+    @Test
     void shouldFailWhenMetadataIsNotJson() {
         // Given
         givenMetadata("not json");
@@ -131,9 +147,13 @@ class UpstreamEndpointsLoaderTest {
     }
 
     private static UpstreamEndpoints load() {
+        return load(RestClient.create());
+    }
+
+    private static UpstreamEndpoints load(RestClient restClient) {
         var oAuthProperties =
                 new OAuthProperties(true, URI.create(wireMockServer.baseUrl()), null, null, null, null, true);
         return UpstreamEndpointsLoader.load(
-                RestClient.create(), oAuthProperties, JsonMapper.builder().build());
+                restClient, oAuthProperties, JsonMapper.builder().build());
     }
 }

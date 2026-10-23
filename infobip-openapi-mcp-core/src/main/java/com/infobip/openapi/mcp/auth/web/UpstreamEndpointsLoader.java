@@ -24,7 +24,8 @@ public final class UpstreamEndpointsLoader {
     /**
      * Reads the OpenID configuration at {@code <oauth.url>/.well-known/openid-configuration}.
      *
-     * @param metadataRestClient client used to read the authorization server metadata
+     * @param metadataRestClient client used to read the authorization server metadata; may or may not throw on non-2xx
+     *                           responses, both are reported as a failure
      * @param oAuthProperties    OAuth configuration properties
      * @param objectMapper       mapper used to parse the metadata
      * @return the resolved endpoints
@@ -46,11 +47,16 @@ public final class UpstreamEndpointsLoader {
                 .build()
                 .toUri();
         try {
-            var metadataBody = metadataRestClient
+            var metadataResponse = metadataRestClient
                     .get()
                     .uri(openIdConfigurationUri)
                     .retrieve()
-                    .body(String.class);
+                    .toEntity(String.class);
+            if (!metadataResponse.getStatusCode().is2xxSuccessful()) {
+                throw new IllegalStateException("Authorization server metadata at " + openIdConfigurationUri
+                        + " could not be read, status " + metadataResponse.getStatusCode());
+            }
+            var metadataBody = metadataResponse.getBody();
             if (metadataBody == null) {
                 throw new IllegalStateException(
                         "Authorization server metadata at " + openIdConfigurationUri + " is empty");

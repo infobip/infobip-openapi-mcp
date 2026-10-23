@@ -1,6 +1,5 @@
 package com.infobip.openapi.mcp.autoconfiguration;
 
-import static com.infobip.openapi.mcp.autoconfiguration.Qualifiers.OAUTH_REGISTRATION_REST_CLIENT_QUALIFIER;
 import static com.infobip.openapi.mcp.autoconfiguration.Qualifiers.OAUTH_REST_CLIENT_QUALIFIER;
 
 import com.infobip.openapi.mcp.McpRequestContextFactory;
@@ -45,7 +44,12 @@ class OAuthConfiguration {
     public RestClient oauthRestClient(OAuthProperties oAuthProperties) {
         var factory = HttpRequestFactories.create(oAuthProperties.connectTimeout(), oAuthProperties.readTimeout());
 
-        return RestClient.builder().requestFactory(factory).build();
+        return RestClient.builder()
+                .requestFactory(factory)
+                .defaultStatusHandler(httpStatusCode -> !httpStatusCode.is2xxSuccessful(), (request, response) -> {
+                    // Do not throw an exception for non-2xx responses, callers inspect the status themselves
+                })
+                .build();
     }
 
     @Bean
@@ -58,21 +62,6 @@ class OAuthConfiguration {
                 oAuthProperties, scopeDiscoveryService, xForwardedHostCalculator, apiBaseUrlProvider);
     }
 
-    @Bean
-    @Qualifier(OAUTH_REGISTRATION_REST_CLIENT_QUALIFIER)
-    @ConditionalOnMissingBean(name = OAUTH_REGISTRATION_REST_CLIENT_QUALIFIER)
-    @ConditionalOnProperty(prefix = OAuthProperties.PREFIX, name = OAuthProperties.PROXY_ENABLED)
-    public RestClient oauthRegistrationRestClient(OAuthProperties oAuthProperties) {
-        var factory = HttpRequestFactories.create(oAuthProperties.connectTimeout(), oAuthProperties.readTimeout());
-
-        return RestClient.builder()
-                .requestFactory(factory)
-                .defaultStatusHandler(httpStatusCode -> !httpStatusCode.is2xxSuccessful(), (request, response) -> {
-                    // Do not throw an exception for non-2xx responses, they are returned to the client as is
-                })
-                .build();
-    }
-
     /**
      * Reads the authorization server metadata while the context is being created, so the application fails to start
      * if it is unreachable or incomplete, and request threads only ever read the resolved endpoints.
@@ -80,16 +69,16 @@ class OAuthConfiguration {
     @Bean
     @ConditionalOnProperty(prefix = OAuthProperties.PREFIX, name = OAuthProperties.PROXY_ENABLED)
     public UpstreamEndpoints upstreamEndpoints(
-            @Qualifier(OAUTH_REST_CLIENT_QUALIFIER) RestClient metadataRestClient,
+            @Qualifier(OAUTH_REST_CLIENT_QUALIFIER) RestClient oauthRestClient,
             OAuthProperties oAuthProperties,
             ObjectMapper objectMapper) {
-        return UpstreamEndpointsLoader.load(metadataRestClient, oAuthProperties, objectMapper);
+        return UpstreamEndpointsLoader.load(oauthRestClient, oAuthProperties, objectMapper);
     }
 
     @Bean
     @ConditionalOnProperty(prefix = OAuthProperties.PREFIX, name = OAuthProperties.PROXY_ENABLED)
     public AuthorizationServerProxy authorizationServerProxy(
-            @Qualifier(OAUTH_REGISTRATION_REST_CLIENT_QUALIFIER) RestClient upstreamRestClient,
+            @Qualifier(OAUTH_REST_CLIENT_QUALIFIER) RestClient oauthRestClient,
             UpstreamEndpoints upstreamEndpoints,
             ObjectMapper objectMapper,
             ErrorModelWriter errorModelWriter,
@@ -98,7 +87,7 @@ class OAuthConfiguration {
             McpRequestContextFactory contextFactory,
             XForwardedHostCalculator xForwardedHostCalculator) {
         return new AuthorizationServerProxy(
-                upstreamRestClient,
+                oauthRestClient,
                 upstreamEndpoints,
                 objectMapper,
                 errorModelWriter,
