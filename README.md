@@ -232,7 +232,8 @@ mirroring the tool's input schema structure. The behavior is controlled by the
         validityPeriod: 720
   ```
 
-> [!TIP] Be mindful that examples add to the context size consumed by tool descriptions. If the examples in your OpenAPI
+> [!TIP] 
+> Be mindful that examples add to the context size consumed by tool descriptions. If the examples in your OpenAPI
 > specification are large or numerous, `ANNOTATED` mode is the recommended approach — it lets you selectively expose
 > only the examples that are most useful for the LLM, without needing OpenAPI overlays or custom filters.
 
@@ -314,39 +315,53 @@ configuration property `infobip.openapi.mcp.security.auth.oauth.scope-discovery.
 is used, which is the default, all discovered scopes are requested. When `GREEDY` is used an optimistic greedy algorithm
 picks a subset of scopes which still covers all operations.
 
-Some MCP clients ignore the advertised scopes when they register an OAuth client using
-[dynamic client registration][13], and end up with tokens that can't be used with the MCP server. To fix that, enable the
-authorization server proxy with `infobip.openapi.mcp.security.auth.oauth.proxy-enabled: true`. The MCP
-server then presents itself as the authorization server, while the actual authorization server still authenticates
-users and issues tokens. The proxy is stateless, so it works with any number of MCP server instances. The framework:
+#### OAuth DCR Proxy
 
-- advertises the MCP server itself in `authorization_servers` of the `/.well-known/oauth-protected-resource` metadata,
-- serves the authorization server metadata (also at the path-inserted locations, e.g.
+Some MCP clients ignore the advertised scopes when they register an OAuth client using
+[dynamic client registration (DCR)][13], and end up with tokens that can't be used with the MCP server. To fix that, 
+enable the authorization server proxy with `infobip.openapi.mcp.security.auth.oauth.proxy-enabled: true`. The MCP
+server then presents itself as the authorization server, while the actual authorization server still authenticates
+users and issues tokens. The proxy is stateless, so it works with any number of MCP server instances. 
+
+> [!TIP]
+> This problem is likely to occur with large HTTP APIs that split access to their operations across many different 
+> OAuth scopes. If the same OAuth realm is used for both classic HTTP API and MCP access it might be impractical or 
+> impossible to define separate set of staring scopes for different OAuth clients created for each MCP server. The
+> proxy feature enables MCP server to override the scopes advertised and requested by MCP clients, in order to 
+> narrow them down to needs of that specific MCP server.
+>
+> Use this feature only if you are experiencing issues with the list of scopes in dynamically created OAuth clients.
+
+The framework behavior in details:
+
+- Advertises the MCP server itself in `authorization_servers` of the `/.well-known/oauth-protected-resource` metadata.
+- Serves the authorization server metadata (also at the path-inserted locations, e.g.
   `/.well-known/oauth-authorization-server/mcp`) with `issuer`, `registration_endpoint`, `authorization_endpoint` and
-  `token_endpoint` pointing to the MCP server. The issuer has to match the advertised authorization server
-  ([RFC 8414][25], section 3.3), otherwise clients reject the metadata. Pushed authorization requests are not
-  advertised. All other endpoints (userinfo, revocation, JWKS, etc.) still point to the authorization server,
-- accepts client registration requests at `<mcp-endpoint>/oauth/register`, replaces the `scope` field with the discovered
+  `token_endpoint` pointing to the MCP server. All other endpoints (userinfo, revocation, JWKS, etc.) still point to the
+  authorization server.
+- Accepts client registration requests at `<mcp-endpoint>/oauth/register`, replaces the `scope` field with the discovered
   scopes and each redirect URI with a callback URI of the MCP server
   (`<mcp-endpoint>/oauth/callback/<base64url-encoded redirect URI>`), and forwards the request to the authorization
-  server. In the response, the callback URIs are replaced back with the client's redirect URIs,
-- redirects authorization requests from `<mcp-endpoint>/oauth/authorize` to the authorization server, with the
-  redirect URI replaced by the callback URI,
-- redirects authorization responses from the callback URI to the client's redirect URI, with the `iss` parameter
-  replaced by the MCP server issuer ([RFC 9207][26]),
-- forwards token requests from `<mcp-endpoint>/oauth/token` to the authorization server, with the redirect URI
+  server. In the response, the callback URIs are replaced back with the client's redirect URIs.
+- Redirects authorization requests from `<mcp-endpoint>/oauth/authorize` to the authorization server, with the
+  redirect URI replaced by the callback URI.
+- Redirects authorization responses from the callback URI to the client's redirect URI, with the `iss` parameter
+  replaced by the MCP server issuer.
+- Forwards token requests from `<mcp-endpoint>/oauth/token` to the authorization server, with the redirect URI
   replaced by the callback URI, and removes the `id_token` from the response, since its `iss` claim doesn't match the
   MCP server issuer.
+- The resulting JWT issued by the authorization server remains intact, including its original `iss` claim.
 
 Responses of the authorization server, including errors, are otherwise returned to the client as is. The upstream
 endpoints are read once from the authorization server's `/.well-known/openid-configuration` when the application
 starts, so the application fails to start if the authorization server is unreachable or its metadata lacks the
 registration, authorization or token endpoint.
 
-Registration and token requests forwarded to the authorization server pass through the registered
-[`ApiRequestEnricher`](#apirequestenricher) beans, the same as the credential validation requests and the proxied
-`/.well-known` metadata requests, so for example the original client IP is forwarded in `X-Forwarded-For`. The
-`Authorization` and `Accept` headers of the client request are forwarded as they are.
+> [!WARNING]
+> The OAuth DCR Proxy flow is heavyhanded and modifies parts of both the OAuth well-known metadata and the runtime
+> requests and responses for DCR flow. The modifications are not guaranteed to work across all clients. This flow has 
+> been tested with OpenAI's ChatGPT (for which it was specifically developed) and Anthropic's Claude desktop apps. 
+> Before using this feature in production, perform thorough testing with specific MCP clients you intend to support.
 
 ### ApiRequestEnricher
 
@@ -878,7 +893,3 @@ This project is licensed under the [MIT License](LICENSE).
 [23]: https://modelcontextprotocol.io/extensions/client-matrix "MCP Apps client support matrix"
 
 [24]: https://github.com/modelcontextprotocol/java-sdk/issues/999 "MCP Java SDK issue #999 — extension capability support"
-
-[25]: https://www.rfc-editor.org/rfc/rfc8414 "RFC 8414 OAuth 2.0 Authorization Server Metadata"
-
-[26]: https://www.rfc-editor.org/rfc/rfc9207 "RFC 9207 OAuth 2.0 Authorization Server Issuer Identification"

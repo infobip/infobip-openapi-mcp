@@ -9,35 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Optional stateless OAuth authorization server proxy that makes sure MCP clients register with the scopes the MCP
-  server requires. Some MCP clients register OAuth clients without (or with the wrong) scopes and then end up with
-  unusable tokens. When `infobip.openapi.mcp.security.auth.oauth.proxy-enabled` is `true`, the MCP server
-  advertises itself as the authorization server (including the `issuer` of the proxied metadata) and exposes client
-  registration (`<mcp-endpoint>/oauth/register`),
-  authorization (`<mcp-endpoint>/oauth/authorize`), callback (`<mcp-endpoint>/oauth/callback/...`) and token
-  (`<mcp-endpoint>/oauth/token`) endpoints. Registrations are forwarded with `scope` set to the scopes discovered for
-  the server. Client redirect URIs are replaced by callback URIs of the MCP server that embed the original redirect URI,
-  so that authorization responses can carry the MCP server as `iss` without any server-side state. The `id_token` is
-  removed from token responses. Userinfo, revocation, JWKS and other OAuth endpoints keep pointing to the authorization
-  server. The upstream registration, authorization and token endpoints are read from the authorization server's OpenID
-  configuration once at startup (the application fails to start if it can't be read or lacks one of them). Requests
-  forwarded to the authorization server pass through the same `ApiRequestEnricher` beans as the credential validation requests, so
-  the original client IP and any custom headers reach the authorization server.
-
-### Changed
-
-- The proxied `/.well-known/openid-configuration` and `/.well-known/oauth-authorization-server` requests to the
-  authorization server now pass through all registered `ApiRequestEnricher` beans, the same as the credential
-  validation requests, instead of only the one that forwards the client IP in `X-Forwarded-For`. The authorization
-  server now also receives `X-Forwarded-Host`, `X-Forwarded-Proto`, `User-Agent` and any headers added by custom
-  enrichers.
+- Optional support for proxying parts of the OAuth DCR flow through the MCP server exposed by the framework. This 
+  fixes issues with MCP clients that dynamically create OAuth clients with wrong set of scopes (e.g. ChatGPT). The
+  feature is off by default and can be enabled with `infobip.openapi.mcp.security.auth.oauth.proxy-enabled: true`.
 
 ### Fixed
 
 - The `/.well-known/oauth-authorization-server`, `/.well-known/openid-configuration` and
-  `/.well-known/oauth-protected-resource` endpoints are now registered by auto-configuration. Previously they were only
-  available when the application's component scan happened to cover the framework's packages, so applications in
-  other packages silently lacked them when OAuth was enabled.
+  `/.well-known/oauth-protected-resource` endpoints are now registered by auto-configuration.
 
 ## 1.1.0
 
