@@ -178,9 +178,9 @@ public class OAuthController {
     private void rewriteForRegistrationProxy(ObjectNode json, HttpServletRequest request) {
         var issuer = xForwardedHostCalculator.hostWithRootPathBuilder(request).toUriString();
         var proxiedEndpoints = Map.of(
-                REGISTRATION_ENDPOINT, issuer + Spec.REGISTER_PATH,
-                AUTHORIZATION_ENDPOINT, issuer + Spec.AUTHORIZE_PATH,
-                TOKEN_ENDPOINT, issuer + Spec.TOKEN_PATH);
+                REGISTRATION_ENDPOINT, issuer + Spec.Paths.REGISTER,
+                AUTHORIZATION_ENDPOINT, issuer + Spec.Paths.AUTHORIZE,
+                TOKEN_ENDPOINT, issuer + Spec.Paths.TOKEN);
 
         json.put(ISSUER, issuer);
         json.remove(PUSHED_AUTHORIZATION_REQUEST_ENDPOINT);

@@ -1,13 +1,12 @@
 package com.infobip.openapi.mcp.auth.web;
 
-import static com.infobip.openapi.mcp.auth.web.Spec.AUTHORIZATION_CODE;
-import static com.infobip.openapi.mcp.auth.web.Spec.CALLBACK_PATH;
-import static com.infobip.openapi.mcp.auth.web.Spec.GRANT_TYPE;
-import static com.infobip.openapi.mcp.auth.web.Spec.ID_TOKEN;
-import static com.infobip.openapi.mcp.auth.web.Spec.ISS;
-import static com.infobip.openapi.mcp.auth.web.Spec.REDIRECT_URI;
-import static com.infobip.openapi.mcp.auth.web.Spec.REDIRECT_URIS;
-import static com.infobip.openapi.mcp.auth.web.Spec.SCOPE;
+import static com.infobip.openapi.mcp.auth.web.Spec.ClientMetadata.REDIRECT_URIS;
+import static com.infobip.openapi.mcp.auth.web.Spec.ClientMetadata.SCOPE;
+import static com.infobip.openapi.mcp.auth.web.Spec.GrantTypes.AUTHORIZATION_CODE;
+import static com.infobip.openapi.mcp.auth.web.Spec.Parameters.GRANT_TYPE;
+import static com.infobip.openapi.mcp.auth.web.Spec.Parameters.ISS;
+import static com.infobip.openapi.mcp.auth.web.Spec.Parameters.REDIRECT_URI;
+import static com.infobip.openapi.mcp.auth.web.Spec.TokenResponse.ID_TOKEN;
 
 import com.infobip.openapi.mcp.McpRequestContextFactory;
 import com.infobip.openapi.mcp.auth.scope.ScopeDiscoveryService;
@@ -294,7 +293,7 @@ public class AuthorizationServerProxy {
     }
 
     private String encodeRedirectUri(String issuer, String redirectUri) {
-        return issuer + CALLBACK_PATH + "/"
+        return issuer + Spec.Paths.CALLBACK + "/"
                 + BASE64_ENCODER.encodeToString(redirectUri.getBytes(StandardCharsets.UTF_8));
     }
 
@@ -302,7 +301,7 @@ public class AuthorizationServerProxy {
      * Decodes callback URIs of this MCP server back to the original redirect URIs; other URIs are returned as is.
      */
     private String decodeRedirectUri(String issuer, String redirectUri) {
-        var prefix = issuer + CALLBACK_PATH + "/";
+        var prefix = issuer + Spec.Paths.CALLBACK + "/";
         if (!redirectUri.startsWith(prefix)) {
             return redirectUri;
         }

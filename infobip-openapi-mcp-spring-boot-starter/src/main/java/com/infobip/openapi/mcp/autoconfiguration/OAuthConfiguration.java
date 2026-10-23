@@ -115,18 +115,18 @@ class OAuthConfiguration {
         var rootPath = xForwardedHostCalculator.rootPath();
         return RouterFunctions.route()
                 .POST(
-                        rootPath + Spec.REGISTER_PATH,
+                        rootPath + Spec.Paths.REGISTER,
                         request -> toServerResponse(authorizationServerProxy.register(
                                 request.servletRequest(), request.body(byte[].class))))
                 .GET(
-                        rootPath + Spec.AUTHORIZE_PATH,
+                        rootPath + Spec.Paths.AUTHORIZE,
                         request -> toServerResponse(authorizationServerProxy.authorize(request.servletRequest())))
                 .GET(
-                        rootPath + Spec.CALLBACK_PATH + "/{encodedRedirectUri}",
+                        rootPath + Spec.Paths.CALLBACK + "/{encodedRedirectUri}",
                         request -> toServerResponse(authorizationServerProxy.callback(
                                 request.servletRequest(), request.pathVariable("encodedRedirectUri"))))
                 .POST(
-                        rootPath + Spec.TOKEN_PATH,
+                        rootPath + Spec.Paths.TOKEN,
                         request -> toServerResponse(authorizationServerProxy.token(request.servletRequest())))
                 .build();
     }
