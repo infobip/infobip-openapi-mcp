@@ -2,6 +2,7 @@ package com.infobip.openapi.mcp.auth.oauth;
 
 import static org.assertj.core.api.BDDAssertions.then;
 
+import com.infobip.openapi.mcp.auth.web.Spec;
 import com.infobip.openapi.mcp.autoconfiguration.OAuthController;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -28,7 +29,7 @@ class OAuthControllerRegistrationTest extends OAuthTestBase {
         // When
         var controllers = applicationContext.getBeansOfType(OAuthController.class);
         var response = restTemplate.exchange(
-                "http://localhost:" + port + OAuthController.OAUTH_PROTECTED_RESOURCE_WELL_KNOWN_PATH,
+                "http://localhost:" + port + Spec.WellKnownPaths.OAUTH_PROTECTED_RESOURCE,
                 HttpMethod.GET,
                 null,
                 String.class);

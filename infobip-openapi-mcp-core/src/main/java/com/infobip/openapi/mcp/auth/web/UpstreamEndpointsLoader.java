@@ -1,5 +1,9 @@
 package com.infobip.openapi.mcp.auth.web;
 
+import static com.infobip.openapi.mcp.auth.web.Spec.ServerMetadata.AUTHORIZATION_ENDPOINT;
+import static com.infobip.openapi.mcp.auth.web.Spec.ServerMetadata.REGISTRATION_ENDPOINT;
+import static com.infobip.openapi.mcp.auth.web.Spec.ServerMetadata.TOKEN_ENDPOINT;
+
 import com.infobip.openapi.mcp.auth.OAuthProperties;
 import java.net.URI;
 import org.springframework.web.client.RestClient;
@@ -13,11 +17,6 @@ import tools.jackson.databind.ObjectMapper;
  * Resolves {@link UpstreamEndpoints} from the OpenID configuration of the authorization server.
  */
 public final class UpstreamEndpointsLoader {
-
-    private static final String OPENID_CONFIGURATION_PATH = "/.well-known/openid-configuration";
-    private static final String REGISTRATION_ENDPOINT = "registration_endpoint";
-    private static final String AUTHORIZATION_ENDPOINT = "authorization_endpoint";
-    private static final String TOKEN_ENDPOINT = "token_endpoint";
 
     private UpstreamEndpointsLoader() {}
 
@@ -43,7 +42,7 @@ public final class UpstreamEndpointsLoader {
     private static JsonNode readMetadata(
             RestClient metadataRestClient, OAuthProperties oAuthProperties, ObjectMapper objectMapper) {
         var openIdConfigurationUri = UriComponentsBuilder.fromUri(oAuthProperties.url())
-                .path(OPENID_CONFIGURATION_PATH)
+                .path(Spec.WellKnownPaths.OPENID_CONFIGURATION)
                 .build()
                 .toUri();
         try {

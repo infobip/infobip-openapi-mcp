@@ -1,5 +1,13 @@
 package com.infobip.openapi.mcp.autoconfiguration;
 
+import static com.infobip.openapi.mcp.auth.web.Spec.ServerMetadata.AUTHORIZATION_ENDPOINT;
+import static com.infobip.openapi.mcp.auth.web.Spec.ServerMetadata.ISSUER;
+import static com.infobip.openapi.mcp.auth.web.Spec.ServerMetadata.MTLS_ENDPOINT_ALIASES;
+import static com.infobip.openapi.mcp.auth.web.Spec.ServerMetadata.PUSHED_AUTHORIZATION_REQUEST_ENDPOINT;
+import static com.infobip.openapi.mcp.auth.web.Spec.ServerMetadata.REGISTRATION_ENDPOINT;
+import static com.infobip.openapi.mcp.auth.web.Spec.ServerMetadata.REQUIRE_PUSHED_AUTHORIZATION_REQUESTS;
+import static com.infobip.openapi.mcp.auth.web.Spec.ServerMetadata.SCOPES_SUPPORTED;
+import static com.infobip.openapi.mcp.auth.web.Spec.ServerMetadata.TOKEN_ENDPOINT;
 import static com.infobip.openapi.mcp.autoconfiguration.Qualifiers.OAUTH_REST_CLIENT_QUALIFIER;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
@@ -55,18 +63,6 @@ public class OAuthController {
     private final XForwardedHostCalculator xForwardedHostCalculator;
     private final McpServerProperties mcpServerProperties;
 
-    public static final String OAUTH_AUTHORIZATION_SERVER_WELL_KNOWN_PATH = "/.well-known/oauth-authorization-server";
-    public static final String OPENID_CONFIGURATION_WELL_KNOWN_PATH = "/.well-known/openid-configuration";
-    public static final String OAUTH_PROTECTED_RESOURCE_WELL_KNOWN_PATH = "/.well-known/oauth-protected-resource";
-
-    private static final String ISSUER = "issuer";
-    private static final String AUTHORIZATION_ENDPOINT = "authorization_endpoint";
-    private static final String TOKEN_ENDPOINT = "token_endpoint";
-    private static final String PUSHED_AUTHORIZATION_REQUEST_ENDPOINT = "pushed_authorization_request_endpoint";
-    private static final String REQUIRE_PUSHED_AUTHORIZATION_REQUESTS = "require_pushed_authorization_requests";
-    private static final String REGISTRATION_ENDPOINT = "registration_endpoint";
-    private static final String MTLS_ENDPOINT_ALIASES = "mtls_endpoint_aliases";
-
     /**
      * @see <a href="https://www.rfc-editor.org/rfc/rfc9728.txt">RFC 9728</a>
      */
@@ -107,17 +103,21 @@ public class OAuthController {
      * Also mapped with a path suffix, so that the metadata can be discovered with path insertion (RFC 8414 section
      * 3.1) when the MCP server itself is advertised as the authorization server.
      */
-    @GetMapping(path = {OAUTH_AUTHORIZATION_SERVER_WELL_KNOWN_PATH, OAUTH_AUTHORIZATION_SERVER_WELL_KNOWN_PATH + "/**"})
+    @GetMapping(
+            path = {
+                Spec.WellKnownPaths.OAUTH_AUTHORIZATION_SERVER,
+                Spec.WellKnownPaths.OAUTH_AUTHORIZATION_SERVER + "/**"
+            })
     public ResponseEntity<String> getOauthAuthorizationServer(HttpServletRequest request) {
-        return proxy(OAUTH_AUTHORIZATION_SERVER_WELL_KNOWN_PATH, request);
+        return proxy(Spec.WellKnownPaths.OAUTH_AUTHORIZATION_SERVER, request);
     }
 
-    @GetMapping(path = {OPENID_CONFIGURATION_WELL_KNOWN_PATH, OPENID_CONFIGURATION_WELL_KNOWN_PATH + "/**"})
+    @GetMapping(path = {Spec.WellKnownPaths.OPENID_CONFIGURATION, Spec.WellKnownPaths.OPENID_CONFIGURATION + "/**"})
     public ResponseEntity<String> getOpenidConfiguration(HttpServletRequest request) {
-        return proxy(OPENID_CONFIGURATION_WELL_KNOWN_PATH, request);
+        return proxy(Spec.WellKnownPaths.OPENID_CONFIGURATION, request);
     }
 
-    @GetMapping(path = OAUTH_PROTECTED_RESOURCE_WELL_KNOWN_PATH, produces = "application/json;charset=UTF-8")
+    @GetMapping(path = Spec.WellKnownPaths.OAUTH_PROTECTED_RESOURCE, produces = "application/json;charset=UTF-8")
     public ProtectedResource getProtectedResource(HttpServletRequest request) {
         var resource = xForwardedHostCalculator.hostWithRootPathBuilder(request).toUriString();
         // With the registration proxy, the MCP server acts as the authorization server so that clients discover the
@@ -159,7 +159,7 @@ public class OAuthController {
 
             var json = (ObjectNode) objectMapper.readTree(jsonResponse);
             scopeDiscoveryServiceOptional.ifPresent(
-                    service -> json.putPOJO("scopes_supported", service.getDiscoveredScopes()));
+                    service -> json.putPOJO(SCOPES_SUPPORTED, service.getDiscoveredScopes()));
             if (proxyEnabled) {
                 rewriteForRegistrationProxy(json, request);
             }
