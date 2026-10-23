@@ -1,6 +1,7 @@
 package com.infobip.openapi.mcp.autoconfiguration;
 
 import static com.infobip.openapi.mcp.autoconfiguration.Qualifiers.OAUTH_REST_CLIENT_QUALIFIER;
+import static java.nio.charset.StandardCharsets.UTF_8;
 
 import com.infobip.openapi.mcp.McpRequestContextFactory;
 import com.infobip.openapi.mcp.auth.OAuthProperties;
@@ -10,13 +11,16 @@ import com.infobip.openapi.mcp.auth.web.AuthorizationServerProxy;
 import com.infobip.openapi.mcp.auth.web.Spec;
 import com.infobip.openapi.mcp.auth.web.UpstreamEndpoints;
 import com.infobip.openapi.mcp.auth.web.UpstreamEndpointsLoader;
+import com.infobip.openapi.mcp.auth.web.WellKnownEndpoints;
 import com.infobip.openapi.mcp.config.ApiBaseUrlProvider;
 import com.infobip.openapi.mcp.config.HttpRequestFactories;
 import com.infobip.openapi.mcp.enricher.ApiRequestEnricherChain;
 import com.infobip.openapi.mcp.error.ErrorModelWriter;
 import com.infobip.openapi.mcp.util.XForwardedHostCalculator;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.ai.mcp.server.common.autoconfigure.McpServerStdioDisabledCondition;
+import org.springframework.ai.mcp.server.common.autoconfigure.properties.McpServerProperties;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -25,8 +29,13 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplicat
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Conditional;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.servlet.function.HandlerFunction;
+import org.springframework.web.servlet.function.RequestPredicates;
 import org.springframework.web.servlet.function.RouterFunction;
 import org.springframework.web.servlet.function.RouterFunctions;
 import org.springframework.web.servlet.function.ServerResponse;
@@ -60,6 +69,70 @@ class OAuthConfiguration {
             ApiBaseUrlProvider apiBaseUrlProvider) {
         return new WwwAuthenticateProvider(
                 oAuthProperties, scopeDiscoveryService, xForwardedHostCalculator, apiBaseUrlProvider);
+    }
+
+    @Bean
+    public WellKnownEndpoints wellKnownEndpoints(
+            @Qualifier(OAUTH_REST_CLIENT_QUALIFIER) RestClient oauthRestClient,
+            OAuthProperties oAuthProperties,
+            ObjectMapper objectMapper,
+            ErrorModelWriter errorModelWriter,
+            Optional<ScopeDiscoveryService> scopeDiscoveryService,
+            ApiRequestEnricherChain enricherChain,
+            McpRequestContextFactory contextFactory,
+            XForwardedHostCalculator xForwardedHostCalculator,
+            McpServerProperties mcpServerProperties) {
+        return new WellKnownEndpoints(
+                oauthRestClient,
+                oAuthProperties,
+                objectMapper,
+                errorModelWriter,
+                scopeDiscoveryService,
+                enricherChain,
+                contextFactory,
+                xForwardedHostCalculator,
+                mcpServerProperties);
+    }
+
+    /**
+     * The authorization server metadata is also mapped with a path suffix, so that it can be discovered with path
+     * insertion (RFC 8414 section 3.1) when the MCP server itself is advertised as the authorization server.
+     * <p>
+     * Every path answers {@code HEAD} and {@code OPTIONS} requests and rejects other methods with
+     * {@code 405 Method Not Allowed}, the same as an annotated {@code GET} handler would.
+     * </p>
+     */
+    @Bean
+    public RouterFunction<ServerResponse> wellKnownEndpointsRouterFunction(WellKnownEndpoints wellKnownEndpoints) {
+        var authorizationServer =
+                (HandlerFunction<ServerResponse>) request -> toServerResponse(wellKnownEndpoints.proxyMetadata(
+                        Spec.WellKnownPaths.OAUTH_AUTHORIZATION_SERVER, request.servletRequest()));
+        var openidConfiguration = (HandlerFunction<ServerResponse>) request -> toServerResponse(
+                wellKnownEndpoints.proxyMetadata(Spec.WellKnownPaths.OPENID_CONFIGURATION, request.servletRequest()));
+        var protectedResource = (HandlerFunction<ServerResponse>) request -> ServerResponse.ok()
+                .contentType(new MediaType(MediaType.APPLICATION_JSON, UTF_8))
+                .body(wellKnownEndpoints.protectedResource(request.servletRequest()));
+
+        var builder = RouterFunctions.route();
+        getEndpoint(builder, Spec.WellKnownPaths.OAUTH_AUTHORIZATION_SERVER, authorizationServer);
+        getEndpoint(builder, Spec.WellKnownPaths.OAUTH_AUTHORIZATION_SERVER + "/**", authorizationServer);
+        getEndpoint(builder, Spec.WellKnownPaths.OPENID_CONFIGURATION, openidConfiguration);
+        getEndpoint(builder, Spec.WellKnownPaths.OPENID_CONFIGURATION + "/**", openidConfiguration);
+        getEndpoint(builder, Spec.WellKnownPaths.OAUTH_PROTECTED_RESOURCE, protectedResource);
+        return builder.build();
+    }
+
+    private static void getEndpoint(
+            RouterFunctions.Builder builder, String path, HandlerFunction<ServerResponse> handler) {
+        builder.GET(path, handler)
+                .HEAD(path, handler)
+                .OPTIONS(path, request -> ServerResponse.ok()
+                        .allow(HttpMethod.GET, HttpMethod.HEAD, HttpMethod.OPTIONS)
+                        .build())
+                .route(RequestPredicates.path(path), request -> {
+                    throw new HttpRequestMethodNotSupportedException(
+                            request.method().name(), List.of(HttpMethod.GET.name()));
+                });
     }
 
     /**
@@ -120,7 +193,7 @@ class OAuthConfiguration {
                 .build();
     }
 
-    private static ServerResponse toServerResponse(ResponseEntity<byte[]> responseEntity) {
+    private static <T> ServerResponse toServerResponse(ResponseEntity<T> responseEntity) {
         var response = ServerResponse.status(responseEntity.getStatusCode())
                 .headers(headers -> headers.addAll(responseEntity.getHeaders()));
         var body = responseEntity.getBody();

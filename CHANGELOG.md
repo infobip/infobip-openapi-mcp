@@ -15,8 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- The `/.well-known/oauth-authorization-server`, `/.well-known/openid-configuration` and
-  `/.well-known/oauth-protected-resource` endpoints are now registered by auto-configuration.
+- The problem with not registering `/.well-known/oauth-authorization-server`, `/.well-known/openid-configuration` and
+  `/.well-known/oauth-protected-resource` endpoints. The `OAuthController` class was replaced with `RouterFunction`
+  configuration in the Spring Boot starter module.
 
 ## 1.1.0
 

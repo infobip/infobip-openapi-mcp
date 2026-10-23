@@ -1,4 +1,4 @@
-package com.infobip.openapi.mcp.autoconfiguration;
+package com.infobip.openapi.mcp.auth.web;
 
 import static com.infobip.openapi.mcp.auth.web.Spec.ServerMetadata.AUTHORIZATION_ENDPOINT;
 import static com.infobip.openapi.mcp.auth.web.Spec.ServerMetadata.ISSUER;
@@ -8,7 +8,6 @@ import static com.infobip.openapi.mcp.auth.web.Spec.ServerMetadata.REGISTRATION_
 import static com.infobip.openapi.mcp.auth.web.Spec.ServerMetadata.REQUIRE_PUSHED_AUTHORIZATION_REQUESTS;
 import static com.infobip.openapi.mcp.auth.web.Spec.ServerMetadata.SCOPES_SUPPORTED;
 import static com.infobip.openapi.mcp.auth.web.Spec.ServerMetadata.TOKEN_ENDPOINT;
-import static com.infobip.openapi.mcp.autoconfiguration.Qualifiers.OAUTH_REST_CLIENT_QUALIFIER;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 
@@ -16,8 +15,6 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.infobip.openapi.mcp.McpRequestContextFactory;
 import com.infobip.openapi.mcp.auth.OAuthProperties;
 import com.infobip.openapi.mcp.auth.scope.ScopeDiscoveryService;
-import com.infobip.openapi.mcp.auth.web.AuthorizationServerProxy;
-import com.infobip.openapi.mcp.auth.web.Spec;
 import com.infobip.openapi.mcp.enricher.ApiRequestEnricherChain;
 import com.infobip.openapi.mcp.error.ErrorModelWriter;
 import com.infobip.openapi.mcp.util.XForwardedHostCalculator;
@@ -29,16 +26,10 @@ import java.util.Map;
 import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.ai.mcp.server.common.autoconfigure.McpServerStdioDisabledCondition;
 import org.springframework.ai.mcp.server.common.autoconfigure.properties.McpServerProperties;
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
-import org.springframework.context.annotation.Conditional;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -46,12 +37,16 @@ import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.node.ObjectNode;
 
-@RestController
-@ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
-@Conditional({OAuthEnabledCondition.class, McpServerStdioDisabledCondition.class})
-public class OAuthController {
+/**
+ * Logic of the {@code /.well-known} OAuth metadata endpoints served by the MCP server: the authorization server
+ * metadata, which is proxied from the authorization server, and the protected resource metadata (RFC 9728).
+ * <p>
+ * The endpoints themselves (paths and HTTP methods, see {@link Spec.WellKnownPaths}) are defined by the caller.
+ * </p>
+ */
+public class WellKnownEndpoints {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(OAuthController.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(WellKnownEndpoints.class);
 
     private final RestClient restClient;
     private final OAuthProperties oAuthProperties;
@@ -78,8 +73,11 @@ public class OAuthController {
         }
     }
 
-    public OAuthController(
-            @Qualifier(OAUTH_REST_CLIENT_QUALIFIER) RestClient restClient,
+    /**
+     * @param restClient client used to read the authorization server metadata; must not throw on non-2xx responses
+     */
+    public WellKnownEndpoints(
+            RestClient restClient,
             OAuthProperties oAuthProperties,
             ObjectMapper objectMapper,
             ErrorModelWriter errorModelWriter,
@@ -100,25 +98,9 @@ public class OAuthController {
     }
 
     /**
-     * Also mapped with a path suffix, so that the metadata can be discovered with path insertion (RFC 8414 section
-     * 3.1) when the MCP server itself is advertised as the authorization server.
+     * Returns the protected resource metadata of the MCP server.
      */
-    @GetMapping(
-            path = {
-                Spec.WellKnownPaths.OAUTH_AUTHORIZATION_SERVER,
-                Spec.WellKnownPaths.OAUTH_AUTHORIZATION_SERVER + "/**"
-            })
-    public ResponseEntity<String> getOauthAuthorizationServer(HttpServletRequest request) {
-        return proxy(Spec.WellKnownPaths.OAUTH_AUTHORIZATION_SERVER, request);
-    }
-
-    @GetMapping(path = {Spec.WellKnownPaths.OPENID_CONFIGURATION, Spec.WellKnownPaths.OPENID_CONFIGURATION + "/**"})
-    public ResponseEntity<String> getOpenidConfiguration(HttpServletRequest request) {
-        return proxy(Spec.WellKnownPaths.OPENID_CONFIGURATION, request);
-    }
-
-    @GetMapping(path = Spec.WellKnownPaths.OAUTH_PROTECTED_RESOURCE, produces = "application/json;charset=UTF-8")
-    public ProtectedResource getProtectedResource(HttpServletRequest request) {
+    public ProtectedResource protectedResource(HttpServletRequest request) {
         var resource = xForwardedHostCalculator.hostWithRootPathBuilder(request).toUriString();
         // With the registration proxy, the MCP server acts as the authorization server so that clients discover the
         // proxied endpoints instead of the ones from the authorization server. The proxied authorization server
@@ -134,7 +116,14 @@ public class OAuthController {
                         .orElse(null));
     }
 
-    private ResponseEntity<String> proxy(String path, HttpServletRequest request) {
+    /**
+     * Reads the metadata at the given well-known path of the authorization server and returns it with the scopes
+     * discovered by the MCP server and, when the proxy is enabled, the endpoints rewritten to point to the MCP server.
+     *
+     * @param path the well-known path, one of {@link Spec.WellKnownPaths}
+     * @return the metadata, or an internal server error response if it can't be read from the authorization server
+     */
+    public ResponseEntity<String> proxyMetadata(String path, HttpServletRequest request) {
         var responseContentType = new MediaType(APPLICATION_JSON.getType(), APPLICATION_JSON.getSubtype(), UTF_8);
         var context = contextFactory.forServletFilter(request);
         var spec = restClient.get().uri(getWellKnownUri(path));

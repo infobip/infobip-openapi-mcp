@@ -20,7 +20,7 @@ import org.springframework.test.context.TestPropertySource;
 
 @ActiveProfiles("test-http")
 @TestPropertySource(properties = "infobip.openapi.mcp.security.auth.oauth.scope-discovery.scope-extensions=x-scopes")
-public class OAuthControllerTest extends OAuthTestBase {
+public class WellKnownEndpointsTest extends OAuthTestBase {
 
     @Autowired
     private ScopeDiscoveryService scopeDiscoveryService;

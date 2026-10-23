@@ -13,7 +13,7 @@ import org.springframework.test.context.TestPropertySource;
 
 /**
  * Verifies that when scope discovery is disabled, the well-known endpoint response is passed through unchanged with all
- * advertised scopes. This lives in its own top-level class rather than as a nested class of {@link OAuthControllerTest}
+ * advertised scopes. This lives in its own top-level class rather than as a nested class of {@link WellKnownEndpointsTest}
  * so that it does not inherit that class's required {@code ScopeDiscoveryService} injection, which is absent when scope
  * discovery is disabled.
  */
@@ -23,7 +23,7 @@ import org.springframework.test.context.TestPropertySource;
             "infobip.openapi.mcp.security.auth.oauth.scope-discovery.scope-extensions=x-scopes",
             "infobip.openapi.mcp.security.auth.oauth.scope-discovery.enabled=false"
         })
-class OAuthControllerScopeDiscoveryDisabledTest extends OAuthTestBase {
+class WellKnownEndpointsScopeDiscoveryDisabledTest extends OAuthTestBase {
 
     @Test
     void shouldUseAllScopes() throws JSONException {
