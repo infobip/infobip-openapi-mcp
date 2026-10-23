@@ -1,4 +1,5 @@
 com.infobip.openapi.mcp.autoconfiguration.OAuthConfiguration
+com.infobip.openapi.mcp.autoconfiguration.OAuthController
 com.infobip.openapi.mcp.autoconfiguration.ScopeConfiguration
 com.infobip.openapi.mcp.autoconfiguration.AuthConfiguration
 com.infobip.openapi.mcp.autoconfiguration.OpenApiMcpConfiguration

@@ -32,6 +32,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   server now also receives `X-Forwarded-Host`, `X-Forwarded-Proto`, `User-Agent` and any headers added by custom
   enrichers.
 
+### Fixed
+
+- The `/.well-known/oauth-authorization-server`, `/.well-known/openid-configuration` and
+  `/.well-known/oauth-protected-resource` endpoints are now registered by auto-configuration. Previously they were only
+  available when the application's component scan happened to cover the framework's packages, so applications in
+  other packages silently lacked them when OAuth was enabled.
+
 ## 1.1.0
 
 ### Added
