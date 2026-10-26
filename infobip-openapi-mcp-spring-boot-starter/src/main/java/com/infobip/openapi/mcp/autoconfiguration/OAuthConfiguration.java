@@ -9,6 +9,7 @@ import com.infobip.openapi.mcp.auth.scope.ScopeDiscoveryService;
 import com.infobip.openapi.mcp.auth.scope.WwwAuthenticateProvider;
 import com.infobip.openapi.mcp.auth.web.AuthorizationServerProxy;
 import com.infobip.openapi.mcp.auth.web.CallbackPolicy;
+import com.infobip.openapi.mcp.auth.web.HopByHopHeaders;
 import com.infobip.openapi.mcp.auth.web.RejectedCallbackException;
 import com.infobip.openapi.mcp.auth.web.Spec;
 import com.infobip.openapi.mcp.auth.web.UpstreamEndpoints;
@@ -203,7 +204,11 @@ class OAuthConfiguration {
 
     private static <T> ServerResponse toServerResponse(ResponseEntity<T> responseEntity) {
         var response = ServerResponse.status(responseEntity.getStatusCode())
-                .headers(headers -> headers.addAll(responseEntity.getHeaders()));
+                .headers(headers -> responseEntity.getHeaders().forEach((name, values) -> {
+                    if (!HopByHopHeaders.isHopByHop(name)) {
+                        headers.addAll(name, values);
+                    }
+                }));
         var body = responseEntity.getBody();
         return body == null ? response.build() : response.body(body);
     }

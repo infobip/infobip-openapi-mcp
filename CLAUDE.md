@@ -166,6 +166,8 @@ Nothing of it is registered unless OAuth is enabled.
 bean (`Qualifiers.OAUTH_REST_CLIENT_QUALIFIER`), which does **not** throw on non-2xx responses, so every caller must
 check the status itself: `WellKnownEndpoints` answers 500 and `UpstreamEndpointsLoader` fails startup on an upstream
 error, while the proxy passes the authorization server's error responses through to the client.
+Hop-by-hop response headers (`HopByHopHeaders`, shared with `InitialAuthenticationFilter`) are never copied from an
+upstream response to the client response; `OAuthConfiguration.toServerResponse` filters them out as well.
 When `infobip.openapi.mcp.security.auth.oauth.proxy-enabled: true`, `AuthorizationServerProxy` (wired as a
 `RouterFunction` under the MCP endpoint) statelessly proxies client registration (`/oauth/register`, with
 `scope` replaced by the discovered scopes), authorization (`/oauth/authorize`), callback (`/oauth/callback/{base64url}`)

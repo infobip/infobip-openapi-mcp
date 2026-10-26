@@ -15,7 +15,6 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Optional;
-import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
@@ -60,17 +59,6 @@ import org.springframework.web.filter.OncePerRequestFilter;
 public class InitialAuthenticationFilter extends OncePerRequestFilter {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(InitialAuthenticationFilter.class);
-
-    // Hop-by-hop headers that should not be copied in proxy mode
-    private static final Set<String> HOP_BY_HOP_HEADERS = Set.of(
-            "connection",
-            "keep-alive",
-            "proxy-authenticate",
-            "proxy-authorization",
-            "te",
-            "trailers",
-            "transfer-encoding",
-            "upgrade");
 
     private final RestClient restClient;
     private final AuthProperties authProperties;
@@ -195,7 +183,7 @@ public class InitialAuthenticationFilter extends OncePerRequestFilter {
 
     private void copyResponseHeaders(HttpHeaders sourceHeaders, HttpServletResponse targetResponse) {
         sourceHeaders.forEach((headerName, headerValues) -> {
-            if (!HOP_BY_HOP_HEADERS.contains(headerName.toLowerCase())) {
+            if (!HopByHopHeaders.isHopByHop(headerName)) {
                 headerValues.forEach(headerValue -> targetResponse.addHeader(headerName, headerValue));
             }
         });
