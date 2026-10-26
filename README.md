@@ -318,7 +318,7 @@ picks a subset of scopes which still covers all operations.
 #### OAuth DCR Proxy
 
 Some MCP clients ignore the advertised scopes when they register an OAuth client using
-[dynamic client registration (DCR)][13], and end up with tokens that can't be used with the MCP server. To fix that, 
+[dynamic client registration (DCR)][25], and end up with tokens that can't be used with the MCP server. To fix that, 
 enable the authorization server proxy with `infobip.openapi.mcp.security.auth.oauth.proxy-enabled: true`. The MCP
 server then presents itself as the authorization server, while the actual authorization server still authenticates
 users and issues tokens. The proxy is stateless, so it works with any number of MCP server instances. 
@@ -913,3 +913,5 @@ This project is licensed under the [MIT License](LICENSE).
 [23]: https://modelcontextprotocol.io/extensions/client-matrix "MCP Apps client support matrix"
 
 [24]: https://github.com/modelcontextprotocol/java-sdk/issues/999 "MCP Java SDK issue #999 — extension capability support"
+
+[25]: https://datatracker.ietf.org/doc/html/rfc7591#page-10 "RFC 7591: OAuth 2.0 Dynamic Client Registration Protocol, section 2, page 10"
