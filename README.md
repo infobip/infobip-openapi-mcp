@@ -159,11 +159,11 @@ OpenAPI allows parameters to be serialized in different [styles][19], with or wi
 currently only supports the OpenAPI default: `form` style with `explode: true` for query and cookie parameters, and
 `simple` style with `explode: false` for header parameters. Given a parameter named `color`:
 
-| Value                        | Query (`form`, `explode: true`)      | Header (`simple`, `explode: false`) | Cookie (`form`, `explode: true`)      |
-|-------------------------------|---------------------------------------|----------------------------------------|---------------------------------------|
-| `"blue"`                      | `color=blue`                          | `color: blue`                           | `color=blue`                          |
-| `["blue","black","brown"]`    | `color=blue&color=black&color=brown`  | `color: blue,black,brown`               | `color=blue; color=black; color=brown`|
-| `{"R":100,"G":200,"B":150}`  | `R=100&G=200&B=150`                   | `color: R,100,G,200,B,150`              | `R=100; G=200; B=150`                 |
+| Value                       | Query (`form`, `explode: true`)      | Header (`simple`, `explode: false`) | Cookie (`form`, `explode: true`)       |
+|-----------------------------|--------------------------------------|-------------------------------------|----------------------------------------|
+| `"blue"`                    | `color=blue`                         | `color: blue`                       | `color=blue`                           |
+| `["blue","black","brown"]`  | `color=blue&color=black&color=brown` | `color: blue,black,brown`           | `color=blue; color=black; color=brown` |
+| `{"R":100,"G":200,"B":150}` | `R=100&G=200&B=150`                  | `color: R,100,G,200,B,150`          | `R=100; G=200; B=150`                  |
 
 Note that a query or cookie object value is exploded into one parameter per property, named after the property rather
 than `color`, matching the OpenAPI specification for `form` style with `explode: true`. A header object value instead
@@ -232,7 +232,7 @@ mirroring the tool's input schema structure. The behavior is controlled by the
         validityPeriod: 720
   ```
 
-> [!TIP] 
+> [!TIP]
 > Be mindful that examples add to the context size consumed by tool descriptions. If the examples in your OpenAPI
 > specification are large or numerous, `ANNOTATED` mode is the recommended approach — it lets you selectively expose
 > only the examples that are most useful for the LLM, without needing OpenAPI overlays or custom filters.
@@ -318,16 +318,16 @@ picks a subset of scopes which still covers all operations.
 #### OAuth DCR Proxy
 
 Some MCP clients ignore the advertised scopes when they register an OAuth client using
-[dynamic client registration (DCR)][25], and end up with tokens that can't be used with the MCP server. To fix that, 
+[dynamic client registration (DCR)][25], and end up with tokens that can't be used with the MCP server. To fix that,
 enable the authorization server proxy with `infobip.openapi.mcp.security.auth.oauth.proxy-enabled: true`. The MCP
 server then presents itself as the authorization server, while the actual authorization server still authenticates
-users and issues tokens. The proxy is stateless, so it works with any number of MCP server instances. 
+users and issues tokens. The proxy is stateless, so it works with any number of MCP server instances.
 
 > [!TIP]
-> This problem is likely to occur with large HTTP APIs that split access to their operations across many different 
-> OAuth scopes. If the same OAuth realm is used for both classic HTTP API and MCP access it might be impractical or 
+> This problem is likely to occur with large HTTP APIs that split access to their operations across many different
+> OAuth scopes. If the same OAuth realm is used for both classic HTTP API and MCP access it might be impractical or
 > impossible to define separate set of staring scopes for different OAuth clients created for each MCP server. The
-> proxy feature enables MCP server to override the scopes advertised and requested by MCP clients, in order to 
+> proxy feature enables MCP server to override the scopes advertised and requested by MCP clients, in order to
 > narrow them down to needs of that specific MCP server.
 >
 > Use this feature only if you are experiencing issues with the list of scopes in dynamically created OAuth clients.
@@ -339,7 +339,8 @@ The framework behavior in details:
   `/.well-known/oauth-authorization-server/mcp`) with `issuer`, `registration_endpoint`, `authorization_endpoint` and
   `token_endpoint` pointing to the MCP server. All other endpoints (userinfo, revocation, JWKS, etc.) still point to the
   authorization server.
-- Accepts client registration requests at `<mcp-endpoint>/oauth/register`, replaces the `scope` field with the discovered
+- Accepts client registration requests at `<mcp-endpoint>/oauth/register`, replaces the `scope` field with the
+  discovered
   scopes and each redirect URI with a callback URI of the MCP server
   (`<mcp-endpoint>/oauth/callback/<base64url-encoded redirect URI>`), and forwards the request to the authorization
   server. In the response, the callback URIs are replaced back with the client's redirect URIs.
@@ -365,9 +366,10 @@ MCP server may redirect to. There is no default implementation, so the applicati
 until you define one:
 
 ```java
+
 @Bean
 CallbackPolicy callbackPolicy() {
-    return uri -> "https".equals(uri.getScheme()) && "client.example.com".equalsIgnoreCase(uri.getHost());
+    return uri -> "https".equals(uri.getScheme()) && "example.com".equalsIgnoreCase(uri.getHost());
 }
 ```
 
@@ -379,8 +381,8 @@ not forwarded to the authorization server. They are answered with `400 Bad Reque
 
 > [!WARNING]
 > The OAuth DCR Proxy flow is heavyhanded and modifies parts of both the OAuth well-known metadata and the runtime
-> requests and responses for DCR flow. The modifications are not guaranteed to work across all clients. This flow has 
-> been tested with OpenAI's ChatGPT (for which it was specifically developed) and Anthropic's Claude desktop apps. 
+> requests and responses for DCR flow. The modifications are not guaranteed to work across all clients. This flow has
+> been tested with OpenAI's ChatGPT (for which it was specifically developed) and Anthropic's Claude desktop apps.
 > Before using this feature in production, perform thorough testing with specific MCP clients you intend to support.
 
 ### ApiRequestEnricher
@@ -433,11 +435,11 @@ can break the processing chain, thus preventing the downstream API call from bei
 Each chain ends with a default filter which performs the actual work. It is registered with the lowest precedence, so
 you can preempt it by using any precedence higher than that.
 
-| MCP primitive | Filter interface                                       | Default filter (lowest precedence)                                                                 |
-|---------------|--------------------------------------------------------|----------------------------------------------------------------------------------------------------|
-| Tools         | `com.infobip.openapi.mcp.openapi.tool.ToolCallFilter`  | `com.infobip.openapi.mcp.openapi.tool.RegisteredTool` — makes the HTTP API call                    |
-| Prompts       | `com.infobip.openapi.mcp.prompt.PromptCallFilter`      | `com.infobip.openapi.mcp.prompt.RegisteredPrompt` — renders the inline template or calls the backend |
-| Resources     | `com.infobip.openapi.mcp.resource.ResourceCallFilter`  | `com.infobip.openapi.mcp.resource.RegisteredResource` — makes the HTTP API call                    |
+| MCP primitive | Filter interface                                      | Default filter (lowest precedence)                                                                   |
+|---------------|-------------------------------------------------------|------------------------------------------------------------------------------------------------------|
+| Tools         | `com.infobip.openapi.mcp.openapi.tool.ToolCallFilter` | `com.infobip.openapi.mcp.openapi.tool.RegisteredTool` — makes the HTTP API call                      |
+| Prompts       | `com.infobip.openapi.mcp.prompt.PromptCallFilter`     | `com.infobip.openapi.mcp.prompt.RegisteredPrompt` — renders the inline template or calls the backend |
+| Resources     | `com.infobip.openapi.mcp.resource.ResourceCallFilter` | `com.infobip.openapi.mcp.resource.RegisteredResource` — makes the HTTP API call                      |
 
 ### JSON serialization
 
@@ -548,6 +550,7 @@ By default, notifications carry an incrementing counter with no total or human-r
 `progress`, `total`, and `message` fields, implement `ProgressUpdateProvider` and register it as a Spring bean:
 
 ```java
+
 @Bean
 public ProgressUpdateProvider progressUpdateProvider() {
     return new ProgressUpdateProvider() {
@@ -618,8 +621,14 @@ For backend-resolved prompts, the endpoint must return a JSON response with the 
 {
   "description": "Greet a user",
   "messages": [
-    {"role": "user", "content": "Generate a greeting for Alice."},
-    {"role": "assistant", "content": "Hello Alice, welcome!"}
+    {
+      "role": "user",
+      "content": "Generate a greeting for Alice."
+    },
+    {
+      "role": "assistant",
+      "content": "Hello Alice, welcome!"
+    }
   ]
 }
 ```
@@ -673,12 +682,12 @@ static resources with a concrete `uri`; operations with parameters become resour
 keeps path parameters as `{param}` placeholders and appends query parameters as an [RFC 6570][21] form-style
 expansion:
 
-| Operation           | Parameters                | Resource URI                 | Kind              |
-|---------------------|---------------------------|------------------------------|-------------------|
-| `GET /status`       | none                      | `api://status`               | Resource          |
-| `GET /users/{id}`   | `id` (path)               | `api://users/{id}`           | Resource template |
-| `GET /users`        | `expand` (query)          | `api://users{?expand}`       | Resource template |
-| `GET /users/{id}`   | `id` (path), `expand` (query) | `api://users/{id}{?expand}` | Resource template |
+| Operation         | Parameters                    | Resource URI                | Kind              |
+|-------------------|-------------------------------|-----------------------------|-------------------|
+| `GET /status`     | none                          | `api://status`              | Resource          |
+| `GET /users/{id}` | `id` (path)                   | `api://users/{id}`          | Resource template |
+| `GET /users`      | `expand` (query)              | `api://users{?expand}`      | Resource template |
+| `GET /users/{id}` | `id` (path), `expand` (query) | `api://users/{id}{?expand}` | Resource template |
 
 Parameters declared on the OpenAPI Path Item are inherited by the operation and taken into account, with operation
 level parameters overriding inherited ones of the same name.
@@ -700,6 +709,7 @@ size limits, register your own `ResourceContentsConverter` bean. It receives the
 `DefaultResourceContentsConverter` can be constructed with a custom list of text media types, or delegated to:
 
 ```java
+
 @Bean
 public ResourceContentsConverter resourceContentsConverter() {
     var textMediaTypes = new ArrayList<>(DefaultResourceContentsConverter.DEFAULT_TEXT_MEDIA_TYPES);
@@ -711,7 +721,7 @@ public ResourceContentsConverter resourceContentsConverter() {
 Query parameter values in the resource URI are percent-decoded as URI components (a literal `+` stays a `+`, it is
 not treated as a space) and re-encoded when forwarded to the backend.
 Query parameters that are not declared on the operation are dropped and logged rather than forwarded, so clients
-cannot inject arbitrary parameters into the backend call. Credentials are supplied by the configured `CredentialProvider`
+cannot inject arbitrary parameters into the backend call. Credentials are supplied by the configured`CredentialProvider`
 and requests pass through the registered `ApiRequestEnricher` beans, exactly as for tool calls. Reads can be
 intercepted by implementing `ResourceCallFilter`.
 
@@ -748,7 +758,7 @@ paths:
       operationId: getUsers
       x-mcp-app:
         resourceUri: ui://users-dashboard    # required, must start with ui://
-        visibility: [model, app]             # optional, defaults to host-defined
+        visibility: [ model, app ]             # optional, defaults to host-defined
       responses:
         "200":
           content:
@@ -777,11 +787,11 @@ register that resource itself.
 In addition to the usual text content, a successful call of an app-linked tool also returns `structuredContent` —
 a JSON object the rendered UI can read:
 
-| Declared JSON response schema                  | `structuredContent`                              |
-|------------------------------------------------|--------------------------------------------------|
-| object                                         | the response, as-is                              |
-| array or scalar                                | wrapped as `{"result": <response>}`              |
-| not decidable upfront (e.g. `$ref`, combinators) | decided by the runtime response shape          |
+| Declared JSON response schema                    | `structuredContent`                   |
+|--------------------------------------------------|---------------------------------------|
+| object                                           | the response, as-is                   |
+| array or scalar                                  | wrapped as `{"result": <response>}`   |
+| not decidable upfront (e.g. `$ref`, combinators) | decided by the runtime response shape |
 
 Structured content is omitted for error responses, non-JSON responses and empty bodies; the text content is always
 kept as a fallback for clients without MCP Apps support.
@@ -801,7 +811,7 @@ kept as a fallback for clients without MCP Apps support.
 | `infobip.openapi.mcp.api-base-url`                                                 | Base URL for API endpoints. Supports three formats: **String URL** (e.g., `https://api.example.com`) - use the provided URL directly; **Integer** (e.g., `0`, `1`) - use the i-th server from OpenAPI servers array (0-indexed); **Empty/not provided** - use the first server from OpenAPI servers array.                                                                                                 | First server from OpenAPI spec |
 | `infobip.openapi.mcp.connect-timeout`                                              | Connection timeout for HTTP requests to the downstream API. The default is set to 5 seconds.                                                                                                                                                                                                                                                                                                               | 5 seconds                      |
 | `infobip.openapi.mcp.read-timeout`                                                 | Read timeout for HTTP requests to the downstream API. The default is set to 5 seconds.                                                                                                                                                                                                                                                                                                                     | 5 seconds                      |
-| `infobip.openapi.mcp.progress-notifications-enabled`                               | Whether progress notifications are enabled. When enabled, the server sends periodic progress notifications to MCP clients while HTTP API calls are in progress. Only works for stateful MCP servers when the MCP client sends `_meta.progressToken` in the tool call.                                                                                                                                     | `true`                         |
+| `infobip.openapi.mcp.progress-notifications-enabled`                               | Whether progress notifications are enabled. When enabled, the server sends periodic progress notifications to MCP clients while HTTP API calls are in progress. Only works for stateful MCP servers when the MCP client sends `_meta.progressToken` in the tool call.                                                                                                                                      | `true`                         |
 | `infobip.openapi.mcp.progress-notifications-interval`                              | Interval at which notifications/progress messages will be sent to MCP clients that request progress notifications. Progress is reported while HTTP API call is ongoing. This mechanism can be used to prevent MCP client timeouts for tools backed by APIs with high response latency. This value should be less than readTimeout, otherwise no notification will be sent. The default is set to 1 second. | 1 second                       |
 | `infobip.openapi.mcp.user-agent`                                                   | User agent string for HTTP requests to the downstream API. If not specified, no User-Agent header will be set.                                                                                                                                                                                                                                                                                             | `openapi-mcp`                  |
 | `infobip.openapi.mcp.filters.[filter-name]`                                        | Filters to apply to the OpenAPI specification. This can be used to include or exclude specific operations or tags. The keys are the filter names, and the values are booleans indicating whether to include (true) or exclude (false). By default, all filters are enabled.                                                                                                                                | `* -> true`                    | 
@@ -817,7 +827,7 @@ kept as a fallback for clients without MCP Apps support.
 | `infobip.openapi.mcp.tools.annotations.<tool-name>.destructive-hint`               | Override `destructiveHint` annotation for a specific tool.                                                                                                                                                                                                                                                                                                                                                 | Inferred from HTTP method      |
 | `infobip.openapi.mcp.tools.annotations.<tool-name>.idempotent-hint`                | Override `idempotentHint` annotation for a specific tool.                                                                                                                                                                                                                                                                                                                                                  | Inferred from HTTP method      |
 | `infobip.openapi.mcp.tools.annotations.<tool-name>.open-world-hint`                | Override `openWorldHint` annotation for a specific tool.                                                                                                                                                                                                                                                                                                                                                   | `true`                         |
-| `infobip.openapi.mcp.resources.uri-scheme`                                        | The URI scheme used when building `uri`/`uriTemplate` values for OpenAPI operations marked with `x-mcp-resource: true`.                                                                                                                                                                                                                                                                                     | `api`                          |
+| `infobip.openapi.mcp.resources.uri-scheme`                                         | The URI scheme used when building `uri`/`uriTemplate` values for OpenAPI operations marked with `x-mcp-resource: true`.                                                                                                                                                                                                                                                                                    | `api`                          |
 | `infobip.openapi.mcp.live-reload.enabled`                                          | Whether tool reload is enabled. When enabled, the framework periodically fetches the OpenAPI specification and updates registered MCP tools if changes are detected. Requires `@EnableScheduling` on your application.                                                                                                                                                                                     | `false`                        |
 | `infobip.openapi.mcp.live-reload.cron-expression`                                  | Cron expression for scheduling OpenAPI specification reload attempts. Uses Spring's cron format (6 fields: second, minute, hour, day-of-month, month, day-of-week). Requires `@EnableScheduling` on your application.                                                                                                                                                                                      | `0 */10 * * * *`               |
 | `infobip.openapi.mcp.live-reload.max-retries`                                      | Maximum number of reload attempts per scheduled execution. The loop terminates early on the first successful reload. Retries only occur on failure, using exponential backoff.                                                                                                                                                                                                                             | `3`                            |
@@ -836,7 +846,7 @@ kept as a fallback for clients without MCP Apps support.
 | `infobip.openapi.mcp.security.auth.oauth.scope-discovery.scope-extensions`         | Scope extensions to read scopes from. Default is an empty string.                                                                                                                                                                                                                                                                                                                                          | `-`                            |
 | `infobip.openapi.mcp.security.auth.oauth.scope-discovery.mandatory-scopes`         | Mandatory scopes that must be present. Scopes should be comma-separated. Default is an empty string.                                                                                                                                                                                                                                                                                                       | `-`                            |
 | `infobip.openapi.mcp.security.auth.oauth.scope-discovery.calculate-minimal-scopes` | Algorithm for calculating the minimal set of scopes that can access all API endpoints. Two values are supported: NONE, which skips calculation and requests all discovered scopes, and GREEDY which uses a greedy algorithm to find a smaller set of scopes that sill covers all operations. Default is NONE.                                                                                              | `NONE`                         |
-| `infobip.openapi.mcp.security.auth.oauth.proxy-enabled`                                | Proxy OAuth client registration, authorization and token endpoints through the MCP server and replace the requested scopes with the discovered scopes. Default is false.                                                                                                                                                                                                                                                              | `false`                        |
+| `infobip.openapi.mcp.security.auth.oauth.proxy-enabled`                            | Proxy OAuth client registration, authorization and token endpoints through the MCP server and replace the requested scopes with the discovered scopes. When this value is set to true, the application must also register a Spring bean implementation of the `com.infobip.openapi.mcp.auth.web.CallbackPolicy` interface. Default is false.                                                               | `false`                        |
 
 ## Architecture
 

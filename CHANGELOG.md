@@ -12,7 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Optional support for proxying parts of the OAuth DCR flow through the MCP server exposed by the framework. This 
   fixes issues with MCP clients that dynamically create OAuth clients with wrong set of scopes (e.g. ChatGPT). The
   feature is off by default and can be enabled with `infobip.openapi.mcp.security.auth.oauth.proxy-enabled: true`.
-  Connection-level (hop-by-hop) headers of the authorization server's responses are not passed on to MCP clients.
+  In order to use the proxy you must register a Spring bean implementing the 
+  `com.infobip.openapi.mcp.auth.web.CallbackPolicy` interface.
 
 ### Fixed
 
