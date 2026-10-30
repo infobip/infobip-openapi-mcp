@@ -36,5 +36,4 @@ import java.util.function.Predicate;
  * @see com.infobip.openapi.mcp.auth.OAuthProperties#proxyEnabled()
  * @see com.infobip.openapi.mcp.auth.web.AuthorizationServerProxy
  */
-public interface CallbackPolicy extends Predicate<URI> {
-}
+public interface CallbackPolicy extends Predicate<URI> {}
