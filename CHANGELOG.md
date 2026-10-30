@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Optional support for proxying parts of the OAuth DCR flow through the MCP server exposed by the framework. This 
+  fixes issues with MCP clients that dynamically create OAuth clients with wrong set of scopes (e.g. ChatGPT). The
+  feature is off by default and can be enabled with `infobip.openapi.mcp.security.auth.oauth.proxy-enabled: true`.
+  In order to use the proxy you must register a Spring bean implementing the 
+  `com.infobip.openapi.mcp.auth.web.CallbackPolicy` interface.
+
+### Fixed
+
+- The problem with not registering `/.well-known/oauth-authorization-server`, `/.well-known/openid-configuration` and
+  `/.well-known/oauth-protected-resource` endpoints. The `OAuthController` class was replaced with `RouterFunction`
+  configuration in the Spring Boot starter module.
+
 ## 1.1.0
 
 ### Added

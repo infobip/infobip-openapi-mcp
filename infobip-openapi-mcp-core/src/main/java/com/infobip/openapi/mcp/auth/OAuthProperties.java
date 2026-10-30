@@ -16,6 +16,13 @@ import org.springframework.validation.annotation.Validated;
  * @param connectTimeout Connection timeout for the validation API call. Default is 5 seconds.
  * @param readTimeout    Read timeout for the validation API call. Default is 5 seconds.
  * @param scopeDiscovery Configuration properties for OAuth scopes.
+ * @param proxyEnabled Enable the OAuth authorization server proxy. When enabled, the MCP server advertises
+ *                       itself as the authorization server in the protected resource metadata. In the proxied
+ *                       authorization server metadata, {@code issuer} and the client registration (RFC 7591),
+ *                       authorization and token endpoints point to the MCP server, which statelessly proxies them to
+ *                       the authorization server. Client registration requests are forwarded with the {@code scope}
+ *                       replaced by the scopes required by the MCP server. All other OAuth endpoints (userinfo,
+ *                       revocation, etc.) keep pointing to the authorization server. Default is false.
  */
 @Validated
 @ConfigurationProperties(prefix = OAuthProperties.PREFIX)
@@ -25,9 +32,11 @@ public record OAuthProperties(
         Duration connectTimeout,
         Duration readTimeout,
         @NestedConfigurationProperty @Valid WwwAuthenticateProperties wwwAuthenticate,
-        @NestedConfigurationProperty @Valid ScopeProperties scopeDiscovery) {
+        @NestedConfigurationProperty @Valid ScopeProperties scopeDiscovery,
+        boolean proxyEnabled) {
 
     public static final String PREFIX = AuthProperties.PREFIX + ".oauth";
+    public static final String PROXY_ENABLED = "proxy-enabled";
     public static final String WELL_KNOWN_PATH = "/.well-known/oauth-protected-resource";
 
     private static final Duration DEFAULT_TIMEOUT = Duration.ofSeconds(5);
