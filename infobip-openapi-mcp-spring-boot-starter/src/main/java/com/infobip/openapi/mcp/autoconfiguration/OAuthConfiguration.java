@@ -97,6 +97,11 @@ class OAuthConfiguration {
                 mcpServerProperties);
     }
 
+    @Bean
+    OAuthExchangeLogger oAuthExchangeLogger(ObjectMapper objectMapper) {
+        return new OAuthExchangeLogger(objectMapper);
+    }
+
     /**
      * The authorization server metadata is also mapped with a path suffix, so that it can be discovered with path
      * insertion (RFC 8414 section 3.1) when the MCP server itself is advertised as the authorization server.
@@ -106,7 +111,8 @@ class OAuthConfiguration {
      * </p>
      */
     @Bean
-    public RouterFunction<ServerResponse> wellKnownEndpointsRouterFunction(WellKnownEndpoints wellKnownEndpoints) {
+    public RouterFunction<ServerResponse> wellKnownEndpointsRouterFunction(
+            WellKnownEndpoints wellKnownEndpoints, OAuthExchangeLogger exchangeLogger) {
         var authorizationServer =
                 (HandlerFunction<ServerResponse>) request -> toServerResponse(wellKnownEndpoints.proxyMetadata(
                         Spec.WellKnownPaths.OAUTH_AUTHORIZATION_SERVER, request.servletRequest()));
@@ -116,7 +122,7 @@ class OAuthConfiguration {
                 .contentType(new MediaType(MediaType.APPLICATION_JSON, UTF_8))
                 .body(wellKnownEndpoints.protectedResource(request.servletRequest()));
 
-        var builder = RouterFunctions.route();
+        var builder = RouterFunctions.route().filter(exchangeLogger);
         getEndpoint(builder, Spec.WellKnownPaths.OAUTH_AUTHORIZATION_SERVER, authorizationServer);
         getEndpoint(builder, Spec.WellKnownPaths.OAUTH_AUTHORIZATION_SERVER + "/**", authorizationServer);
         getEndpoint(builder, Spec.WellKnownPaths.OPENID_CONFIGURATION, openidConfiguration);
@@ -178,9 +184,12 @@ class OAuthConfiguration {
     @Bean
     @ConditionalOnProperty(prefix = OAuthProperties.PREFIX, name = OAuthProperties.PROXY_ENABLED)
     public RouterFunction<ServerResponse> authorizationServerProxyRouterFunction(
-            AuthorizationServerProxy authorizationServerProxy, XForwardedHostCalculator xForwardedHostCalculator) {
+            AuthorizationServerProxy authorizationServerProxy,
+            XForwardedHostCalculator xForwardedHostCalculator,
+            OAuthExchangeLogger exchangeLogger) {
         var rootPath = xForwardedHostCalculator.rootPath();
         return RouterFunctions.route()
+                .filter(exchangeLogger)
                 .POST(
                         rootPath + Spec.Paths.REGISTER,
                         request -> toServerResponse(authorizationServerProxy.register(

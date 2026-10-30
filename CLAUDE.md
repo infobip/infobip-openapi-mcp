@@ -166,6 +166,13 @@ Nothing of it is registered unless OAuth is enabled.
 bean (`Qualifiers.OAUTH_REST_CLIENT_QUALIFIER`), which does **not** throw on non-2xx responses, so every caller must
 check the status itself: `WellKnownEndpoints` answers 500 and `UpstreamEndpointsLoader` fails startup on an upstream
 error, while the proxy passes the authorization server's error responses through to the client.
+Both `RouterFunction`s in `OAuthConfiguration` (well-known endpoints and the proxy) are wrapped with
+`OAuthExchangeLogger`, a `HandlerFilterFunction` that logs each request and response, including bodies, at `TRACE`
+level with credentials masked (sensitive headers, token/secret/code fields in form parameters and JSON bodies). It
+does nothing unless that logger is at `TRACE`. Form parameters are read from the parameter map; other request bodies
+are read once and passed on through a rebuilt `ServerRequest`, so handlers like `register` still see the body. Any
+new OAuth `RouterFunction` in that class should get the same filter, and any new credential-carrying field name must
+be added to its sensitive field list.
 Hop-by-hop response headers (`HopByHopHeaders`, shared with `InitialAuthenticationFilter`) are never copied from an
 upstream response to the client response; `OAuthConfiguration.toServerResponse` filters them out as well.
 When `infobip.openapi.mcp.security.auth.oauth.proxy-enabled: true`, `AuthorizationServerProxy` (wired as a
