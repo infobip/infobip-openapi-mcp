@@ -6,7 +6,7 @@ import static org.assertj.core.api.BDDAssertions.then;
 import com.infobip.openapi.mcp.auth.AuthProperties;
 import com.infobip.openapi.mcp.auth.OAuthProperties;
 import com.infobip.openapi.mcp.auth.scope.WwwAuthenticateProvider;
-import com.infobip.openapi.mcp.autoconfiguration.OAuthController;
+import com.infobip.openapi.mcp.auth.web.WellKnownEndpoints;
 import com.infobip.openapi.mcp.openapi.OpenApiTestBase;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -15,14 +15,17 @@ import org.springframework.test.context.ActiveProfiles;
 @ActiveProfiles("test-auth-disabled")
 class OAuthDisabledTest extends OpenApiTestBase {
 
+    private static final String WELL_KNOWN_ROUTER_FUNCTION_BEAN = "wellKnownEndpointsRouterFunction";
+
     @Test
-    void shouldNotRegisterOAuthRouterAndRestClientAndWwwAuthenticateProvider() {
+    void shouldNotRegisterWellKnownEndpointsAndRestClientAndWwwAuthenticateProvider() {
         // Given
         var givenAuthEnabled = givenPropertyEnabled(AuthProperties.PREFIX);
         var givenOAuthEnabled = givenPropertyEnabled(OAuthProperties.PREFIX);
 
         // When
-        var controller = applicationContext.getBeansOfType(OAuthController.class);
+        var wellKnownEndpoints = applicationContext.getBeansOfType(WellKnownEndpoints.class);
+        var wellKnownRouter = applicationContext.containsBean(WELL_KNOWN_ROUTER_FUNCTION_BEAN);
         var routerExits = applicationContext.containsBean(OAUTH_REST_CLIENT_QUALIFIER);
         var wwwAuthenticateProvider = applicationContext.getBeansOfType(WwwAuthenticateProvider.class);
 
@@ -30,7 +33,8 @@ class OAuthDisabledTest extends OpenApiTestBase {
         then(givenAuthEnabled).isFalse();
         then(givenOAuthEnabled).isTrue();
 
-        then(controller).isEmpty();
+        then(wellKnownEndpoints).isEmpty();
+        then(wellKnownRouter).isFalse();
         then(routerExits).isFalse();
         then(wwwAuthenticateProvider).isEmpty();
     }
@@ -54,7 +58,9 @@ class OAuthDisabledTest extends OpenApiTestBase {
         @Test
         void shouldNotRegisterOAuthRouterForStdio() {
             // then - Oauth router should not be registered for STDIO transport
-            then(applicationContext.getBeansOfType(OAuthController.class)).isEmpty();
+            then(applicationContext.getBeansOfType(WellKnownEndpoints.class)).isEmpty();
+            then(applicationContext.containsBean(WELL_KNOWN_ROUTER_FUNCTION_BEAN))
+                    .isFalse();
         }
     }
 }

@@ -24,13 +24,20 @@ public class XForwardedHostCalculator {
     }
 
     public @NonNull UriComponentsBuilder hostWithRootPathBuilder(HttpServletRequest request) {
-        var builder = hostBuilder(request);
+        return hostBuilder(request).path(rootPath());
+    }
+
+    /**
+     * Returns the root path of the MCP server, which is the SSE endpoint or the MCP endpoint, depending on the
+     * transport, or an empty string when neither is configured.
+     */
+    public @NonNull String rootPath() {
         if (sseProps != null) {
-            builder.path(sseProps.getSseEndpoint());
+            return sseProps.getSseEndpoint();
         } else if (streamableProps != null) {
-            builder.path(streamableProps.getMcpEndpoint());
+            return streamableProps.getMcpEndpoint();
         }
-        return builder;
+        return "";
     }
 
     public @NonNull UriComponentsBuilder hostBuilder(HttpServletRequest request) {
