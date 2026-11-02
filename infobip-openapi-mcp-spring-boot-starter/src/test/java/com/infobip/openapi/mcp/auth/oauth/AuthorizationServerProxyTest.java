@@ -609,7 +609,7 @@ public class AuthorizationServerProxyTest extends OAuthTestBase {
 
     @ParameterizedTest
     @MethodSource("proxiedPostRequests")
-    void shouldApplyEnricherChainToUpstreamRequest(
+    void shouldApplyEnricherChainToUpstreamRequestWithoutForwardedHost(
             String givenPath, String givenUpstreamPath, MediaType givenContentType, String givenBody) {
         // Given
         getStaticWireMockServer()
@@ -635,7 +635,7 @@ public class AuthorizationServerProxyTest extends OAuthTestBase {
                         1,
                         postRequestedFor(urlEqualTo(givenUpstreamPath))
                                 .withHeader("X-Forwarded-For", equalTo("203.0.113.7, 127.0.0.1"))
-                                .withHeader("X-Forwarded-Host", equalTo("mcp.example.com"))
+                                .withoutHeader("X-Forwarded-Host")
                                 .withHeader("X-Forwarded-Proto", equalTo("https"))
                                 .withHeader("User-Agent", equalTo("openapi-mcp-test"))
                                 .withHeader("X-Test-Enricher", equalTo("applied")));

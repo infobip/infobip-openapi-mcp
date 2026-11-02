@@ -184,7 +184,8 @@ string constants live in `auth.web.Spec`, grouped by use in nested classes: `Pat
 `Parameters` (query/form parameters), `GrantTypes` and `TokenResponse`. Client redirect URIs are swapped for callback
 URIs that embed the original redirect URI, so the callback can set `iss` to the MCP server issuer without session state. Requests the
 proxy forwards upstream (registration and token) go through `ApiRequestEnricherChain`, like `InitialAuthenticationFilter`
-does; the client's `Authorization` and `Accept` headers are copied explicitly, since credentials are deliberately not
+does, but `X-Forwarded-Host` is removed from them afterwards (the authorization server derives the expected issuer of
+refresh tokens from it, and would reject refreshes with "Invalid token issuer"); the client's `Authorization` and `Accept` headers are copied explicitly, since credentials are deliberately not
 handled by enrichers. The upstream registration, authorization and token endpoints are an immutable `UpstreamEndpoints`
 bean, resolved by `UpstreamEndpointsLoader` from the authorization server's OpenID configuration while the Spring
 context is created and injected into `AuthorizationServerProxy`, so request threads only read them and the proxy itself

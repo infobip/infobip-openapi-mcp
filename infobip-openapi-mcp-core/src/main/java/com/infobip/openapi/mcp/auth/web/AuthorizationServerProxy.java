@@ -58,6 +58,11 @@ import tools.jackson.databind.node.ObjectNode;
  * <p>
  * The upstream endpoints are resolved by the caller (see {@link UpstreamEndpointsLoader}) and never change afterwards.
  * </p>
+ * <p>
+ * Requests forwarded to the authorization server go through the {@link ApiRequestEnricherChain}, except that the
+ * {@code X-Forwarded-Host} header is always removed: the authorization server would take the host of the MCP server as
+ * the issuer it expects in refresh tokens, and reject tokens it issued with its own issuer.
+ * </p>
  */
 public class AuthorizationServerProxy {
 
@@ -67,6 +72,7 @@ public class AuthorizationServerProxy {
             List.of(HttpHeaders.AUTHORIZATION, HttpHeaders.ACCEPT);
     private static final List<String> FORWARDED_RESPONSE_HEADERS =
             List.of(HttpHeaders.CONTENT_TYPE, HttpHeaders.CACHE_CONTROL, HttpHeaders.PRAGMA);
+    private static final String X_FORWARDED_HOST = "X-Forwarded-Host";
     private static final Base64.Encoder BASE64_ENCODER = Base64.getUrlEncoder().withoutPadding();
     private static final Base64.Decoder BASE64_DECODER = Base64.getUrlDecoder();
 
@@ -273,8 +279,12 @@ public class AuthorizationServerProxy {
             }
         }
         var enrichedSpec = enricherChain.enrich(spec, contextFactory.forServletFilter(request));
+        // The authorization server derives the issuer it expects in refresh tokens from X-Forwarded-Host, so sending
+        // the host of the MCP server makes it reject every refresh with "Invalid token issuer". It is removed after
+        // the enrichers ran, so that it is dropped no matter which enricher set it.
+        var upstreamSpec = enrichedSpec.headers(headers -> headers.remove(X_FORWARDED_HOST));
 
-        var upstreamResponse = enrichedSpec.retrieve().toEntity(byte[].class);
+        var upstreamResponse = upstreamSpec.retrieve().toEntity(byte[].class);
         var responseHeaders = new HttpHeaders();
         for (var headerName : FORWARDED_RESPONSE_HEADERS) {
             var headerValues = upstreamResponse.getHeaders().get(headerName);
