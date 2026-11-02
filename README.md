@@ -323,6 +323,10 @@ enable the authorization server proxy with `infobip.openapi.mcp.security.auth.oa
 server then presents itself as the authorization server, while the actual authorization server still authenticates
 users and issues tokens. The proxy is stateless, so it works with any number of MCP server instances.
 
+> [!WARNING]
+> The OAuth DCR proxy is an experimental feature. It might receive breaking changes or be entirely removed in a future
+> release.
+
 > [!TIP]
 > This problem is likely to occur with large HTTP APIs that split access to their operations across many different
 > OAuth scopes. If the same OAuth realm is used for both classic HTTP API and MCP access it might be impractical or
@@ -846,7 +850,7 @@ kept as a fallback for clients without MCP Apps support.
 | `infobip.openapi.mcp.security.auth.oauth.scope-discovery.scope-extensions`         | Scope extensions to read scopes from. Default is an empty string.                                                                                                                                                                                                                                                                                                                                          | `-`                            |
 | `infobip.openapi.mcp.security.auth.oauth.scope-discovery.mandatory-scopes`         | Mandatory scopes that must be present. Scopes should be comma-separated. Default is an empty string.                                                                                                                                                                                                                                                                                                       | `-`                            |
 | `infobip.openapi.mcp.security.auth.oauth.scope-discovery.calculate-minimal-scopes` | Algorithm for calculating the minimal set of scopes that can access all API endpoints. Two values are supported: NONE, which skips calculation and requests all discovered scopes, and GREEDY which uses a greedy algorithm to find a smaller set of scopes that sill covers all operations. Default is NONE.                                                                                              | `NONE`                         |
-| `infobip.openapi.mcp.security.auth.oauth.proxy-enabled`                            | Proxy OAuth client registration, authorization and token endpoints through the MCP server and replace the requested scopes with the discovered scopes. When this value is set to true, the application must also register a Spring bean implementation of the `com.infobip.openapi.mcp.auth.web.CallbackPolicy` interface. Default is false.                                                               | `false`                        |
+| `infobip.openapi.mcp.security.auth.oauth.proxy-enabled`                            | **Experimental**, might receive breaking changes or be removed in the future. Proxy OAuth client registration, authorization and token endpoints through the MCP server and replace the requested scopes with the discovered scopes. When this value is set to true, the application must also register a Spring bean implementation of the `com.infobip.openapi.mcp.auth.web.CallbackPolicy` interface. Default is false. | `false`                        |
 
 ## Architecture
 

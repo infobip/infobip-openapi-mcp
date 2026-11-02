@@ -13,7 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   fixes issues with MCP clients that dynamically create OAuth clients with wrong set of scopes (e.g. ChatGPT). The
   feature is off by default and can be enabled with `infobip.openapi.mcp.security.auth.oauth.proxy-enabled: true`.
   In order to use the proxy you must register a Spring bean implementing the 
-  `com.infobip.openapi.mcp.auth.web.CallbackPolicy` interface.
+  `com.infobip.openapi.mcp.auth.web.CallbackPolicy` interface. **This is an experimental feature. It might receive
+  breaking changes or be entirely removed in a future release.**
 
 ### Fixed
 

@@ -9,6 +9,10 @@ import java.util.function.Predicate;
  * flow is allowed or not. This is used combination with the DCR proxy
  * feature of the framework.
  * <p>
+ * <b>Experimental:</b> the OAuth DCR proxy feature, and therefore this interface, might receive
+ * breaking changes or be entirely removed in a future release.
+ * </p>
+ * <p>
  * You <b>must</b> provide an implementation of this interface as a Spring
  * bean when using the proxy with
  * {@code infobip.openapi.mcp.security.auth.oauth.proxy-enabled=true}.

@@ -16,7 +16,8 @@ import org.springframework.validation.annotation.Validated;
  * @param connectTimeout Connection timeout for the validation API call. Default is 5 seconds.
  * @param readTimeout    Read timeout for the validation API call. Default is 5 seconds.
  * @param scopeDiscovery Configuration properties for OAuth scopes.
- * @param proxyEnabled Enable the OAuth authorization server proxy. When enabled, the MCP server advertises
+ * @param proxyEnabled <b>Experimental</b>, might receive breaking changes or be entirely removed in a future release.
+ *                       Enable the OAuth authorization server proxy. When enabled, the MCP server advertises
  *                       itself as the authorization server in the protected resource metadata. In the proxied
  *                       authorization server metadata, {@code issuer} and the client registration (RFC 7591),
  *                       authorization and token endpoints point to the MCP server, which statelessly proxies them to
