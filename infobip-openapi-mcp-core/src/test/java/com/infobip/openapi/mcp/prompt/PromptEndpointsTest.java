@@ -3,16 +3,11 @@ package com.infobip.openapi.mcp.prompt;
 import static org.assertj.core.api.BDDAssertions.then;
 import static org.assertj.core.api.BDDAssertions.thenThrownBy;
 
-import com.infobip.openapi.mcp.openapi.tool.FullOperation;
 import io.swagger.v3.oas.models.OpenAPI;
-import io.swagger.v3.oas.models.Operation;
-import io.swagger.v3.oas.models.PathItem;
 import io.swagger.v3.parser.OpenAPIV3Parser;
 import java.util.Set;
-import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 class PromptEndpointsTest {
@@ -154,62 +149,6 @@ class PromptEndpointsTest {
         thenThrownBy(() -> result.add("/other")).isInstanceOf(UnsupportedOperationException.class);
     }
 
-    @Test
-    void shouldRecognizeGetOnMatchingPathAsPromptOperation() {
-        // Given
-        var givenOperation = operation("/prompts/x", PathItem.HttpMethod.GET);
-
-        // When
-        var result = PromptEndpoints.isPromptOperation(givenOperation, Set.of("/prompts/x"));
-
-        // Then
-        then(result).isTrue();
-    }
-
-    @Test
-    void shouldNotRecognizePostOnMatchingPathAsPromptOperation() {
-        // Given
-        var givenOperation = operation("/prompts/x", PathItem.HttpMethod.POST);
-
-        // When
-        var result = PromptEndpoints.isPromptOperation(givenOperation, Set.of("/prompts/x"));
-
-        // Then
-        then(result).isFalse();
-    }
-
-    @Test
-    void shouldNotRecognizeGetOnDifferentPathAsPromptOperation() {
-        // Given
-        var givenOperation = operation("/users", PathItem.HttpMethod.GET);
-
-        // When
-        var result = PromptEndpoints.isPromptOperation(givenOperation, Set.of("/prompts/x"));
-
-        // Then
-        then(result).isFalse();
-    }
-
-    @ParameterizedTest
-    @MethodSource("pathTemplateCases")
-    void shouldMatchPathTemplatesOnlyByExactString(String givenResolvePath, boolean expected) {
-        // Given
-        var givenOperation = operation("/prompts/{id}", PathItem.HttpMethod.GET);
-
-        // When
-        var result = PromptEndpoints.isPromptOperation(givenOperation, Set.of(givenResolvePath));
-
-        // Then
-        then(result).isEqualTo(expected);
-    }
-
-    static Stream<Arguments> pathTemplateCases() {
-        return Stream.of(
-                Arguments.of("/prompts/{id}", true),
-                Arguments.of("/prompts/42", false),
-                Arguments.of("/prompts", false));
-    }
-
     private OpenAPI openApiWithPrompts(String promptsJson) {
         var extension = promptsJson == null ? "" : ", \"x-mcp-prompts\": " + promptsJson;
         return parser.readContents("""
@@ -219,9 +158,5 @@ class PromptEndpointsTest {
                   "paths": {}%s
                 }
                 """.formatted(extension)).getOpenAPI();
-    }
-
-    private FullOperation operation(String path, PathItem.HttpMethod method) {
-        return new FullOperation(path, method, new Operation(), new OpenAPI());
     }
 }

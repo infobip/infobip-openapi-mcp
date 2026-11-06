@@ -17,9 +17,11 @@ import com.infobip.openapi.mcp.prompt.PromptEndpoints;
 import com.infobip.openapi.mcp.resource.ResourceRegistry;
 import com.infobip.openapi.mcp.util.OpenApiMapperFactory;
 import io.modelcontextprotocol.spec.McpSchema;
+import io.swagger.v3.oas.models.PathItem;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -144,16 +146,7 @@ public class ToolRegistry {
                         .map(operationEntry -> new FullOperation(
                                 pathEntry.getKey(), operationEntry.getKey(), operationEntry.getValue(), openApi)))
                 .filter(fullOperation -> !Spec.isResourceOperation(fullOperation.operation()))
-                .filter(fullOperation -> {
-                    var backsPrompt = PromptEndpoints.isPromptOperation(fullOperation, promptPaths);
-                    if (backsPrompt) {
-                        LOGGER.debug(
-                                "Excluding operation {} {} from tools, it backs a prompt.",
-                                fullOperation.method(),
-                                fullOperation.path());
-                    }
-                    return !backsPrompt;
-                })
+                .filter(fullOperation -> !isPromptOperation(fullOperation, promptPaths))
                 .map(fullOperation -> {
                     var toolName = determineToolName(fullOperation);
                     var appToolExtension = parseAppToolExtension(fullOperation);
@@ -190,6 +183,10 @@ public class ToolRegistry {
         warnAboutUnknownAppResourceUris(appLinkedTools);
         this.registeredToolsCache = List.copyOf(registeredTools);
         return registeredTools;
+    }
+
+    private boolean isPromptOperation(FullOperation fullOperation, Set<String> promptPaths) {
+        return fullOperation.method() == PathItem.HttpMethod.GET && promptPaths.contains(fullOperation.path());
     }
 
     private @Nullable AppToolExtension parseAppToolExtension(FullOperation fullOperation) {

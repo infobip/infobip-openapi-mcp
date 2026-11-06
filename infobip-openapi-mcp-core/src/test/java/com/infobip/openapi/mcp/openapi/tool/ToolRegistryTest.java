@@ -612,6 +612,36 @@ class ToolRegistryTest {
     }
 
     @Test
+    void shouldMatchPromptResolvePathWithPathTemplateOnlyByExactString() {
+        // Given
+        var openApi = parseOpenAPI("""
+            {
+              "openapi": "3.1.0",
+              "info": {"title": "Test API", "version": "1.0.0"},
+              "paths": {
+                "/prompts/{id}": {
+                  "get": {"operationId": "templatedPrompt", "description": "Resolve a templated prompt"}
+                },
+                "/items/{id}": {
+                  "get": {"operationId": "getItem", "description": "Get an item"}
+                }
+              },
+              "x-mcp-prompts": [
+                {"name": "templated", "description": "Templated", "resolve": {"path": "/prompts/{id}"}},
+                {"name": "item", "description": "Item", "resolve": {"path": "/items/42"}}
+              ]
+            }
+            """);
+        given(openApiRegistry.openApi()).willReturn(openApi);
+
+        // When
+        var result = toolRegistry.getTools();
+
+        // Then
+        then(result).extracting(tool -> tool.tool().name()).containsExactly("getItem");
+    }
+
+    @Test
     void shouldKeepOperationWhenPromptResolvePathIsAbsolute() {
         // Given
         var openApi = parseOpenAPI("""

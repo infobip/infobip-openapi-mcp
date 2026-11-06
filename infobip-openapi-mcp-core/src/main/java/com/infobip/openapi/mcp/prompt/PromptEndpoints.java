@@ -1,9 +1,7 @@
 package com.infobip.openapi.mcp.prompt;
 
 import com.infobip.openapi.mcp.openapi.schema.Spec;
-import com.infobip.openapi.mcp.openapi.tool.FullOperation;
 import io.swagger.v3.oas.models.OpenAPI;
-import io.swagger.v3.oas.models.PathItem;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Map;
@@ -44,16 +42,5 @@ public final class PromptEndpoints {
             }
         }
         return Set.copyOf(paths);
-    }
-
-    /**
-     * Determines whether the operation is the {@code GET} endpoint that a prompt resolves through.
-     *
-     * @param operation the operation to check
-     * @param relativeResolvePaths the result of {@link #relativeResolvePaths(OpenAPI)}
-     * @return {@code true} if the operation is a {@code GET} on one of the given paths
-     */
-    public static boolean isPromptOperation(FullOperation operation, Set<String> relativeResolvePaths) {
-        return operation.method() == PathItem.HttpMethod.GET && relativeResolvePaths.contains(operation.path());
     }
 }
