@@ -13,12 +13,15 @@ import com.infobip.openapi.mcp.openapi.schema.InputSchemaComposer;
 import com.infobip.openapi.mcp.openapi.schema.Spec;
 import com.infobip.openapi.mcp.openapi.tool.exception.ToolRegistrationException;
 import com.infobip.openapi.mcp.openapi.tool.naming.NamingStrategy;
+import com.infobip.openapi.mcp.prompt.PromptEndpoints;
 import com.infobip.openapi.mcp.resource.ResourceRegistry;
 import com.infobip.openapi.mcp.util.OpenApiMapperFactory;
 import io.modelcontextprotocol.spec.McpSchema;
+import io.swagger.v3.oas.models.PathItem;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -125,7 +128,10 @@ public class ToolRegistry {
      *   <li>Creating executable tool specifications</li>
      * </ol>
      *
-     * @return a list of registered tools, one for each OpenAPI operation
+     * Operations marked as resources, and {@code GET} operations used as the {@code resolve.path} of a prompt,
+     * are not tools: they are exposed as resources or prompts only.
+     *
+     * @return a list of registered tools, one for each OpenAPI operation that is not a resource or a prompt endpoint
      * @throws ToolRegistrationException if a tool name cannot be determined for any operation or JSON schema resolution fails critically
      */
     public List<RegisteredTool> getTools() {
@@ -134,11 +140,13 @@ public class ToolRegistry {
             return List.of();
         }
         var appLinkedTools = new LinkedHashMap<String, AppToolExtension>();
+        var promptPaths = PromptEndpoints.relativeResolvePaths(openApi);
         var registeredTools = openApi.getPaths().entrySet().stream()
                 .flatMap(pathEntry -> pathEntry.getValue().readOperationsMap().entrySet().stream()
                         .map(operationEntry -> new FullOperation(
                                 pathEntry.getKey(), operationEntry.getKey(), operationEntry.getValue(), openApi)))
                 .filter(fullOperation -> !Spec.isResourceOperation(fullOperation.operation()))
+                .filter(fullOperation -> !isPromptOperation(fullOperation, promptPaths))
                 .map(fullOperation -> {
                     var toolName = determineToolName(fullOperation);
                     var appToolExtension = parseAppToolExtension(fullOperation);
@@ -175,6 +183,10 @@ public class ToolRegistry {
         warnAboutUnknownAppResourceUris(appLinkedTools);
         this.registeredToolsCache = List.copyOf(registeredTools);
         return registeredTools;
+    }
+
+    private boolean isPromptOperation(FullOperation fullOperation, Set<String> promptPaths) {
+        return fullOperation.method() == PathItem.HttpMethod.GET && promptPaths.contains(fullOperation.path());
     }
 
     private @Nullable AppToolExtension parseAppToolExtension(FullOperation fullOperation) {

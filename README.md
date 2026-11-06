@@ -541,6 +541,11 @@ x-mcp-prompts:
 The `path` in the `resolve` block is resolved relative to the same base URL used for API tool calls (derived from
 the `servers` entry in the OpenAPI specification).
 
+An operation that a prompt resolves through is removed from the tool list, so it is exposed either as a prompt or as a
+tool, never both. This applies to the `GET` operation whose key under `paths` is exactly equal to a relative
+`resolve.path`; a `POST` operation on the same path is a different operation and stays a tool. An absolute `resolve.path`
+(`http://` or `https://`) targets a different server, so it does not hide any operation of this API.
+
 For backend-resolved prompts, the endpoint must return a JSON response with the following structure:
 
 ```json
