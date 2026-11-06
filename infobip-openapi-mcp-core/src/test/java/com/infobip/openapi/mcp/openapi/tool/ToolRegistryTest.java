@@ -556,6 +556,153 @@ class ToolRegistryTest {
     }
 
     @Test
+    void shouldExcludeOperationUsedAsPromptResolvePathFromTools() {
+        // Given
+        var openApi = parseOpenAPI("""
+            {
+              "openapi": "3.1.0",
+              "info": {"title": "Test API", "version": "1.0.0"},
+              "paths": {
+                "/prompts/summarize": {
+                  "get": {"operationId": "summarizePrompt", "description": "Resolve the summarize prompt"}
+                },
+                "/users": {
+                  "get": {"operationId": "getUsers", "description": "Get all users"}
+                }
+              },
+              "x-mcp-prompts": [
+                {"name": "summarize", "description": "Summarize", "resolve": {"path": "/prompts/summarize"}}
+              ]
+            }
+            """);
+        given(openApiRegistry.openApi()).willReturn(openApi);
+
+        // When
+        var result = toolRegistry.getTools();
+
+        // Then
+        then(result).extracting(tool -> tool.tool().name()).containsExactly("getUsers");
+    }
+
+    @Test
+    void shouldKeepPostOperationOnPromptResolvePathAsTool() {
+        // Given
+        var openApi = parseOpenAPI("""
+            {
+              "openapi": "3.1.0",
+              "info": {"title": "Test API", "version": "1.0.0"},
+              "paths": {
+                "/prompts/summarize": {
+                  "get": {"operationId": "summarizePrompt", "description": "Resolve the summarize prompt"},
+                  "post": {"operationId": "createSummary", "description": "Create a summary"}
+                }
+              },
+              "x-mcp-prompts": [
+                {"name": "summarize", "description": "Summarize", "resolve": {"path": "/prompts/summarize"}}
+              ]
+            }
+            """);
+        given(openApiRegistry.openApi()).willReturn(openApi);
+
+        // When
+        var result = toolRegistry.getTools();
+
+        // Then
+        then(result).extracting(tool -> tool.tool().name()).containsExactly("createSummary");
+    }
+
+    @Test
+    void shouldKeepOperationWhenPromptResolvePathIsAbsolute() {
+        // Given
+        var openApi = parseOpenAPI("""
+            {
+              "openapi": "3.1.0",
+              "info": {"title": "Test API", "version": "1.0.0"},
+              "paths": {
+                "/prompts/summarize": {
+                  "get": {"operationId": "summarizePrompt", "description": "Resolve the summarize prompt"}
+                }
+              },
+              "x-mcp-prompts": [
+                {
+                  "name": "summarize",
+                  "description": "Summarize",
+                  "resolve": {"path": "https://other.example.com/prompts/summarize"}
+                }
+              ]
+            }
+            """);
+        given(openApiRegistry.openApi()).willReturn(openApi);
+
+        // When
+        var result = toolRegistry.getTools();
+
+        // Then
+        then(result).extracting(tool -> tool.tool().name()).containsExactly("summarizePrompt");
+    }
+
+    @Test
+    void shouldNotFailToolRegistrationWhenPromptsExtensionIsMalformed() {
+        // Given
+        var openApi = parseOpenAPI("""
+            {
+              "openapi": "3.1.0",
+              "info": {"title": "Test API", "version": "1.0.0"},
+              "paths": {
+                "/users": {
+                  "get": {"operationId": "getUsers", "description": "Get all users"}
+                }
+              },
+              "x-mcp-prompts": [
+                "not-a-map",
+                {"name": "broken", "resolve": {"path": 42}},
+                {"name": "no-resolve"}
+              ]
+            }
+            """);
+        given(openApiRegistry.openApi()).willReturn(openApi);
+
+        // When
+        var result = toolRegistry.getTools();
+
+        // Then
+        then(result).extracting(tool -> tool.tool().name()).containsExactly("getUsers");
+    }
+
+    @Test
+    void shouldExcludeOperationThatIsBothResourceAndPromptResolvePathWithoutError() {
+        // Given
+        var openApi = parseOpenAPI("""
+            {
+              "openapi": "3.1.0",
+              "info": {"title": "Test API", "version": "1.0.0"},
+              "paths": {
+                "/prompts/summarize": {
+                  "get": {
+                    "operationId": "summarizePrompt",
+                    "description": "Resolve the summarize prompt",
+                    "x-mcp-resource": true
+                  }
+                },
+                "/users": {
+                  "get": {"operationId": "getUsers", "description": "Get all users"}
+                }
+              },
+              "x-mcp-prompts": [
+                {"name": "summarize", "description": "Summarize", "resolve": {"path": "/prompts/summarize"}}
+              ]
+            }
+            """);
+        given(openApiRegistry.openApi()).willReturn(openApi);
+
+        // When
+        var result = toolRegistry.getTools();
+
+        // Then
+        then(result).extracting(tool -> tool.tool().name()).containsExactly("getUsers");
+    }
+
+    @Test
     void shouldHandleOperationWithoutParametersOrRequestBody() {
         // Given
         var openApi = parseOpenAPI("""
