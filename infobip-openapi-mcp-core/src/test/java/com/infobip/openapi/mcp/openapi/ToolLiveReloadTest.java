@@ -58,6 +58,10 @@ class ToolLiveReloadTest {
     private static final String WITH_EDITED_ANNOTATIONS_SPEC = "/openapi/live-reload/with-edited-annotations.json";
     private static final String MULTIPLE_TOOLS_EDITED_SPEC = "/openapi/live-reload/multiple-tools-edited.json";
     private static final String WITH_ADDED_APP_META_SPEC = "/openapi/live-reload/with-added-app-meta.json";
+    private static final String WITH_PROMPT_ENDPOINT_AND_NO_PROMPT_SPEC =
+            "/openapi/live-reload/with-prompt-endpoint-and-no-prompt.json";
+    private static final String WITH_PROMPT_ENDPOINT_AND_PROMPT_SPEC =
+            "/openapi/live-reload/with-prompt-endpoint-and-prompt.json";
 
     private static final OpenApiMcpProperties PROPERTIES = new OpenApiMcpProperties(
             URI.create("file:///dummy"),
@@ -686,6 +690,65 @@ class ToolLiveReloadTest {
                 PROPERTIES,
                 metricService,
                 mcpServerMetaData);
+    }
+
+    @Nested
+    class PromptEndpointReload {
+
+        @Test
+        void shouldRemoveToolWhenPromptStartsUsingItsEndpoint() throws InterruptedException {
+            // Given
+            var givenBaseOpenApi = loadOpenApi(WITH_PROMPT_ENDPOINT_AND_NO_PROMPT_SPEC);
+            var givenEditedOpenApi = loadOpenApi(WITH_PROMPT_ENDPOINT_AND_PROMPT_SPEC);
+            givenEditedOpenApi.getInfo().setVersion("1.0.1");
+
+            given(givenOpenApiRegistry.openApi())
+                    .willReturn(givenBaseOpenApi)
+                    .willReturn(givenBaseOpenApi)
+                    .willReturn(givenEditedOpenApi);
+
+            var givenInitialTools = givenToolRegistry.getTools();
+            var givenOpenApiLiveReload = givenOpenApiLiveReload();
+
+            // When
+            givenOpenApiLiveReload.reloadOnSchedule();
+
+            // Then
+            BDDAssertions.then(givenInitialTools)
+                    .extracting(tool -> tool.tool().name())
+                    .containsExactlyInAnyOrder("getUsers", "summarizePrompt");
+            then(givenMcpSyncServer).should().removeTool(toolNameCaptor.capture());
+            then(givenMcpSyncServer).should(never()).addTool(any());
+            BDDAssertions.then(toolNameCaptor.getValue()).isEqualTo("summarizePrompt");
+        }
+
+        @Test
+        void shouldAddToolWhenPromptStopsUsingItsEndpoint() throws InterruptedException {
+            // Given
+            var givenBaseOpenApi = loadOpenApi(WITH_PROMPT_ENDPOINT_AND_PROMPT_SPEC);
+            var givenEditedOpenApi = loadOpenApi(WITH_PROMPT_ENDPOINT_AND_NO_PROMPT_SPEC);
+            givenEditedOpenApi.getInfo().setVersion("1.0.1");
+
+            given(givenOpenApiRegistry.openApi())
+                    .willReturn(givenBaseOpenApi)
+                    .willReturn(givenBaseOpenApi)
+                    .willReturn(givenEditedOpenApi);
+
+            var givenInitialTools = givenToolRegistry.getTools();
+            var givenOpenApiLiveReload = givenOpenApiLiveReload();
+            setupToolSpecBuilderForNewTools();
+
+            // When
+            givenOpenApiLiveReload.reloadOnSchedule();
+
+            // Then
+            BDDAssertions.then(givenInitialTools)
+                    .extracting(tool -> tool.tool().name())
+                    .containsExactly("getUsers");
+            then(givenMcpSyncServer).should().addTool(syncToolSpecCaptor.capture());
+            then(givenMcpSyncServer).should(never()).removeTool(any());
+            BDDAssertions.then(syncToolSpecCaptor.getValue().tool().name()).isEqualTo("summarizePrompt");
+        }
     }
 
     @Nested

@@ -88,12 +88,16 @@ The framework follows this startup flow:
    flat `ui/resourceUri` key) and have their JSON success-response schema classified once at startup by
    `AppStructuredContent.declaredSchemaKind` so the runtime can decide how to build `structuredContent`; app
    operations whose `resourceUri` is not among `ResourceRegistry`'s registered `ui://` URIs only produce a startup
-   warning (application code may register extra resources). Operations marked `x-mcp-app-resource` are excluded from
-   the tool list
+   warning (application code may register extra resources). Operations marked `x-mcp-resource` or
+   `x-mcp-app-resource`, and `GET` operations whose path equals a relative `resolve.path` of an `x-mcp-prompts` entry
+   (matched by `PromptEndpoints`, computed from the spec on every `getTools()` call so live reload stays consistent),
+   are excluded from the tool list
 4. `PromptRegistry` reads the `x-mcp-prompts` vendor extension from the OpenAPI spec and converts each entry into a
    `RegisteredPrompt` with an `McpSchema.Prompt` and a handler. Two modes are supported: **inline mode**
    where Mustache templates are compiled at startup and rendered server-side from user arguments, and **resolved mode**
-   where the handler calls a backend HTTP endpoint to resolve the prompt
+   where the handler calls a backend HTTP endpoint to resolve the prompt. `PromptEndpoints` leniently reads the same
+   extension to find the operations that back resolved prompts (relative `resolve.path` only, `GET` only) so
+   `ToolRegistry` does not expose them as tools; validation of the extension stays in `PromptRegistry`
 5. `ResourceRegistry` reads the `x-mcp-resource: true` vendor extension on `GET` operations and converts each into a
    `RegisteredResource`, using `ResourceUriBuilder` to derive the `uri`/`uriTemplate` (`<uri-scheme>://<path>` with
    `{param}` placeholders for path parameters and an RFC 6570 `{?q1,q2,...}` suffix for query parameters) and the

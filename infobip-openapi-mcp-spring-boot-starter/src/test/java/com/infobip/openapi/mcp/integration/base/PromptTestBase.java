@@ -89,6 +89,21 @@ public abstract class PromptTestBase extends IntegrationTestBase {
     }
 
     @Test
+    void shouldNotExposeOperationBackingResolvedPromptAsTool() {
+        withInitializedMcpClient(givenClient -> {
+            // When
+            var tools = givenClient.listTools().tools();
+            var prompts = givenClient.listPrompts().prompts();
+
+            // Then
+            then(tools).extracting(McpSchema.Tool::name).containsExactly("get_users");
+            then(prompts)
+                    .extracting(McpSchema.Prompt::name)
+                    .containsExactlyInAnyOrder("greet-static", "greet-resolved");
+        });
+    }
+
+    @Test
     void shouldGetInlinePromptWithRenderedTemplate() {
         withInitializedMcpClient(givenClient -> {
             // Given
@@ -163,6 +178,26 @@ public abstract class PromptTestBase extends IntegrationTestBase {
                             "get": {
                                 "operationId": "get-users",
                                 "description": "Get all users",
+                                "responses": {
+                                    "200": {
+                                        "description": "OK"
+                                    }
+                                }
+                            }
+                        },
+                        "/prompts/greet-resolved": {
+                            "get": {
+                                "operationId": "greet-resolved",
+                                "description": "Resolves the greet-resolved prompt",
+                                "parameters": [
+                                    {
+                                        "name": "name",
+                                        "in": "query",
+                                        "schema": {
+                                            "type": "string"
+                                        }
+                                    }
+                                ],
                                 "responses": {
                                     "200": {
                                         "description": "OK"
