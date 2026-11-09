@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## 1.1.1
+
 ### Fixed
 
 - API operations that back a backend-resolved prompt (the `GET` endpoint named in the prompt's `resolve.path`) are no
