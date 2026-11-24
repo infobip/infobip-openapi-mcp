@@ -7,6 +7,7 @@ import com.infobip.openapi.mcp.auth.AuthProperties;
 import com.infobip.openapi.mcp.auth.ChallengePlaneResolver;
 import com.infobip.openapi.mcp.auth.CredentialProvider;
 import com.infobip.openapi.mcp.auth.HttpServletRequestCredentialProvider;
+import com.infobip.openapi.mcp.auth.PartialAuthChallengeHandler;
 import com.infobip.openapi.mcp.auth.ScopeProperties;
 import com.infobip.openapi.mcp.auth.scope.ScopeDiscoveryService;
 import com.infobip.openapi.mcp.auth.scope.ToolSecuritySchemeResolver;
@@ -209,7 +210,15 @@ class OpenApiMcpConfiguration {
             Optional<WwwAuthenticateProvider> wwwAuthenticateProvider,
             Optional<ChallengePlaneResolver> challengePlaneResolver,
             Optional<McpServerProperties> mcpServerProperties) {
-        var mode = authProperties.map(AuthProperties::mode);
+        var partialAuthHandler = authProperties
+                .filter(p -> p.mode().isPartialAuth())
+                .map(p -> new PartialAuthChallengeHandler(
+                        p.mode(),
+                        challengePlaneResolver,
+                        wwwAuthenticateProvider,
+                        mcpServerProperties
+                                .map(m -> m.getProtocol() == McpServerProperties.ServerProtocol.STATELESS)
+                                .orElse(false)));
         return new ToolHandler(
                 restClient,
                 errorModelWriter,
@@ -218,15 +227,7 @@ class OpenApiMcpConfiguration {
                 metricService,
                 credentialProvider,
                 progressUpdateProvider,
-                mode.map(m -> m == AuthProperties.AuthMode.PARTIAL_AUTH_CLAUDE_COMPATIBLE)
-                        .orElse(false),
-                mode.map(m -> m == AuthProperties.AuthMode.PARTIAL_AUTH_OPENAI_COMPATIBLE)
-                        .orElse(false),
-                wwwAuthenticateProvider,
-                challengePlaneResolver,
-                mcpServerProperties
-                        .map(p -> p.getProtocol() == McpServerProperties.ServerProtocol.STATELESS)
-                        .orElse(false));
+                partialAuthHandler);
     }
 
     @Bean

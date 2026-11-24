@@ -21,6 +21,7 @@ import com.infobip.openapi.mcp.auth.ChallengePlane;
 import com.infobip.openapi.mcp.auth.ChallengePlaneResolver;
 import com.infobip.openapi.mcp.auth.CredentialProvider;
 import com.infobip.openapi.mcp.auth.HttpServletRequestCredentialProvider;
+import com.infobip.openapi.mcp.auth.PartialAuthChallengeHandler;
 import com.infobip.openapi.mcp.auth.scope.WwwAuthenticateProvider;
 import com.infobip.openapi.mcp.config.DownstreamApiRestClients;
 import com.infobip.openapi.mcp.config.OpenApiMcpProperties;
@@ -1422,7 +1423,11 @@ class ToolHandlerTest {
                     progressUpdateProvider,
                     new ObjectMapper(),
                     notificationSemaphore::acquire,
-                    true);
+                    Optional.of(new PartialAuthChallengeHandler(
+                            AuthProperties.AuthMode.PARTIAL_AUTH_CLAUDE_COMPATIBLE,
+                            Optional.empty(),
+                            Optional.empty(),
+                            false)));
         }
     }
 
@@ -1520,6 +1525,13 @@ class ToolHandlerTest {
             var restClient = DownstreamApiRestClients.builder(
                             "http://localhost:" + wireMockServer.port(), Duration.ofSeconds(2), Duration.ofSeconds(2))
                     .build();
+            var partialAuthHandler = annotateApiAuthErrors
+                    ? Optional.of(new PartialAuthChallengeHandler(
+                            AuthProperties.AuthMode.PARTIAL_AUTH_OPENAI_COMPATIBLE,
+                            Optional.empty(),
+                            wwwAuthenticateProvider,
+                            false))
+                    : Optional.<PartialAuthChallengeHandler>empty();
             return new ToolHandler(
                     restClient,
                     errorModelWriter,
@@ -1530,9 +1542,7 @@ class ToolHandlerTest {
                     progressUpdateProvider,
                     new ObjectMapper(),
                     notificationSemaphore::acquire,
-                    false,
-                    annotateApiAuthErrors,
-                    wwwAuthenticateProvider);
+                    partialAuthHandler);
         }
     }
 
@@ -1674,11 +1684,11 @@ class ToolHandlerTest {
                     progressUpdateProvider,
                     new ObjectMapper(),
                     notificationSemaphore::acquire,
-                    false,
-                    false,
-                    Optional.of(wwwAuthenticateProvider),
-                    Optional.of(resolver),
-                    httpPlaneAvailable);
+                    Optional.of(new PartialAuthChallengeHandler(
+                            AuthProperties.AuthMode.PARTIAL_AUTH_AUTODETECT,
+                            Optional.of(resolver),
+                            Optional.of(wwwAuthenticateProvider),
+                            httpPlaneAvailable)));
         }
     }
 }

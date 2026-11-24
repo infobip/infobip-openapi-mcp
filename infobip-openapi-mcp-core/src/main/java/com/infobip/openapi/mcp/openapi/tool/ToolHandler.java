@@ -3,12 +3,8 @@ package com.infobip.openapi.mcp.openapi.tool;
 import com.infobip.openapi.mcp.McpRequestContext;
 import com.infobip.openapi.mcp.apps.AppStructuredContent;
 import com.infobip.openapi.mcp.apps.DeclaredSchemaKind;
-import com.infobip.openapi.mcp.auth.ApiAuthFailure;
-import com.infobip.openapi.mcp.auth.AuthProperties;
-import com.infobip.openapi.mcp.auth.ChallengePlane;
-import com.infobip.openapi.mcp.auth.ChallengePlaneResolver;
 import com.infobip.openapi.mcp.auth.CredentialProvider;
-import com.infobip.openapi.mcp.auth.scope.WwwAuthenticateProvider;
+import com.infobip.openapi.mcp.auth.PartialAuthChallengeHandler;
 import com.infobip.openapi.mcp.config.OpenApiMcpProperties;
 import com.infobip.openapi.mcp.enricher.ApiRequestEnricherChain;
 import com.infobip.openapi.mcp.error.ErrorModelWriter;
@@ -17,7 +13,6 @@ import com.infobip.openapi.mcp.openapi.schema.DecomposedRequestData;
 import com.infobip.openapi.mcp.progress.ProgressUpdateProvider;
 import com.infobip.openapi.mcp.util.PlusAwareUriEncoder;
 import io.modelcontextprotocol.spec.McpSchema;
-import jakarta.servlet.http.HttpServletRequest;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -76,12 +71,6 @@ public class ToolHandler {
 
     private static final String DEFAULT_SUCCESS_RESPONSE = "{\"message\":\"Tool call completed successfully\"}";
 
-    /**
-     * The {@code _meta} key under which PARTIAL_AUTH_OPENAI_COMPATIBLE mode publishes the authentication challenge
-     * on error results, per the mixed-authentication contract of MCP hosts (ChatGPT connectors).
-     */
-    private static final String WWW_AUTHENTICATE_META_KEY = "mcp/www_authenticate";
-
     private final RestClient restClient;
     private final ErrorModelWriter errorModelWriter;
     private final JsonDoubleSerializationCorrector serializationCorrector;
@@ -92,11 +81,7 @@ public class ToolHandler {
     private final ProgressUpdateProvider progressUpdateProvider;
     private final NotificationTicker ticker;
     private final ObjectMapper objectMapper;
-    private final boolean markApiAuthErrors;
-    private final boolean annotateApiAuthErrors;
-    private final Optional<WwwAuthenticateProvider> wwwAuthenticateProvider;
-    private final Optional<ChallengePlaneResolver> challengePlaneResolver;
-    private final boolean httpChallengePlaneAvailable;
+    private final Optional<PartialAuthChallengeHandler> partialAuthHandler;
 
     public ToolHandler(
             RestClient restClient,
@@ -114,33 +99,7 @@ public class ToolHandler {
                 metricService,
                 credentialProvider,
                 progressUpdateProvider,
-                false);
-    }
-
-    /**
-     * Public constructor allowing callers to enable API authorization failure marking, which is required
-     * for {@link com.infobip.openapi.mcp.auth.AuthProperties.AuthMode#PARTIAL_AUTH_CLAUDE_COMPATIBLE} response remapping.
-     */
-    public ToolHandler(
-            RestClient restClient,
-            ErrorModelWriter errorModelWriter,
-            OpenApiMcpProperties properties,
-            ApiRequestEnricherChain enricherChain,
-            MetricService metricService,
-            CredentialProvider credentialProvider,
-            ProgressUpdateProvider progressUpdateProvider,
-            boolean markApiAuthErrors) {
-        this(
-                restClient,
-                errorModelWriter,
-                properties,
-                enricherChain,
-                metricService,
-                credentialProvider,
-                progressUpdateProvider,
-                JsonMapper.builder().build(),
-                () -> Thread.sleep(properties.progressNotificationsInterval().toMillis()),
-                markApiAuthErrors);
+                Optional.empty());
     }
 
     public ToolHandler(
@@ -215,13 +174,13 @@ public class ToolHandler {
                 progressUpdateProvider,
                 objectMapper,
                 ticker,
-                false);
+                Optional.empty());
     }
 
     /**
-     * Partial-authentication constructor: {@code markApiAuthErrors} marks requests for response remapping,
-     * {@code annotateApiAuthErrors} annotates results in-band, and a {@code challengePlaneResolver} selects
-     * the plane per request in {@link AuthProperties.AuthMode#PARTIAL_AUTH_AUTODETECT} mode.
+     * Partial-authentication constructor: the handler decides per request whether an API authorization
+     * failure marks the request for HTTP remapping or annotates the result in-band; empty in
+     * ALL_OR_NOTHING mode.
      */
     public ToolHandler(
             RestClient restClient,
@@ -231,11 +190,7 @@ public class ToolHandler {
             MetricService metricService,
             CredentialProvider credentialProvider,
             ProgressUpdateProvider progressUpdateProvider,
-            boolean markApiAuthErrors,
-            boolean annotateApiAuthErrors,
-            Optional<WwwAuthenticateProvider> wwwAuthenticateProvider,
-            Optional<ChallengePlaneResolver> challengePlaneResolver,
-            boolean httpChallengePlaneAvailable) {
+            Optional<PartialAuthChallengeHandler> partialAuthHandler) {
         this(
                 restClient,
                 errorModelWriter,
@@ -246,11 +201,7 @@ public class ToolHandler {
                 progressUpdateProvider,
                 JsonMapper.builder().build(),
                 () -> Thread.sleep(properties.progressNotificationsInterval().toMillis()),
-                markApiAuthErrors,
-                annotateApiAuthErrors,
-                wwwAuthenticateProvider,
-                challengePlaneResolver,
-                httpChallengePlaneAvailable);
+                partialAuthHandler);
     }
 
     ToolHandler(
@@ -263,69 +214,7 @@ public class ToolHandler {
             ProgressUpdateProvider progressUpdateProvider,
             ObjectMapper objectMapper,
             NotificationTicker ticker,
-            boolean markApiAuthErrors) {
-        this(
-                restClient,
-                errorModelWriter,
-                properties,
-                enricherChain,
-                metricService,
-                credentialProvider,
-                progressUpdateProvider,
-                objectMapper,
-                ticker,
-                markApiAuthErrors,
-                false,
-                Optional.empty(),
-                Optional.empty(),
-                false);
-    }
-
-    ToolHandler(
-            RestClient restClient,
-            ErrorModelWriter errorModelWriter,
-            OpenApiMcpProperties properties,
-            ApiRequestEnricherChain enricherChain,
-            MetricService metricService,
-            CredentialProvider credentialProvider,
-            ProgressUpdateProvider progressUpdateProvider,
-            ObjectMapper objectMapper,
-            NotificationTicker ticker,
-            boolean markApiAuthErrors,
-            boolean annotateApiAuthErrors,
-            Optional<WwwAuthenticateProvider> wwwAuthenticateProvider) {
-        this(
-                restClient,
-                errorModelWriter,
-                properties,
-                enricherChain,
-                metricService,
-                credentialProvider,
-                progressUpdateProvider,
-                objectMapper,
-                ticker,
-                markApiAuthErrors,
-                annotateApiAuthErrors,
-                wwwAuthenticateProvider,
-                Optional.empty(),
-                false);
-    }
-
-    ToolHandler(
-            RestClient restClient,
-            ErrorModelWriter errorModelWriter,
-            OpenApiMcpProperties properties,
-            ApiRequestEnricherChain enricherChain,
-            MetricService metricService,
-            CredentialProvider credentialProvider,
-            ProgressUpdateProvider progressUpdateProvider,
-            ObjectMapper objectMapper,
-            NotificationTicker ticker,
-            boolean markApiAuthErrors,
-            boolean annotateApiAuthErrors,
-            Optional<WwwAuthenticateProvider> wwwAuthenticateProvider,
-            Optional<ChallengePlaneResolver> challengePlaneResolver,
-            boolean httpChallengePlaneAvailable) {
+            Optional<PartialAuthChallengeHandler> partialAuthHandler) {
         this.restClient = restClient;
         this.errorModelWriter = errorModelWriter;
         this.properties = properties;
@@ -336,16 +225,7 @@ public class ToolHandler {
         this.ticker = ticker;
         this.objectMapper = objectMapper;
         this.serializationCorrector = new JsonDoubleSerializationCorrector();
-        this.markApiAuthErrors = markApiAuthErrors;
-        this.annotateApiAuthErrors = annotateApiAuthErrors;
-        this.wwwAuthenticateProvider = wwwAuthenticateProvider;
-        this.challengePlaneResolver = challengePlaneResolver;
-        this.httpChallengePlaneAvailable = httpChallengePlaneAvailable;
-        if (annotateApiAuthErrors && wwwAuthenticateProvider.isEmpty()) {
-            LOGGER.warn("API auth error annotation is enabled but no WwwAuthenticateProvider is available;"
-                    + " tool results will not carry the in-band authentication challenge."
-                    + " Check the security.auth.oauth configuration.");
-        }
+        this.partialAuthHandler = partialAuthHandler;
     }
 
     /**
@@ -805,71 +685,13 @@ public class ToolHandler {
     }
 
     /**
-     * Marks the request with an API {@code 401}/{@code 403} for the filter's remapping — in autodetect mode
-     * only when the hints route it to the HTTP plane. Synthetic framework statuses must not mark; they are
-     * not API authorization outcomes and would trigger a login flow that cannot succeed.
-     */
-    private void markApiAuthFailure(McpRequestContext context, HttpStatusCode statusCode) {
-        if (!markApiAuthErrors && challengePlaneResolver.isEmpty()) {
-            return;
-        }
-        var servletRequest = context.httpServletRequest();
-        if (servletRequest == null) {
-            return;
-        }
-        if (challengePlaneResolver.isPresent() && resolvePlane(servletRequest, context) != ChallengePlane.HTTP) {
-            return;
-        }
-        ApiAuthFailure.mark(servletRequest, statusCode);
-    }
-
-    /**
-     * Builds the result for an API authorization failure, marking the request for the filter's remapping
-     * first: in-band annotated with {@code _meta["mcp/www_authenticate"]} when
-     * {@link #shouldAnnotateInMeta} says so, plain error otherwise (marked requests are remapped to HTTP
-     * challenges by the filter later).
+     * Builds the result for a downstream API authorization failure: handled by the partial-authentication
+     * handler when configured, plain error result otherwise.
      */
     private McpSchema.CallToolResult apiAuthErrorResult(
             McpRequestContext context, HttpStatusCode statusCode, String apiErrorBody) {
-        markApiAuthFailure(context, statusCode);
-        var servletRequest = context.httpServletRequest();
-        if (servletRequest != null
-                && ApiAuthFailure.isAuthorizationFailure(statusCode)
-                && wwwAuthenticateProvider.isPresent()
-                && shouldAnnotateInMeta(servletRequest, context)) {
-            return McpSchema.CallToolResult.builder()
-                    .content(List.of(new McpSchema.TextContent(apiErrorBody)))
-                    .isError(true)
-                    .meta(Map.of(
-                            WWW_AUTHENTICATE_META_KEY,
-                            List.of(wwwAuthenticateProvider.get().buildWwwAuthenticateChallenge(servletRequest))))
-                    .build();
-        }
-        return callToolResult(apiErrorBody, true, null);
-    }
-
-    private boolean shouldAnnotateInMeta(HttpServletRequest servletRequest, McpRequestContext context) {
-        return annotateApiAuthErrors
-                || challengePlaneResolver
-                        .map(resolver -> resolvePlane(servletRequest, context) == ChallengePlane.IN_META)
-                        .orElse(false);
-    }
-
-    /**
-     * The effective plane of the in-flight request: what the client hints say, downgraded to
-     * {@link ChallengePlane#IN_META} whenever the transport cannot write an HTTP challenge anymore.
-     */
-    private ChallengePlane resolvePlane(HttpServletRequest servletRequest, McpRequestContext context) {
-        var plane = challengePlaneResolver
-                .orElseThrow(() -> new IllegalStateException("No challenge plane resolver configured"))
-                .resolve(servletRequest, clientName(context));
-        return plane == ChallengePlane.HTTP && httpChallengePlaneAvailable
-                ? ChallengePlane.HTTP
-                : ChallengePlane.IN_META;
-    }
-
-    private @Nullable String clientName(McpRequestContext context) {
-        var clientInfo = context.clientInfo();
-        return clientInfo != null ? clientInfo.name() : null;
+        return partialAuthHandler
+                .map(handler -> handler.handle(context, statusCode, apiErrorBody, body -> callToolResult(body, true)))
+                .orElseGet(() -> callToolResult(apiErrorBody, true));
     }
 }
