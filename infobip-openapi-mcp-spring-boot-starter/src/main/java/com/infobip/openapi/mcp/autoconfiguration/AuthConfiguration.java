@@ -4,6 +4,7 @@ import static com.infobip.openapi.mcp.autoconfiguration.Qualifiers.AUTHORIZATION
 
 import com.infobip.openapi.mcp.McpRequestContextFactory;
 import com.infobip.openapi.mcp.auth.AuthProperties;
+import com.infobip.openapi.mcp.auth.ChallengePlaneResolver;
 import com.infobip.openapi.mcp.auth.CredentialProvider;
 import com.infobip.openapi.mcp.auth.scope.JwtScopeService;
 import com.infobip.openapi.mcp.auth.scope.WwwAuthenticateProvider;
@@ -14,13 +15,17 @@ import com.infobip.openapi.mcp.error.ErrorModelWriter;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.ai.mcp.server.common.autoconfigure.McpServerStdioDisabledCondition;
 import org.springframework.ai.mcp.server.common.autoconfigure.properties.McpServerProperties;
+import org.springframework.ai.mcp.server.common.autoconfigure.properties.McpServerProperties.ServerProtocol;
 import org.springframework.ai.mcp.server.common.autoconfigure.properties.McpServerSseProperties;
 import org.springframework.ai.mcp.server.common.autoconfigure.properties.McpServerStreamableHttpProperties;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
@@ -33,6 +38,8 @@ import org.springframework.web.client.RestClient;
 @EnableConfigurationProperties(AuthProperties.class)
 @Conditional({AuthEnabledCondition.class, McpServerStdioDisabledCondition.class})
 class AuthConfiguration {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(AuthConfiguration.class);
 
     @Bean
     @Qualifier(AUTHORIZATION_REST_CLIENT_QUALIFIER)
@@ -61,6 +68,24 @@ class AuthConfiguration {
             Optional<WwwAuthenticateProvider> wwwAuthenticateProvider,
             Optional<JwtScopeService> jwtScopeService,
             CredentialProvider credentialProvider) {
+        var mode = authProperties.mode();
+        var httpChallengeCapable = mode == AuthProperties.AuthMode.PARTIAL_AUTH_CLAUDE_COMPATIBLE
+                || mode == AuthProperties.AuthMode.PARTIAL_AUTH_AUTODETECT;
+        var responseRemappingEnabled =
+                httpChallengeCapable && mcpServerProperties.getProtocol() == ServerProtocol.STATELESS;
+        if (mode == AuthProperties.AuthMode.PARTIAL_AUTH_CLAUDE_COMPATIBLE && !responseRemappingEnabled) {
+            LOGGER.warn(
+                    "Authentication mode PARTIAL_AUTH_CLAUDE_COMPATIBLE skips credential validation, but auth-error remapping into HTTP"
+                            + " challenges only works on the STATELESS protocol; protected tool calls will return"
+                            + " MCP-level errors without triggering a client login flow.");
+        }
+        if (mode == AuthProperties.AuthMode.PARTIAL_AUTH_AUTODETECT && !responseRemappingEnabled) {
+            LOGGER.warn(
+                    "Authentication mode PARTIAL_AUTH_AUTODETECT skips credential validation, but the protocol is not STATELESS, so no"
+                            + " HTTP challenges can be produced; requests routed to the HTTP plane fall back to the"
+                            + " in-band plane.");
+        }
+
         var filter = new InitialAuthenticationFilter(
                 restClient,
                 authProperties,
@@ -69,12 +94,20 @@ class AuthConfiguration {
                 contextFactory,
                 wwwAuthenticateProvider,
                 jwtScopeService,
-                credentialProvider);
+                credentialProvider,
+                responseRemappingEnabled);
 
         var registration = new FilterRegistrationBean<>(filter);
         registration.setUrlPatterns(
                 provideUrlPatterns(mcpServerProperties, mcpServerSseProperties, mcpServerStreamableHttpProperties));
         return registration;
+    }
+
+    @Bean
+    @ConditionalOnProperty(prefix = AuthProperties.PREFIX, name = "mode", havingValue = "PARTIAL_AUTH_AUTODETECT")
+    @ConditionalOnMissingBean
+    public ChallengePlaneResolver challengePlaneResolver(AuthProperties authProperties) {
+        return new ChallengePlaneResolver(authProperties.clientHints(), authProperties.defaultChallengePlane());
     }
 
     private Collection<String> provideUrlPatterns(

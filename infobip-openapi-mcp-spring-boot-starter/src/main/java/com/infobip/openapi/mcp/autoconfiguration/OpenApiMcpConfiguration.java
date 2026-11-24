@@ -3,9 +3,14 @@ package com.infobip.openapi.mcp.autoconfiguration;
 import static com.infobip.openapi.mcp.autoconfiguration.Qualifiers.TOOL_HANDLER_REST_CLIENT_QUALIFIER;
 
 import com.infobip.openapi.mcp.McpRequestContextFactory;
+import com.infobip.openapi.mcp.auth.AuthProperties;
+import com.infobip.openapi.mcp.auth.ChallengePlaneResolver;
 import com.infobip.openapi.mcp.auth.CredentialProvider;
 import com.infobip.openapi.mcp.auth.HttpServletRequestCredentialProvider;
+import com.infobip.openapi.mcp.auth.ScopeProperties;
 import com.infobip.openapi.mcp.auth.scope.ScopeDiscoveryService;
+import com.infobip.openapi.mcp.auth.scope.ToolSecuritySchemeResolver;
+import com.infobip.openapi.mcp.auth.scope.WwwAuthenticateProvider;
 import com.infobip.openapi.mcp.config.ApiBaseUrlConfig;
 import com.infobip.openapi.mcp.config.ApiBaseUrlProvider;
 import com.infobip.openapi.mcp.config.DownstreamApiRestClients;
@@ -199,7 +204,12 @@ class OpenApiMcpConfiguration {
             ApiRequestEnricherChain enricherChain,
             MetricService metricService,
             CredentialProvider credentialProvider,
-            ProgressUpdateProvider progressUpdateProvider) {
+            ProgressUpdateProvider progressUpdateProvider,
+            Optional<AuthProperties> authProperties,
+            Optional<WwwAuthenticateProvider> wwwAuthenticateProvider,
+            Optional<ChallengePlaneResolver> challengePlaneResolver,
+            Optional<McpServerProperties> mcpServerProperties) {
+        var mode = authProperties.map(AuthProperties::mode);
         return new ToolHandler(
                 restClient,
                 errorModelWriter,
@@ -207,7 +217,16 @@ class OpenApiMcpConfiguration {
                 enricherChain,
                 metricService,
                 credentialProvider,
-                progressUpdateProvider);
+                progressUpdateProvider,
+                mode.filter(m -> m == AuthProperties.AuthMode.PARTIAL_AUTH_CLAUDE_COMPATIBLE)
+                        .isPresent(),
+                mode.filter(m -> m == AuthProperties.AuthMode.PARTIAL_AUTH_OPENAI_COMPATIBLE)
+                        .isPresent(),
+                wwwAuthenticateProvider,
+                challengePlaneResolver,
+                mcpServerProperties
+                        .filter(p -> p.getProtocol() == McpServerProperties.ServerProtocol.STATELESS)
+                        .isPresent());
     }
 
     @Bean
@@ -225,7 +244,9 @@ class OpenApiMcpConfiguration {
             OpenApiMapperFactory openApiMapperFactory,
             ToolAnnotationResolver toolAnnotationResolver,
             OpenApiMcpProperties properties,
-            ResourceRegistry resourceRegistry) {
+            ResourceRegistry resourceRegistry,
+            Optional<AuthProperties> authProperties,
+            Optional<ScopeProperties> scopeProperties) {
         return new ToolRegistry(
                 openApiRegistry,
                 namingStrategy,
@@ -235,7 +256,13 @@ class OpenApiMcpConfiguration {
                 openApiMapperFactory,
                 toolAnnotationResolver,
                 properties,
-                resourceRegistry);
+                resourceRegistry,
+                authProperties
+                        .filter(p -> p.mode() == AuthProperties.AuthMode.PARTIAL_AUTH_OPENAI_COMPATIBLE
+                                || p.mode() == AuthProperties.AuthMode.PARTIAL_AUTH_AUTODETECT)
+                        .isPresent(),
+                new ToolSecuritySchemeResolver(
+                        scopeProperties.orElseGet(() -> new ScopeProperties(null, null, null, null))));
     }
 
     @Bean

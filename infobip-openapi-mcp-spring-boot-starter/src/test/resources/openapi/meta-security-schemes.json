@@ -1,0 +1,72 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Test API",
+    "version": "1.0.0"
+  },
+  "security": [
+    {
+      "oauthScheme": [
+        "global_scope"
+      ]
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "oauthScheme": {
+        "type": "oauth2",
+        "flows": {
+          "authorizationCode": {
+            "authorizationUrl": "https://example.com/oauth/authorize",
+            "tokenUrl": "https://example.com/oauth/token",
+            "scopes": {
+              "global_scope": "Global scope"
+            }
+          }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/inherited": {
+      "get": {
+        "operationId": "get-inherited",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/narrow": {
+      "get": {
+        "operationId": "get-narrow",
+        "security": [
+          {
+            "oauthScheme": [
+              "narrow_scope"
+            ]
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/anonymous": {
+      "get": {
+        "operationId": "get-anonymous",
+        "security": [
+          {}
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    }
+  }
+}

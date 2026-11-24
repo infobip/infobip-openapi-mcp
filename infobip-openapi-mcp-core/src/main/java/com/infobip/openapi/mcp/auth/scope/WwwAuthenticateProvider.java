@@ -5,6 +5,7 @@ import com.infobip.openapi.mcp.config.ApiBaseUrlProvider;
 import com.infobip.openapi.mcp.util.XForwardedHostCalculator;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.Optional;
+import org.jspecify.annotations.Nullable;
 import org.springframework.web.util.UriComponentsBuilder;
 
 /**
@@ -16,6 +17,9 @@ import org.springframework.web.util.UriComponentsBuilder;
  * </p>
  */
 public class WwwAuthenticateProvider {
+
+    private static final String INSUFFICIENT_SCOPE_ERROR = "insufficient_scope";
+    private static final String CHALLENGE_ERROR_DESCRIPTION = "You need to login to continue";
 
     private final OAuthProperties oAuthProperties;
     private final Optional<ScopeDiscoveryService> scopeDiscoveryService;
@@ -44,7 +48,7 @@ public class WwwAuthenticateProvider {
      * @return the formatted WWW-Authenticate header value
      */
     public String buildWwwAuthenticateHeader(HttpServletRequest request) {
-        return buildWwwAuthenticateHeader(request, false);
+        return buildWwwAuthenticateHeader(request, null, null);
     }
 
     /**
@@ -59,10 +63,30 @@ public class WwwAuthenticateProvider {
      * @return the formatted WWW-Authenticate header value with error information
      */
     public String buildWwwAuthenticateHeaderWithScopeError(HttpServletRequest request) {
-        return buildWwwAuthenticateHeader(request, true);
+        return buildWwwAuthenticateHeader(request, INSUFFICIENT_SCOPE_ERROR, null);
     }
 
-    private String buildWwwAuthenticateHeader(HttpServletRequest request, boolean isInsufficientScope) {
+    /**
+     * Builds the authentication challenge for in-band signaling via
+     * {@code _meta["mcp/www_authenticate"]} on a tool call result.
+     * <p>
+     * Hosts with mixed authentication (ChatGPT connectors) read authorization hints from the MCP
+     * layer instead of the transport plane, and their documented value format requires both an
+     * {@code error} and an {@code error_description} parameter. The challenge therefore always
+     * reports {@code insufficient_scope} with a sign-in instruction, regardless of whether the
+     * backing API answered {@code 401} or {@code 403} — both mean "login is required to continue"
+     * for an anonymous caller.
+     * </p>
+     *
+     * @param request the HTTP servlet request used to determine the resource metadata URL
+     * @return the formatted challenge parameter string
+     */
+    public String buildWwwAuthenticateChallenge(HttpServletRequest request) {
+        return buildWwwAuthenticateHeader(request, INSUFFICIENT_SCOPE_ERROR, CHALLENGE_ERROR_DESCRIPTION);
+    }
+
+    private String buildWwwAuthenticateHeader(
+            HttpServletRequest request, @Nullable String error, @Nullable String errorDescription) {
         var wwwAuthenticateProperties = oAuthProperties.wwwAuthenticate();
 
         var builder =
@@ -91,10 +115,17 @@ public class WwwAuthenticateProvider {
             }
         });
 
-        if (isInsufficientScope) {
+        if (error != null) {
             stringBuilder.append(", error=");
             stringBuilder.append("\"");
-            stringBuilder.append("insufficient_scope");
+            stringBuilder.append(error);
+            stringBuilder.append("\"");
+        }
+
+        if (errorDescription != null) {
+            stringBuilder.append(", error_description=");
+            stringBuilder.append("\"");
+            stringBuilder.append(errorDescription);
             stringBuilder.append("\"");
         }
 

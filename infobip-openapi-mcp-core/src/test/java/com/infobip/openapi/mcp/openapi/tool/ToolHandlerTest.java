@@ -15,7 +15,13 @@ import static org.mockito.Mockito.when;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.infobip.openapi.mcp.McpRequestContext;
 import com.infobip.openapi.mcp.apps.DeclaredSchemaKind;
+import com.infobip.openapi.mcp.auth.ApiAuthFailure;
+import com.infobip.openapi.mcp.auth.AuthProperties;
+import com.infobip.openapi.mcp.auth.ChallengePlane;
+import com.infobip.openapi.mcp.auth.ChallengePlaneResolver;
+import com.infobip.openapi.mcp.auth.CredentialProvider;
 import com.infobip.openapi.mcp.auth.HttpServletRequestCredentialProvider;
+import com.infobip.openapi.mcp.auth.scope.WwwAuthenticateProvider;
 import com.infobip.openapi.mcp.config.DownstreamApiRestClients;
 import com.infobip.openapi.mcp.config.OpenApiMcpProperties;
 import com.infobip.openapi.mcp.enricher.ApiRequestEnricherChain;
@@ -38,6 +44,7 @@ import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.Semaphore;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.AfterEach;
@@ -51,6 +58,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.web.client.RestClient;
@@ -1312,5 +1320,365 @@ class ToolHandlerTest {
             return textContentItem.text();
         }
         return firstContentItem.toString();
+    }
+
+    @Nested
+    class ApiAuthErrorMarking {
+
+        @Test
+        void shouldMarkUnauthorizedApiResponsesOnRequest() {
+            var request = new MockHttpServletRequest();
+
+            var result = callApiReturning(401, request);
+
+            then(result.isError()).isTrue();
+            then(extractTextContent(result.content())).isEqualTo("{\"apiError\":\"denied\"}");
+            then(result.meta()).isNull();
+            then(request.getAttribute(ApiAuthFailure.REQUEST_ATTRIBUTE)).isEqualTo(HttpStatusCode.valueOf(401));
+        }
+
+        @Test
+        void shouldMarkForbiddenApiResponsesOnRequest() {
+            var request = new MockHttpServletRequest();
+
+            var result = callApiReturning(403, request);
+
+            then(result.isError()).isTrue();
+            then(result.meta()).isNull();
+            then(request.getAttribute(ApiAuthFailure.REQUEST_ATTRIBUTE)).isEqualTo(HttpStatusCode.valueOf(403));
+        }
+
+        @Test
+        void shouldNotMarkNonAuthorizationErrorsOnRequest() {
+            var request = new MockHttpServletRequest();
+
+            var result = callApiReturning(500, request);
+
+            then(result.isError()).isTrue();
+            then(result.meta()).isNull();
+            then(request.getAttribute(ApiAuthFailure.REQUEST_ATTRIBUTE)).isNull();
+        }
+
+        @Test
+        void shouldNotMarkAuthorizationErrorsWhenMarkingIsDisabled() {
+            wireMockServer.stubFor(get(urlPathEqualTo("/auth-marked"))
+                    .willReturn(aResponse().withStatus(401).withBody("{\"apiError\":\"denied\"}")));
+            var request = new MockHttpServletRequest();
+
+            var result = toolHandler.handleToolCall(
+                    authMarkedOperation(), DecomposedRequestData.empty(), createTestContext(request));
+
+            then(result.isError()).isTrue();
+            then(request.getAttribute(ApiAuthFailure.REQUEST_ATTRIBUTE)).isNull();
+        }
+
+        @Test
+        void shouldNotMarkSyntheticUnauthorizedFromCredentialProviderFailure() {
+            CredentialProvider failingCredentialProvider = context -> {
+                throw new IllegalStateException("credential extraction failed");
+            };
+            var request = new MockHttpServletRequest();
+
+            var result = markingToolHandler(failingCredentialProvider)
+                    .handleToolCall(authMarkedOperation(), DecomposedRequestData.empty(), createTestContext(request));
+
+            then(result.isError()).isTrue();
+            then(extractTextContent(result.content())).isEqualTo(EXPECTED_UNAUTHORIZED_ERROR_JSON);
+            then(request.getAttribute(ApiAuthFailure.REQUEST_ATTRIBUTE)).isNull();
+        }
+
+        @Test
+        void shouldNotMarkWhenRequestIsNotAvailableInContext() {
+            var result = callApiReturning(401, null);
+
+            then(result.isError()).isTrue();
+            then(result.meta()).isNull();
+        }
+
+        private McpSchema.CallToolResult callApiReturning(int status, MockHttpServletRequest request) {
+            wireMockServer.stubFor(get(urlPathEqualTo("/auth-marked"))
+                    .willReturn(aResponse().withStatus(status).withBody("{\"apiError\":\"denied\"}")));
+
+            var context = request != null ? createTestContext(request) : createTestContext();
+            return markingToolHandler(new HttpServletRequestCredentialProvider())
+                    .handleToolCall(authMarkedOperation(), DecomposedRequestData.empty(), context);
+        }
+
+        private FullOperation authMarkedOperation() {
+            return new FullOperation("/auth-marked", PathItem.HttpMethod.GET, new Operation(), new OpenAPI());
+        }
+
+        private ToolHandler markingToolHandler(CredentialProvider credentialProvider) {
+            var restClient = DownstreamApiRestClients.builder(
+                            "http://localhost:" + wireMockServer.port(), Duration.ofSeconds(2), Duration.ofSeconds(2))
+                    .build();
+            return new ToolHandler(
+                    restClient,
+                    errorModelWriter,
+                    properties,
+                    new ApiRequestEnricherChain(List.of()),
+                    metricService,
+                    credentialProvider,
+                    progressUpdateProvider,
+                    new ObjectMapper(),
+                    notificationSemaphore::acquire,
+                    true);
+        }
+    }
+
+    @Nested
+    class ApiAuthMetaAnnotation {
+
+        private static final String CHALLENGE =
+                "Bearer resource_metadata=\"https://api.example.com/.well-known/oauth-protected-resource\", "
+                        + "error=\"insufficient_scope\", error_description=\"You need to login to continue\"";
+
+        @Test
+        void shouldAnnotateUnauthorizedResultWithChallenge() {
+            var request = new MockHttpServletRequest();
+
+            var result = callApiReturning(401, request, true, Optional.of(challengeProvider()));
+
+            then(result.isError()).isTrue();
+            then(extractTextContent(result.content())).isEqualTo("{\"apiError\":\"denied\"}");
+            then(result.meta()).isEqualTo(Map.of("mcp/www_authenticate", List.of(CHALLENGE)));
+        }
+
+        @Test
+        void shouldAnnotateForbiddenResultWithChallenge() {
+            var request = new MockHttpServletRequest();
+
+            var result = callApiReturning(403, request, true, Optional.of(challengeProvider()));
+
+            then(result.isError()).isTrue();
+            then(result.meta()).isEqualTo(Map.of("mcp/www_authenticate", List.of(CHALLENGE)));
+        }
+
+        @Test
+        void shouldNotAnnotateNonAuthorizationErrors() {
+            var request = new MockHttpServletRequest();
+
+            var result = callApiReturning(500, request, true, Optional.of(challengeProvider()));
+
+            then(result.isError()).isTrue();
+            then(result.meta()).isNull();
+        }
+
+        @Test
+        void shouldNotAnnotateWhenAnnotationIsDisabled() {
+            var request = new MockHttpServletRequest();
+
+            var result = callApiReturning(401, request, false, Optional.of(challengeProvider()));
+
+            then(result.isError()).isTrue();
+            then(result.meta()).isNull();
+        }
+
+        @Test
+        void shouldNotAnnotateWithoutChallengeProvider() {
+            var request = new MockHttpServletRequest();
+
+            var result = callApiReturning(401, request, true, Optional.empty());
+
+            then(result.isError()).isTrue();
+            then(result.meta()).isNull();
+        }
+
+        @Test
+        void shouldNotAnnotateWhenRequestIsNotAvailableInContext() {
+            var result = callApiReturning(401, null, true, Optional.of(challengeProvider()));
+
+            then(result.isError()).isTrue();
+            then(result.meta()).isNull();
+        }
+
+        private McpSchema.CallToolResult callApiReturning(
+                int status,
+                MockHttpServletRequest request,
+                boolean annotateApiAuthErrors,
+                Optional<WwwAuthenticateProvider> wwwAuthenticateProvider) {
+            wireMockServer.stubFor(get(urlPathEqualTo("/auth-annotated"))
+                    .willReturn(aResponse().withStatus(status).withBody("{\"apiError\":\"denied\"}")));
+
+            var context = request != null ? createTestContext(request) : createTestContext();
+            return annotatingToolHandler(annotateApiAuthErrors, wwwAuthenticateProvider)
+                    .handleToolCall(authAnnotatedOperation(), DecomposedRequestData.empty(), context);
+        }
+
+        private FullOperation authAnnotatedOperation() {
+            return new FullOperation("/auth-annotated", PathItem.HttpMethod.GET, new Operation(), new OpenAPI());
+        }
+
+        private WwwAuthenticateProvider challengeProvider() {
+            var provider = mock(WwwAuthenticateProvider.class);
+            lenient().when(provider.buildWwwAuthenticateChallenge(any())).thenReturn(CHALLENGE);
+            return provider;
+        }
+
+        private ToolHandler annotatingToolHandler(
+                boolean annotateApiAuthErrors, Optional<WwwAuthenticateProvider> wwwAuthenticateProvider) {
+            var restClient = DownstreamApiRestClients.builder(
+                            "http://localhost:" + wireMockServer.port(), Duration.ofSeconds(2), Duration.ofSeconds(2))
+                    .build();
+            return new ToolHandler(
+                    restClient,
+                    errorModelWriter,
+                    properties,
+                    new ApiRequestEnricherChain(List.of()),
+                    metricService,
+                    new HttpServletRequestCredentialProvider(),
+                    progressUpdateProvider,
+                    new ObjectMapper(),
+                    notificationSemaphore::acquire,
+                    false,
+                    annotateApiAuthErrors,
+                    wwwAuthenticateProvider);
+        }
+    }
+
+    @Nested
+    class AutodetectChallengePlane {
+
+        private static final String CHALLENGE =
+                "Bearer resource_metadata=\"https://api.example.com/.well-known/oauth-protected-resource\"";
+
+        @Test
+        void shouldMarkHttpRequestForKnownHttpPlaneClient() {
+            var request = new MockHttpServletRequest();
+            request.addHeader("User-Agent", "claude-code/2.0.0");
+
+            var result = callApiReturning(
+                    401, createTestContext(request), resolver(List.of(), ChallengePlane.IN_META), true);
+
+            then(result.isError()).isTrue();
+            then(result.meta()).isNull();
+            then(request.getAttribute(ApiAuthFailure.REQUEST_ATTRIBUTE)).isEqualTo(HttpStatusCode.valueOf(401));
+        }
+
+        @Test
+        void shouldAnnotateResultForKnownInMetaClient() {
+            var request = new MockHttpServletRequest();
+            request.addHeader("User-Agent", "openai-mcp/1.0.0 (Responses API)");
+
+            var result = callApiReturning(
+                    401, createTestContext(request), resolver(List.of(), ChallengePlane.IN_META), true);
+
+            then(result.isError()).isTrue();
+            then(result.meta()).isEqualTo(Map.of("mcp/www_authenticate", List.of(CHALLENGE)));
+            then(request.getAttribute(ApiAuthFailure.REQUEST_ATTRIBUTE)).isNull();
+        }
+
+        @Test
+        void shouldAnnotateResultForUnmatchedClientWithInMetaDefault() {
+            var request = new MockHttpServletRequest();
+
+            var result = callApiReturning(
+                    401, createTestContext(request), resolver(List.of(), ChallengePlane.IN_META), true);
+
+            then(result.meta()).isEqualTo(Map.of("mcp/www_authenticate", List.of(CHALLENGE)));
+            then(request.getAttribute(ApiAuthFailure.REQUEST_ATTRIBUTE)).isNull();
+        }
+
+        @Test
+        void shouldMarkRequestForUnmatchedClientWithHttpDefault() {
+            var request = new MockHttpServletRequest();
+
+            var result =
+                    callApiReturning(401, createTestContext(request), resolver(List.of(), ChallengePlane.HTTP), true);
+
+            then(result.meta()).isNull();
+            then(request.getAttribute(ApiAuthFailure.REQUEST_ATTRIBUTE)).isEqualTo(HttpStatusCode.valueOf(401));
+        }
+
+        @Test
+        void shouldFallBackToInMetaWhenHttpPlaneUnavailable() {
+            var request = new MockHttpServletRequest();
+            request.addHeader("User-Agent", "claude-code/2.0.0");
+
+            var result = callApiReturning(
+                    401, createTestContext(request), resolver(List.of(), ChallengePlane.IN_META), false);
+
+            then(result.meta()).isEqualTo(Map.of("mcp/www_authenticate", List.of(CHALLENGE)));
+            then(request.getAttribute(ApiAuthFailure.REQUEST_ATTRIBUTE)).isNull();
+        }
+
+        @Test
+        void shouldRouteByConfiguredClientNameHint() {
+            var request = new MockHttpServletRequest();
+            var exchange = mock(McpSyncServerExchange.class);
+            lenient()
+                    .when(exchange.getClientInfo())
+                    .thenReturn(new McpSchema.Implementation("Claude Code", null, "1.0"));
+
+            var result = callApiReturning(
+                    401,
+                    new McpRequestContext(request, null, null, exchange, null),
+                    resolver(
+                            List.of(new AuthProperties.ChallengeHint(null, "claude", ChallengePlane.HTTP)),
+                            ChallengePlane.IN_META),
+                    true);
+
+            then(result.meta()).isNull();
+            then(request.getAttribute(ApiAuthFailure.REQUEST_ATTRIBUTE)).isEqualTo(HttpStatusCode.valueOf(401));
+        }
+
+        @Test
+        void shouldLetConfiguredHintsOverrideKnownClients() {
+            var request = new MockHttpServletRequest();
+            request.addHeader("User-Agent", "claude-code/2.0.0");
+
+            var result = callApiReturning(
+                    401,
+                    createTestContext(request),
+                    resolver(
+                            List.of(new AuthProperties.ChallengeHint("claude", null, ChallengePlane.IN_META)),
+                            ChallengePlane.HTTP),
+                    true);
+
+            then(result.meta()).isEqualTo(Map.of("mcp/www_authenticate", List.of(CHALLENGE)));
+            then(request.getAttribute(ApiAuthFailure.REQUEST_ATTRIBUTE)).isNull();
+        }
+
+        private McpSchema.CallToolResult callApiReturning(
+                int status, McpRequestContext context, ChallengePlaneResolver resolver, boolean httpPlaneAvailable) {
+            wireMockServer.stubFor(get(urlPathEqualTo("/auth-autodetect"))
+                    .willReturn(aResponse().withStatus(status).withBody("{\"apiError\":\"denied\"}")));
+
+            return autodetectToolHandler(resolver, httpPlaneAvailable)
+                    .handleToolCall(
+                            new FullOperation(
+                                    "/auth-autodetect", PathItem.HttpMethod.GET, new Operation(), new OpenAPI()),
+                            DecomposedRequestData.empty(),
+                            context);
+        }
+
+        private ChallengePlaneResolver resolver(List<AuthProperties.ChallengeHint> hints, ChallengePlane defaultPlane) {
+            return new ChallengePlaneResolver(hints, defaultPlane);
+        }
+
+        private ToolHandler autodetectToolHandler(ChallengePlaneResolver resolver, boolean httpPlaneAvailable) {
+            var restClient = DownstreamApiRestClients.builder(
+                            "http://localhost:" + wireMockServer.port(), Duration.ofSeconds(2), Duration.ofSeconds(2))
+                    .build();
+            var wwwAuthenticateProvider = mock(WwwAuthenticateProvider.class);
+            lenient()
+                    .when(wwwAuthenticateProvider.buildWwwAuthenticateChallenge(any()))
+                    .thenReturn(CHALLENGE);
+            return new ToolHandler(
+                    restClient,
+                    errorModelWriter,
+                    properties,
+                    new ApiRequestEnricherChain(List.of()),
+                    metricService,
+                    new HttpServletRequestCredentialProvider(),
+                    progressUpdateProvider,
+                    new ObjectMapper(),
+                    notificationSemaphore::acquire,
+                    false,
+                    false,
+                    Optional.of(wwwAuthenticateProvider),
+                    Optional.of(resolver),
+                    httpPlaneAvailable);
+        }
     }
 }

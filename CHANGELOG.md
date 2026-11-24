@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Optional API-driven authentication mode (`infobip.openapi.mcp.security.auth.mode: PARTIAL_AUTH_CLAUDE_COMPATIBLE`) that lets a server
+  accept unauthenticated access and turn backing-API `401`/`403` responses into MCP authorization challenges, enabling
+  MCP servers where only some operations require login. In this mode no upfront credential validation happens (the
+  `auth-url` property is no longer required), public operations work for anonymous clients, and a tool call the API
+  rejects with `401`/`403` produces an HTTP challenge that triggers the client's login flow. Response remapping into
+  challenges currently applies to the STATELESS transport protocol only.
+- Mixed-authentication variant `PARTIAL_AUTH_OPENAI_COMPATIBLE` of the API-driven mode, for hosts such as the ChatGPT connectors that
+  read authorization hints from the MCP layer instead of acting on HTTP challenges. The backing API still decides per
+  tool call and `auth-url` is never consulted, but on `401`/`403` the tool result itself carries the signal: an `isError`
+  result with the API's own error body, plus the RFC 6750 challenge under `_meta["mcp/www_authenticate"]`, while each
+  tool advertises its authentication options through `_meta.securitySchemes` in `tools/list`, resolved per operation
+  from the specification's own security declarations: `noauth` only where the operation is declared public, `oauth2`
+  carrying the operation's own scopes (plus mandatory scopes) where it references an OAuth2 or OpenID Connect scheme.
+  Because the signal rides on the MCP result, the mode works on every HTTP
+  transport; it never produces an HTTP challenge, so hosts that trigger login only from transport-level `401`s (e.g.
+  Claude) are not triggered — the mode is a per-deployment choice.
+- Per-request challenge plane selection `PARTIAL_AUTH_AUTODETECT`, for deployments serving both kinds of host at once.
+  The authorization decision stays with the backing API as in the other partial-authentication modes; per failed call
+  the delivery plane is chosen from `security.auth.client-hints` rules matched against the client's HTTP `User-Agent`
+  and its MCP `initialize` client name, extended by built-in patterns for well-known hosts (Claude-family clients get
+  the HTTP challenge plane, OpenAI clients the in-band one), with `default-challenge-plane` (default `IN_META`) for
+  unmatched clients. HTTP-plane requests behave like `PARTIAL_AUTH_CLAUDE_COMPATIBLE` (STATELESS only; elsewhere they
+  fall back to in-band), in-band requests like `PARTIAL_AUTH_OPENAI_COMPATIBLE`, including the per-operation
+  `securitySchemes` advertisement. The routing is a UX decision, not a security control.
+
 ## 1.1.1
 
 ### Fixed

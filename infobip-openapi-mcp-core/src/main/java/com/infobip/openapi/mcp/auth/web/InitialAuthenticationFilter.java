@@ -2,6 +2,7 @@ package com.infobip.openapi.mcp.auth.web;
 
 import com.infobip.openapi.mcp.McpRequestContext;
 import com.infobip.openapi.mcp.McpRequestContextFactory;
+import com.infobip.openapi.mcp.auth.ApiAuthFailure;
 import com.infobip.openapi.mcp.auth.AuthProperties;
 import com.infobip.openapi.mcp.auth.CredentialProvider;
 import com.infobip.openapi.mcp.auth.scope.JwtScopeService;
@@ -80,6 +81,7 @@ public class InitialAuthenticationFilter extends OncePerRequestFilter {
     private final Optional<WwwAuthenticateProvider> wwwAuthenticateProvider;
     private final Optional<JwtScopeService> jwtScopeService;
     private final CredentialProvider credentialProvider;
+    private final boolean responseRemappingEnabled;
 
     public InitialAuthenticationFilter(
             RestClient restClient,
@@ -90,6 +92,28 @@ public class InitialAuthenticationFilter extends OncePerRequestFilter {
             Optional<WwwAuthenticateProvider> wwwAuthenticateProvider,
             Optional<JwtScopeService> jwtScopeService,
             CredentialProvider credentialProvider) {
+        this(
+                restClient,
+                authProperties,
+                errorModelWriter,
+                enricherChain,
+                contextFactory,
+                wwwAuthenticateProvider,
+                jwtScopeService,
+                credentialProvider,
+                false);
+    }
+
+    public InitialAuthenticationFilter(
+            RestClient restClient,
+            AuthProperties authProperties,
+            ErrorModelWriter errorModelWriter,
+            ApiRequestEnricherChain enricherChain,
+            McpRequestContextFactory contextFactory,
+            Optional<WwwAuthenticateProvider> wwwAuthenticateProvider,
+            Optional<JwtScopeService> jwtScopeService,
+            CredentialProvider credentialProvider,
+            boolean responseRemappingEnabled) {
         this.authProperties = authProperties;
         this.restClient = restClient;
         this.errorModelWriter = errorModelWriter;
@@ -98,11 +122,19 @@ public class InitialAuthenticationFilter extends OncePerRequestFilter {
         this.wwwAuthenticateProvider = wwwAuthenticateProvider;
         this.jwtScopeService = jwtScopeService;
         this.credentialProvider = credentialProvider;
+        this.responseRemappingEnabled = responseRemappingEnabled;
     }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
+        if (authProperties.mode() == AuthProperties.AuthMode.PARTIAL_AUTH_CLAUDE_COMPATIBLE
+                || authProperties.mode() == AuthProperties.AuthMode.PARTIAL_AUTH_OPENAI_COMPATIBLE
+                || authProperties.mode() == AuthProperties.AuthMode.PARTIAL_AUTH_AUTODETECT) {
+            remapApiAuthenticationErrors(request, response, filterChain);
+            return;
+        }
+
         var context = contextFactory.forServletFilter(request);
         String authHeader;
         try {
@@ -219,5 +251,58 @@ public class InitialAuthenticationFilter extends OncePerRequestFilter {
         response.getWriter()
                 .write( // NOSONAR safe content, XSS not possible
                         errorModelWriter.writeErrorModelAsJson(httpStatus, request, null));
+    }
+
+    /**
+     * Passes the request through untouched unless {@link ApiAuthFailure} marked it during the chain, in which
+     * case the buffered response is discarded and an HTTP authentication challenge is written instead — the
+     * mark refers to the request, so it prevails over application-side replacement of the tool result.
+     */
+    private void remapApiAuthenticationErrors(
+            HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+            throws IOException, ServletException {
+        if (!responseRemappingEnabled) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        var buffered = new BufferingMcpResponse(response);
+        filterChain.doFilter(request, buffered);
+
+        if (buffered.isDelegated()) {
+            return;
+        }
+
+        var apiAuthStatus = ApiAuthFailure.read(request);
+        if (apiAuthStatus == null) {
+            copyBufferedResponse(buffered, response);
+            return;
+        }
+
+        writeWwwAuthenticateResponse(request, response, HttpStatus.valueOf(apiAuthStatus.value()));
+    }
+
+    private void copyBufferedResponse(BufferingMcpResponse buffered, HttpServletResponse response) throws IOException {
+        response.setStatus(buffered.getStatus());
+        var contentType = buffered.getContentType();
+        if (contentType != null) {
+            response.setContentType(contentType);
+        }
+        if (buffered.isEncodingExplicitlySet()) {
+            response.setCharacterEncoding(buffered.getCharacterEncoding());
+        }
+        var hasContentTypeMethod = contentType != null;
+        buffered.getHeadersSnapshot().forEach((name, values) -> {
+            if (HOP_BY_HOP_HEADERS.contains(name.toLowerCase())
+                    || (hasContentTypeMethod && HttpHeaders.CONTENT_TYPE.equalsIgnoreCase(name))) {
+                return;
+            }
+            response.setHeader(name, values.getFirst());
+            values.stream().skip(1).forEach(value -> response.addHeader(name, value));
+        });
+        var body = buffered.getBody();
+        if (body.length > 0) {
+            response.getOutputStream().write(body);
+        }
     }
 }
