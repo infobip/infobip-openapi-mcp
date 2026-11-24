@@ -49,12 +49,9 @@ public class PartialAuthChallengeHandler {
     }
 
     /**
-     * Handles an API authorization failure and returns the tool result to deliver: marking the request for
-     * HTTP remapping on the HTTP plane, annotating it in-band on the in-meta plane when a
-     * {@link WwwAuthenticateProvider} is configured, and otherwise applying {@code plainError} to the API
-     * error body. Non-authorization statuses and requests without a servlet request (e.g. stdio) always
-     * take the plain path; synthetic framework statuses must not mark, as they would trigger a client login
-     * flow that cannot succeed.
+     * Handles an API authorization failure: marks the request for HTTP remapping on the HTTP plane,
+     * annotates the result in-band on the in-meta plane when a {@link WwwAuthenticateProvider} is
+     * configured, and otherwise returns {@code plainError} applied to the API error body.
      */
     public McpSchema.CallToolResult handle(
             McpRequestContext context,
