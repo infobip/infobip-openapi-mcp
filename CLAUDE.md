@@ -166,20 +166,22 @@ every MCP interaction delegates credential validation to the endpoint at `infobi
 (`OAuthConfiguration`, `OAuthController`) proxies `/.well-known` endpoints to the authorization server.
 
 With `security.auth.mode: PARTIAL_AUTH_CLAUDE_COMPATIBLE` the filter skips validation entirely and the backing HTTP API decides per tool
-call: `ToolHandler` records API `401`/`403` on the request as an attribute (`ApiAuthFailure` — server-internal, never
+call: `PartialAuthChallengeHandler` (invoked by `ToolHandler` on API errors) records API `401`/`403` on the request
+as an attribute (`ApiAuthFailure` — server-internal, never
 on the wire), and the filter — buffering the response via `BufferingMcpResponse`, on the STATELESS protocol only —
 turns a marked request into an HTTP `401`/`403` + `WWW-Authenticate` challenge so MCP clients start their login flow.
 The attribute refers to the request, not to the final response body, so remapping prevails even when application-side
 `ToolCallFilter` code replaced the tool result: it is an explicitly configured behavior of this mode. `auth-url` is
 optional in this mode (`@AssertTrue` on `AuthProperties`). A future `PER_TOOL` mode would classify operations by their
-OpenAPI `security` requirements: the seams are (1) per-operation marking decision in `ToolHandler` instead of the
-global flag, (2) `ApiAuthFailure`'s shared read/write side, (3) the mode enum inside `AuthProperties`, and (4) the
-filter's remap branch.
+OpenAPI `security` requirements: the seams are (1) `PartialAuthChallengeHandler.effectivePlane`, whose per-mode
+switch is where a future per-operation classification slots in, (2) `ApiAuthFailure`'s shared read/write side, (3) the
+mode enum inside `AuthProperties`, and (4) the filter's remap branch.
 
 `PARTIAL_AUTH_OPENAI_COMPATIBLE` (mixed-authentication hosts, e.g. ChatGPT connectors) shares the filter's API-driven branch but never
 enables remapping: the remap flag is derived from `PARTIAL_AUTH_CLAUDE_COMPATIBLE` and `PARTIAL_AUTH_AUTODETECT` only, so the filter is fully transparent and no HTTP challenge
 is ever produced — hosts that login only on transport-level `401`s (Claude) do not trigger in this mode. Instead,
-`ToolHandler` (constructor flag `annotateApiAuthErrors`, wired from `mode == PARTIAL_AUTH_OPENAI_COMPATIBLE`) turns an API `401`/`403`
+`PartialAuthChallengeHandler` (a starter bean's collaborator built when `mode.isPartialAuth()` and injected into
+`ToolHandler` as an `Optional`) turns an API `401`/`403`
 into an `isError` result that keeps the raw API body and attaches
 `WwwAuthenticateProvider.buildWwwAuthenticateChallenge` under `_meta["mcp/www_authenticate"]` (SEP-1489, draft —
 since closed unratified, the key survives as ChatGPT connector convention); this works on all
@@ -191,7 +193,8 @@ with auth keys — do not move auth vocabulary into `AppMeta`.
 `PARTIAL_AUTH_AUTODETECT` generalizes the two planes per request: `ChallengePlaneResolver` (starter bean only in this
 mode) matches the request's `User-Agent` and the `initialize` client name against configured `client-hints` plus
 built-in known-client patterns (`claude*` → `HTTP`, `openai-mcp*`/`codex-mcp-client*` → `IN_META`), defaulting to
-`default-challenge-plane` (`IN_META`). At the API-failure seam `ToolHandler` asks the resolver once per failure: an
+`default-challenge-plane` (`IN_META`). At the API-failure seam `PartialAuthChallengeHandler` asks the resolver once
+per failure: an
 `HTTP` plane marks the request for the filter (which is remap-enabled here, STATELESS only; a resolved `HTTP` plane on
 any other transport downgrades to in-band), an `IN_META` plane annotates the result as in
 `PARTIAL_AUTH_OPENAI_COMPATIBLE`. Tools advertise `securitySchemes` in this mode too. The resolver is a UX router, not
