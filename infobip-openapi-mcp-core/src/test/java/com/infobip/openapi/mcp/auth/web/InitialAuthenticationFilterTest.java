@@ -62,6 +62,7 @@ class InitialAuthenticationFilterTest {
         var response = new MockHttpServletResponse();
         var context = new McpRequestContext(request);
 
+        given(authProperties.mode()).willReturn(AuthProperties.AuthMode.ALL_OR_NOTHING);
         given(contextFactory.forServletFilter(request)).willReturn(context);
         given(errorModelWriter.writeErrorModelAsJson(HttpStatus.UNAUTHORIZED, request, null))
                 .willReturn("{\"requestError\":{\"serviceException\":{\"messageId\":\"UNAUTHORIZED\"}}}");

@@ -435,7 +435,6 @@ public class ToolHandler {
 
                     toolCallTimer.timeToolCall(
                             fullOperation, retryException.getStatusCode().isError());
-                    markApiAuthFailure(context, retryException.getStatusCode());
                     return apiAuthErrorResult(
                             context, retryException.getStatusCode(), retryException.getResponseBodyAsString());
                 } catch (RuntimeException retryException) {
@@ -455,7 +454,6 @@ public class ToolHandler {
             LOGGER.debug("HTTP status code {}: {}", exception.getStatusCode(), exception.getResponseBodyAsString());
             metricService.recordApiCall(fullOperation, exception.getStatusCode());
             toolCallTimer.timeToolCall(fullOperation, true);
-            markApiAuthFailure(context, exception.getStatusCode());
             return apiAuthErrorResult(context, exception.getStatusCode(), exception.getResponseBodyAsString());
         } catch (RuntimeException e) {
             httpCallTimer.timeApiCall(fullOperation, HttpStatus.BAD_GATEWAY);
@@ -826,17 +824,17 @@ public class ToolHandler {
     }
 
     /**
-     * Builds the result for an API {@code 401}/{@code 403}: in-band annotated with
-     * {@code _meta["mcp/www_authenticate"]} when {@link #shouldAnnotateInMeta} says so, plain error otherwise
-     * (marked requests are remapped to HTTP challenges by the filter later).
+     * Builds the result for an API authorization failure, marking the request for the filter's remapping
+     * first: in-band annotated with {@code _meta["mcp/www_authenticate"]} when
+     * {@link #shouldAnnotateInMeta} says so, plain error otherwise (marked requests are remapped to HTTP
+     * challenges by the filter later).
      */
     private McpSchema.CallToolResult apiAuthErrorResult(
             McpRequestContext context, HttpStatusCode statusCode, String apiErrorBody) {
+        markApiAuthFailure(context, statusCode);
         var servletRequest = context.httpServletRequest();
-        var authorizationFailure = statusCode.value() == HttpStatus.UNAUTHORIZED.value()
-                || statusCode.value() == HttpStatus.FORBIDDEN.value();
         if (servletRequest != null
-                && authorizationFailure
+                && ApiAuthFailure.isAuthorizationFailure(statusCode)
                 && wwwAuthenticateProvider.isPresent()
                 && shouldAnnotateInMeta(servletRequest, context)) {
             return McpSchema.CallToolResult.builder()
@@ -853,8 +851,8 @@ public class ToolHandler {
     private boolean shouldAnnotateInMeta(HttpServletRequest servletRequest, McpRequestContext context) {
         return annotateApiAuthErrors
                 || challengePlaneResolver
-                        .filter(resolver -> resolvePlane(servletRequest, context) == ChallengePlane.IN_META)
-                        .isPresent();
+                        .map(resolver -> resolvePlane(servletRequest, context) == ChallengePlane.IN_META)
+                        .orElse(false);
     }
 
     /**

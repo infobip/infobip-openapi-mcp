@@ -19,7 +19,7 @@ public final class ApiAuthFailure {
 
     /** Marks the request when {@code status} is {@code 401} or {@code 403}; other statuses are ignored. */
     public static void mark(HttpServletRequest request, @Nullable HttpStatusCode status) {
-        if (status != null && isAuthorizationFailure(status.value())) {
+        if (isAuthorizationFailure(status)) {
             request.setAttribute(REQUEST_ATTRIBUTE, status);
         }
     }
@@ -29,7 +29,10 @@ public final class ApiAuthFailure {
         return request.getAttribute(REQUEST_ATTRIBUTE) instanceof HttpStatusCode status ? status : null;
     }
 
-    private static boolean isAuthorizationFailure(int status) {
-        return status == HttpStatus.UNAUTHORIZED.value() || status == HttpStatus.FORBIDDEN.value();
+    /** Whether {@code status} is an authorization failure ({@code 401} or {@code 403}). */
+    public static boolean isAuthorizationFailure(@Nullable HttpStatusCode status) {
+        return status != null
+                && (status.value() == HttpStatus.UNAUTHORIZED.value()
+                        || status.value() == HttpStatus.FORBIDDEN.value());
     }
 }

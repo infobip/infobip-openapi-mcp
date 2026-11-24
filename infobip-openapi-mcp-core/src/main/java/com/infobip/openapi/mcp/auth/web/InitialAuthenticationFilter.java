@@ -128,9 +128,7 @@ public class InitialAuthenticationFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
-        if (authProperties.mode() == AuthProperties.AuthMode.PARTIAL_AUTH_CLAUDE_COMPATIBLE
-                || authProperties.mode() == AuthProperties.AuthMode.PARTIAL_AUTH_OPENAI_COMPATIBLE
-                || authProperties.mode() == AuthProperties.AuthMode.PARTIAL_AUTH_AUTODETECT) {
+        if (authProperties.mode().isPartialAuth()) {
             remapApiAuthenticationErrors(request, response, filterChain);
             return;
         }

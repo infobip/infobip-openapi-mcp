@@ -109,7 +109,28 @@ public record AuthProperties(
          * built-in known-client patterns, falling back to {@code default-challenge-plane} and to in-band
          * wherever an HTTP challenge cannot be produced.
          */
-        PARTIAL_AUTH_AUTODETECT
+        PARTIAL_AUTH_AUTODETECT;
+
+        /**
+         * Whether this mode skips upfront validation and lets the backing API decide authorization.
+         */
+        public boolean isPartialAuth() {
+            return this != ALL_OR_NOTHING;
+        }
+
+        /**
+         * Whether this mode may deliver authorization failures on the HTTP challenge plane.
+         */
+        public boolean isHttpChallengeCapable() {
+            return this == PARTIAL_AUTH_CLAUDE_COMPATIBLE || this == PARTIAL_AUTH_AUTODETECT;
+        }
+
+        /**
+         * Whether tools are listed with the {@code _meta.securitySchemes} advertisement in this mode.
+         */
+        public boolean advertisesSecuritySchemes() {
+            return this == PARTIAL_AUTH_OPENAI_COMPATIBLE || this == PARTIAL_AUTH_AUTODETECT;
+        }
     }
 
     /**

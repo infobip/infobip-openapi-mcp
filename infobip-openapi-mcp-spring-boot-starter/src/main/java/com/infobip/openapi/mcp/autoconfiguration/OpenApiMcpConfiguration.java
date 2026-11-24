@@ -218,15 +218,15 @@ class OpenApiMcpConfiguration {
                 metricService,
                 credentialProvider,
                 progressUpdateProvider,
-                mode.filter(m -> m == AuthProperties.AuthMode.PARTIAL_AUTH_CLAUDE_COMPATIBLE)
-                        .isPresent(),
-                mode.filter(m -> m == AuthProperties.AuthMode.PARTIAL_AUTH_OPENAI_COMPATIBLE)
-                        .isPresent(),
+                mode.map(m -> m == AuthProperties.AuthMode.PARTIAL_AUTH_CLAUDE_COMPATIBLE)
+                        .orElse(false),
+                mode.map(m -> m == AuthProperties.AuthMode.PARTIAL_AUTH_OPENAI_COMPATIBLE)
+                        .orElse(false),
                 wwwAuthenticateProvider,
                 challengePlaneResolver,
                 mcpServerProperties
-                        .filter(p -> p.getProtocol() == McpServerProperties.ServerProtocol.STATELESS)
-                        .isPresent());
+                        .map(p -> p.getProtocol() == McpServerProperties.ServerProtocol.STATELESS)
+                        .orElse(false));
     }
 
     @Bean
@@ -257,10 +257,7 @@ class OpenApiMcpConfiguration {
                 toolAnnotationResolver,
                 properties,
                 resourceRegistry,
-                authProperties
-                        .filter(p -> p.mode() == AuthProperties.AuthMode.PARTIAL_AUTH_OPENAI_COMPATIBLE
-                                || p.mode() == AuthProperties.AuthMode.PARTIAL_AUTH_AUTODETECT)
-                        .isPresent(),
+                authProperties.map(p -> p.mode().advertisesSecuritySchemes()).orElse(false),
                 new ToolSecuritySchemeResolver(
                         scopeProperties.orElseGet(() -> new ScopeProperties(null, null, null, null))));
     }

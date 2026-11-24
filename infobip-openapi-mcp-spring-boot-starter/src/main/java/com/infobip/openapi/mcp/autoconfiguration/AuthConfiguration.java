@@ -69,8 +69,7 @@ class AuthConfiguration {
             Optional<JwtScopeService> jwtScopeService,
             CredentialProvider credentialProvider) {
         var mode = authProperties.mode();
-        var httpChallengeCapable = mode == AuthProperties.AuthMode.PARTIAL_AUTH_CLAUDE_COMPATIBLE
-                || mode == AuthProperties.AuthMode.PARTIAL_AUTH_AUTODETECT;
+        var httpChallengeCapable = mode.isHttpChallengeCapable();
         var responseRemappingEnabled =
                 httpChallengeCapable && mcpServerProperties.getProtocol() == ServerProtocol.STATELESS;
         if (mode == AuthProperties.AuthMode.PARTIAL_AUTH_CLAUDE_COMPATIBLE && !responseRemappingEnabled) {
