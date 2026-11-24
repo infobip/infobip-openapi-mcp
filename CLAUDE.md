@@ -152,6 +152,7 @@ values itself via `PlusAwareUriEncoder` before building the request URI.
 | `CredentialProvider`      | Supply credentials from any source (HTTP header, vault, env, etc.); replace the default bean                             |
 | `ProgressUpdateProvider`  | Controls the `progress`, `total`, and `message` fields of each `notifications/progress` message; replace the default bean |
 | `ResourceContentsConverter` | Converts the downstream response of a resource read into text or base64 blob contents; replace the default bean |
+| `ChallengePlaneResolver`  | Routes each authorization failure to the HTTP or in-band challenge plane in `PARTIAL_AUTH_AUTODETECT` mode; built-in known-client patterns can be overridden by `security.auth.client-hints` rules or bypassed entirely by replacing the default bean |
 
 Important: filters, enrichers, strategies and providers can be implemented by application code, which is outside the
 framework. You will not see those implementations in this project's source code. This is the supported way to extend and
@@ -160,8 +161,46 @@ customize framework functionality. Take **extra care** to maintain backwards com
 ### Authentication
 
 Authentication is handled by `InitialAuthenticationFilter`. When `infobip.openapi.mcp.security.auth.enabled: true`,
-every MCP interaction delegates credential validation to the endpoint at `infobip.openapi.mcp.security.auth.auth-url`.
-OAuth support (`OAuthConfiguration`, `OAuthController`) proxies `/.well-known` endpoints to the authorization server.
+every MCP interaction delegates credential validation to the endpoint at `infobip.openapi.mcp.security.auth.auth-url`
+(`security.auth.mode: ALL_OR_NOTHING`, the default and historically only behavior). OAuth support
+(`OAuthConfiguration`, `OAuthController`) proxies `/.well-known` endpoints to the authorization server.
+
+With `security.auth.mode: PARTIAL_AUTH_CLAUDE_COMPATIBLE` the filter skips validation entirely and the backing HTTP API decides per tool
+call: `PartialAuthChallengeHandler` (invoked by `ToolHandler` on API errors) records API `401`/`403` on the request
+as an attribute (`ApiAuthFailure` — server-internal, never
+on the wire), and the filter — buffering the response via `BufferingMcpResponse`, on the STATELESS protocol only —
+turns a marked request into an HTTP `401`/`403` + `WWW-Authenticate` challenge so MCP clients start their login flow.
+The attribute refers to the request, not to the final response body, so remapping prevails even when application-side
+`ToolCallFilter` code replaced the tool result: it is an explicitly configured behavior of this mode. `auth-url` is
+optional in this mode (`@AssertTrue` on `AuthProperties`). A future `PER_TOOL` mode would classify operations by their
+OpenAPI `security` requirements: the seams are (1) `PartialAuthChallengeHandler.effectivePlane`, whose per-mode
+switch is where a future per-operation classification slots in, (2) `ApiAuthFailure`'s shared read/write side, (3) the
+mode enum inside `AuthProperties`, and (4) the filter's remap branch.
+
+`PARTIAL_AUTH_OPENAI_COMPATIBLE` (mixed-authentication hosts, e.g. ChatGPT connectors) shares the filter's API-driven branch but never
+enables remapping: the remap flag is derived from `PARTIAL_AUTH_CLAUDE_COMPATIBLE` and `PARTIAL_AUTH_AUTODETECT` only, so the filter is fully transparent and no HTTP challenge
+is ever produced — hosts that login only on transport-level `401`s (Claude) do not trigger in this mode. Instead,
+`PartialAuthChallengeHandler` (a starter bean's collaborator built when `mode.isPartialAuth()` and injected into
+`ToolHandler` as an `Optional`) turns an API `401`/`403`
+into an `isError` result that keeps the raw API body and attaches
+`WwwAuthenticateProvider.buildWwwAuthenticateChallenge` under `_meta["mcp/www_authenticate"]` (SEP-1489, draft —
+since closed unratified, the key survives as ChatGPT connector convention); this works on all
+transports since the signal is transport-independent. `ToolRegistry.getTools()` additionally emits
+`_meta.securitySchemes` (SEP-1488, open draft) (`noauth` + `oauth2` with sorted discovered scopes) on every tool; the tool builder's `meta()`
+replaces rather than merges, so `composeToolMeta` is the single composition point and must keep merging MCP Apps keys
+with auth keys — do not move auth vocabulary into `AppMeta`.
+
+`PARTIAL_AUTH_AUTODETECT` generalizes the two planes per request: `ChallengePlaneResolver` (starter bean only in this
+mode) matches the request's `User-Agent` and the `initialize` client name against configured `client-hints` plus
+built-in known-client patterns (`claude*` → `HTTP`, `openai-mcp*`/`codex-mcp-client*` → `IN_META`), defaulting to
+`default-challenge-plane` (`IN_META`). At the API-failure seam `PartialAuthChallengeHandler` asks the resolver once
+per failure: an
+`HTTP` plane marks the request for the filter (which is remap-enabled here, STATELESS only; a resolved `HTTP` plane on
+any other transport downgrades to in-band), an `IN_META` plane annotates the result as in
+`PARTIAL_AUTH_OPENAI_COMPATIBLE`. Tools advertise `securitySchemes` in this mode too. The resolver is a UX router, not
+a security control — the backing API remains the authorization authority; client-provided identity is spoofable by design.
+`ChallengePlaneResolver` is a starter bean declared only in this mode and sits behind `@ConditionalOnMissingBean`, so
+application code may replace it entirely to route the planes however it likes.
 
 ### Schema Transformation
 

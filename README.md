@@ -293,6 +293,93 @@ defined in an externalized configuration property `infobip.openapi.mcp.security.
 security is enabled. The framework will pass any `Authorization` header from the inbound MCP request to the `auth-url`
 endpoint on the API.
 
+#### Partial authentication
+
+Some APIs protect only a subset of their operations. For such APIs the all-or-nothing model above is too coarse: an
+anonymous client could legitimately list and call the public operations, but it is rejected before ever reaching them.
+Setting `infobip.openapi.mcp.security.auth.mode: PARTIAL_AUTH_CLAUDE_COMPATIBLE` switches the framework to a model where the backing HTTP
+API itself decides, per tool call, whether authorization is required:
+
+- The framework no longer validates credentials upfront; `auth-url` is not consulted (and does not need to be
+  configured). Any `Authorization` header received from the client is still forwarded to the API untouched.
+- Public operations work for anonymous clients, exactly like they do when security is disabled.
+- When the API answers a tool call with `401` or `403`, the framework converts that answer into an HTTP `401`/`403`
+  response carrying the `WWW-Authenticate` header (with OAuth metadata, if configured), which is what triggers the
+  login flow in MCP clients. After the client obtains credentials through the authorization server, the same call
+  succeeds.
+
+Note that this response remapping currently works only on the STATELESS transport protocol; on other protocols an API
+authorization failure remains a regular MCP-level tool error and will not trigger a client login. Enabling OAuth
+(`infobip.openapi.mcp.security.auth.oauth.enabled`) alongside this mode is recommended so the generated challenges
+point clients at the authorization server.
+
+#### Mixed authentication
+
+Hosts such as the ChatGPT connectors do not act on HTTP `401` challenges that arrive mid-conversation; they read
+authorization hints from the MCP layer instead. Setting `infobip.openapi.mcp.security.auth.mode: PARTIAL_AUTH_OPENAI_COMPATIBLE`
+serves those hosts with the same API-decides model as `PARTIAL_AUTH_CLAUDE_COMPATIBLE` — credentials are neither required nor validated
+upfront, `auth-url` is never consulted, and public operations work for anonymous clients — but the challenge travels
+in-band, on the tool result:
+
+- When the API answers a tool call with `401` or `403`, the result stays an MCP-level error (`isError`) carrying the
+  API's own error body, with the authentication challenge attached as `_meta["mcp/www_authenticate"]`.
+- Each tool advertises its authentication options via `_meta.securitySchemes` in `tools/list`, resolved per operation
+  from the specification's own security declarations: the `noauth` option is offered for operations the spec permits
+  anonymous calls to (a silent or empty security requirement), while `oauth2` is offered for operations referencing an
+  OAuth2 or OpenID Connect scheme — carrying that operation's own scopes, plus any configured mandatory scopes — or for
+  deployments that configure mandatory scopes at all. Mixed-authentication hosts can thus call public operations
+  anonymously and offer linking exactly where login is required.
+- Because the signal rides on the MCP result and not on the HTTP response plane, this mode works on every HTTP
+  transport, including STREAMABLE, where the `PARTIAL_AUTH_CLAUDE_COMPATIBLE` response remapping cannot function.
+
+The two `_meta` keys implement draft proposals and connector conventions, not ratified MCP specification text:
+`securitySchemes` follows [SEP-1488][25], an open proposal whose shape is still under active revision, while
+`mcp/www_authenticate` follows [SEP-1489][26], which was closed in favor of the HTTP-plane step-up flow that landed
+in the 2025-11-25 authorization specification. The host behavior behind both keys — how ChatGPT connectors consume
+them — is documented by OpenAI [in its connector authentication guide][27]. Until the vocabulary is ratified, the
+shape of these keys may change.
+
+Since the HTTP plane never answers `401` in this mode, hosts that trigger their login flow from the transport-level
+challenge only (for example Claude's lazy sign-in) will not be triggered; the authentication modes are mutually
+exclusive and the choice is made per deployment. Enabling OAuth
+(`infobip.openapi.mcp.security.auth.oauth.enabled`) is required in this mode: it provides the challenges and the scope
+set, and the framework warns at startup when it is absent. Flipping the mode changes the tools' `_meta`, so the live
+reload re-registers the tools.
+
+#### Automatic challenge plane selection
+
+A single deployment often serves both kinds of host at once: a Claude-styled client that logs in on an HTTP `401` and a
+ChatGPT connector that waits for the in-band `_meta` challenge. Setting
+`infobip.openapi.mcp.security.auth.mode: PARTIAL_AUTH_AUTODETECT` keeps the API-decides model of both partial
+authentication modes, but chooses the delivery plane of every authorization failure per request:
+
+- Client identity is read from the HTTP `User-Agent` header and from the client name announced in the MCP
+  `initialize` handshake, and matched against the configured `client-hints` rules (evaluated in order) and then
+  against built-in patterns for well-known hosts (`claude`-styled user agents get the HTTP plane, `openai-mcp` and
+  `codex-mcp-client` the in-band plane). A request no rule matches gets the `default-challenge-plane`, which defaults
+  to the safer `IN_META`.
+- Requests routed to the `HTTP` plane behave exactly like `PARTIAL_AUTH_CLAUDE_COMPATIBLE` (requires the STATELESS
+  protocol; on other transports they fall back to the in-band plane), requests routed to `IN_META` exactly like
+  `PARTIAL_AUTH_OPENAI_COMPATIBLE`, including the per-operation `securitySchemes` advertisement (draft proposals,
+  see Mixed authentication).
+- This routing is a user-experience decision, never an authorization one: the backing API stays the authority in every
+  mode, and client-supplied identity must not be trusted with it.
+
+```yaml
+infobip.openapi.mcp.security.auth:
+  enabled: true
+  mode: PARTIAL_AUTH_AUTODETECT
+  default-challenge-plane: IN_META
+  client-hints:
+    - user-agent-pattern: "my-corp-gateway/.*"
+      plane: HTTP
+    - client-name-pattern: "^claude desktop$"
+      plane: HTTP
+```
+
+A hint matches when every pattern it configures matches (case-insensitive search); the `client-name-pattern` does not
+match on the STATELESS transport, which carries no `initialize` handshake. Hints are rejected outside this mode.
+
 #### OAuth
 
 MCP specification defines a flow for automatic [authorization server discovery][13]. One of the requirements is that MCP
@@ -756,7 +843,12 @@ kept as a fallback for clients without MCP Apps support.
 | `infobip.openapi.mcp.live-reload.cron-expression`                                  | Cron expression for scheduling OpenAPI specification reload attempts. Uses Spring's cron format (6 fields: second, minute, hour, day-of-month, month, day-of-week). Requires `@EnableScheduling` on your application.                                                                                                                                                                                      | `0 */10 * * * *`               |
 | `infobip.openapi.mcp.live-reload.max-retries`                                      | Maximum number of reload attempts per scheduled execution. The loop terminates early on the first successful reload. Retries only occur on failure, using exponential backoff.                                                                                                                                                                                                                             | `3`                            |
 | `infobip.openapi.mcp.security.auth.enabled`                                        | Enable API authentication. Default is false.                                                                                                                                                                                                                                                                                                                                                               | `false`                        | 
-| `infobip.openapi.mcp.security.auth.auth-url`                                       | The API endpoint URL to validate credentials against.                                                                                                                                                                                                                                                                                                                                                      | `-`                            |
+| `infobip.openapi.mcp.security.auth.mode`                                           | Authentication mode. `ALL_OR_NOTHING` validates every request against `auth-url` before it reaches the MCP transport. `PARTIAL_AUTH_CLAUDE_COMPATIBLE` skips upfront validation and lets the backing HTTP API decide per tool call; its `401`/`403` responses are remapped into HTTP authentication challenges (STATELESS protocol only). `PARTIAL_AUTH_OPENAI_COMPATIBLE` makes the same API decision, but carries the challenge in the tool result's `_meta` and advertises per-operation `securitySchemes` on tools, working on all HTTP transports. `PARTIAL_AUTH_AUTODETECT` picks between the two delivery planes per request, from the `client-hints`.                                                                                       | `ALL_OR_NOTHING`               |
+| `infobip.openapi.mcp.security.auth.client-hints[n].user-agent-pattern`             | Regular expression searched (case-insensitively) in the request's `User-Agent` header, in `PARTIAL_AUTH_AUTODETECT` mode only. A hint applies when every pattern it configures matches; hints are evaluated in order, before the built-in known-client patterns. Rejected outside `PARTIAL_AUTH_AUTODETECT`.                                                                                                                                                                                                            | `-`                            |
+| `infobip.openapi.mcp.security.auth.client-hints[n].client-name-pattern`            | Regular expression searched (case-insensitively) in the client name announced in the MCP `initialize` handshake; never matches on the STATELESS transport, which carries no handshake.                                                                                                                                                                                                                                                                    | `-`                            |
+| `infobip.openapi.mcp.security.auth.client-hints[n].plane`                          | Plane the authorization failures of matching requests take: `HTTP` (transport `401` + `WWW-Authenticate`, STATELESS protocol only) or `IN_META` (`isError` result with `_meta["mcp/www_authenticate"]`).                                                                                                                                                                                                                                                | `-`                            |
+| `infobip.openapi.mcp.security.auth.default-challenge-plane`                        | Plane used in `PARTIAL_AUTH_AUTODETECT` mode when no hint matches.                                                                                                                                                                                                                                                                                                                                                                                                         | `IN_META`                      |
+| `infobip.openapi.mcp.security.auth.auth-url`                                       | The API endpoint URL to validate credentials against. Required unless `mode` is one of the partial authentication modes, in which case it is never used.                                                                                                                                                                                                                                                                                                                   | `-`                            |
 | `infobip.openapi.mcp.security.auth.connect-timeout`                                | Connection timeout for the validation API call. Default is 5 seconds.                                                                                                                                                                                                                                                                                                                                      | 5 seconds                      |
 | `infobip.openapi.mcp.security.auth.read-timeout`                                   | Read timeout for the validation API call. Default is 5 seconds.                                                                                                                                                                                                                                                                                                                                            | 5 seconds                      |
 | `infobip.openapi.mcp.security.auth.override-external-response`                     | Whether to override the external response with the internal one. This is useful for cases where you want to control the response format or content returned to the client. If set to true, the response will be overridden by the model provided by `com.infobip.openapi.mcp.error.ErrorModelProvider`. Default is false.                                                                                  | `false`                        |
@@ -846,3 +938,9 @@ This project is licensed under the [MIT License](LICENSE).
 [23]: https://modelcontextprotocol.io/extensions/client-matrix "MCP Apps client support matrix"
 
 [24]: https://github.com/modelcontextprotocol/java-sdk/issues/999 "MCP Java SDK issue #999 — extension capability support"
+
+[25]: https://github.com/modelcontextprotocol/modelcontextprotocol/issues/1488 "SEP-1488: securitySchemes in Tool Metadata for Mixed-Auth Servers (draft proposal)"
+
+[26]: https://github.com/modelcontextprotocol/modelcontextprotocol/issues/1489 "SEP-1489: Tool Error Responses for Triggering OAuth Flows (draft proposal, closed)"
+
+[27]: https://developers.openai.com/plugins/build/auth "ChatGPT connector authentication behavior (OpenAI docs)"

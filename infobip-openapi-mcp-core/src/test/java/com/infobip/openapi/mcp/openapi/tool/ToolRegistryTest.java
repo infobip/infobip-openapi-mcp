@@ -11,6 +11,8 @@ import static org.mockito.Mockito.mock;
 
 import com.infobip.openapi.mcp.McpRequestContext;
 import com.infobip.openapi.mcp.apps.AppMeta;
+import com.infobip.openapi.mcp.auth.ScopeProperties;
+import com.infobip.openapi.mcp.auth.scope.ToolSecuritySchemeResolver;
 import com.infobip.openapi.mcp.config.OpenApiMcpProperties;
 import com.infobip.openapi.mcp.openapi.OpenApiRegistry;
 import com.infobip.openapi.mcp.openapi.schema.ComposedExample;
@@ -63,6 +65,18 @@ class ToolRegistryTest {
 
     private ToolRegistry toolRegistry;
     private OpenApiMcpProperties properties;
+
+    private static final String SINGLE_OPERATION_SPEC = """
+        {
+          "openapi": "3.1.0",
+          "info": { "title": "Test API", "version": "1.0.0" },
+          "paths": {
+            "/forecast": {
+              "get": { "operationId": "getForecast" }
+            }
+          }
+        }
+        """;
 
     @BeforeEach
     void setUp() {
@@ -2558,6 +2572,287 @@ class ToolRegistryTest {
         @SuppressWarnings("unchecked")
         private Map<String, Object> castUi(Map<String, Object> meta) {
             return (Map<String, Object>) meta.get(AppMeta.UI_META_KEY);
+        }
+    }
+
+    @Nested
+    class SecuritySchemesDeclaration {
+
+        @Test
+        void shouldDeclareInheritedGlobalSecurityWithoutAnonymousOption() {
+            given(openApiRegistry.openApi()).willReturn(parseOpenAPI(specWith("""
+                  "security": [ { "oauthScheme": [ "zalo:manage", "zalo:read" ] } ],
+                """)));
+
+            var tools = declaringToolRegistry(defaultScopeProperties()).getTools();
+
+            then(securitySchemesOf(tools.getFirst()))
+                    .isEqualTo(List.of(Map.of("type", "oauth2", "scopes", List.of("zalo:manage", "zalo:read"))));
+        }
+
+        @Test
+        void shouldDeclareEmptyScopesWhenSchemeReferencedWithoutValues() {
+            given(openApiRegistry.openApi()).willReturn(parseOpenAPI(specWith("""
+                  "security": [ { "oauthScheme": [] } ],
+                """)));
+
+            var tools = declaringToolRegistry(defaultScopeProperties()).getTools();
+
+            then(securitySchemesOf(tools.getFirst())).isEqualTo(List.of(Map.of("type", "oauth2", "scopes", List.of())));
+        }
+
+        @Test
+        void shouldDeclareOnlyAnonymousOptionForSilentSpecification() {
+            given(openApiRegistry.openApi()).willReturn(parseOpenAPI(SINGLE_OPERATION_SPEC));
+
+            var tools = declaringToolRegistry(defaultScopeProperties()).getTools();
+
+            then(securitySchemesOf(tools.getFirst())).isEqualTo(List.of(Map.of("type", "noauth")));
+        }
+
+        @Test
+        void shouldDeclareOnlyAnonymousOptionForEmptySecurityRequirement() {
+            given(openApiRegistry.openApi()).willReturn(parseOpenAPI("""
+                {
+                  "openapi": "3.1.0",
+                  "info": { "title": "Test API", "version": "1.0.0" },
+                  "components": { "securitySchemes": { "oauthScheme": { "type": "oauth2" } } },
+                  "paths": {
+                    "/forecast": {
+                      "get": { "operationId": "getForecast", "security": [ {} ] }
+                    }
+                  }
+                }
+                """));
+
+            var tools = declaringToolRegistry(defaultScopeProperties()).getTools();
+
+            then(securitySchemesOf(tools.getFirst())).isEqualTo(List.of(Map.of("type", "noauth")));
+        }
+
+        @Test
+        void shouldAdvertiseBothOptionsWhenEmptyRequirementIsCombinedWithOAuth() {
+            given(openApiRegistry.openApi()).willReturn(parseOpenAPI(specWith("""
+                  "security": [ { "oauthScheme": [ "zalo:manage" ] } ],
+                """, """
+                          "get": {
+                            "operationId": "getForecast",
+                            "security": [ {}, { "oauthScheme": [ "zalo:read" ] } ]
+                          }
+                        """)));
+
+            var tools = declaringToolRegistry(defaultScopeProperties()).getTools();
+
+            then(securitySchemesOf(tools.getFirst()))
+                    .isEqualTo(List.of(
+                            Map.of("type", "noauth"), Map.of("type", "oauth2", "scopes", List.of("zalo:read"))));
+        }
+
+        @Test
+        void shouldUseOperationSecurityOverInheritedGlobalSecurity() {
+            given(openApiRegistry.openApi()).willReturn(parseOpenAPI(specWith("""
+                  "security": [ { "oauthScheme": [ "zalo:manage", "zalo:read" ] } ],
+                """, """
+                          "get": { "operationId": "getForecast", "security": [ { "oauthScheme": [ "zalo:read" ] } ] }
+                        """)));
+
+            var tools = declaringToolRegistry(defaultScopeProperties()).getTools();
+
+            then(securitySchemesOf(tools.getFirst()))
+                    .isEqualTo(List.of(Map.of("type", "oauth2", "scopes", List.of("zalo:read"))));
+        }
+
+        @Test
+        void shouldAdvertiseOpenIdConnectSchemeAsOAuth2() {
+            given(openApiRegistry.openApi()).willReturn(parseOpenAPI("""
+                {
+                  "openapi": "3.1.0",
+                  "info": { "title": "Test API", "version": "1.0.0" },
+                  "security": [ { "oidcScheme": [ "openid" ] } ],
+                  "components": { "securitySchemes": { "oidcScheme": { "type": "openIdConnect" } } },
+                  "paths": {
+                    "/forecast": { "get": { "operationId": "getForecast" } }
+                  }
+                }
+                """));
+
+            var tools = declaringToolRegistry(defaultScopeProperties()).getTools();
+
+            then(securitySchemesOf(tools.getFirst()))
+                    .isEqualTo(List.of(Map.of("type", "oauth2", "scopes", List.of("openid"))));
+        }
+
+        @Test
+        void shouldOfferOAuth2ForSilentSpecificationWhenMandatoryScopesAreConfigured() {
+            given(openApiRegistry.openApi()).willReturn(parseOpenAPI(SINGLE_OPERATION_SPEC));
+
+            var tools = declaringToolRegistry(new ScopeProperties(true, "", "required_scope", null))
+                    .getTools();
+
+            then(securitySchemesOf(tools.getFirst()))
+                    .isEqualTo(List.of(
+                            Map.of("type", "noauth"), Map.of("type", "oauth2", "scopes", List.of("required_scope"))));
+        }
+
+        @Test
+        void shouldMergeMandatoryScopesIntoOperationScopes() {
+            given(openApiRegistry.openApi()).willReturn(parseOpenAPI(specWith("""
+                  "security": [ { "oauthScheme": [ "zalo:read" ] } ],
+                """)));
+
+            var tools = declaringToolRegistry(new ScopeProperties(true, "", "required_scope", null))
+                    .getTools();
+
+            then(securitySchemesOf(tools.getFirst()))
+                    .isEqualTo(List.of(Map.of("type", "oauth2", "scopes", List.of("required_scope", "zalo:read"))));
+        }
+
+        @Test
+        void shouldNotDeclareWhenOperationIsSecuredOnlyByNonScopeSchemes() {
+            given(openApiRegistry.openApi()).willReturn(parseOpenAPI("""
+                {
+                  "openapi": "3.1.0",
+                  "info": { "title": "Test API", "version": "1.0.0" },
+                  "security": [ { "apiKeyScheme": [] } ],
+                  "components": { "securitySchemes": { "apiKeyScheme": { "type": "apiKey" } } },
+                  "paths": {
+                    "/forecast": { "get": { "operationId": "getForecast" } }
+                  }
+                }
+                """));
+
+            var tools = declaringToolRegistry(defaultScopeProperties()).getTools();
+
+            then(tools.getFirst().tool().meta()).isNull();
+        }
+
+        @Test
+        void shouldAdvertiseScopesFromOperationExtension() {
+            given(openApiRegistry.openApi()).willReturn(parseOpenAPI("""
+                {
+                  "openapi": "3.1.0",
+                  "info": { "title": "Test API", "version": "1.0.0" },
+                  "paths": {
+                    "/forecast": {
+                      "get": { "operationId": "getForecast", "x-scopes": [ "cci:read" ] }
+                    }
+                  }
+                }
+                """));
+
+            var tools = declaringToolRegistry(new ScopeProperties(true, "x-scopes", "", null))
+                    .getTools();
+
+            then(securitySchemesOf(tools.getFirst()))
+                    .isEqualTo(List.of(Map.of("type", "oauth2", "scopes", List.of("cci:read"))));
+        }
+
+        @Test
+        void shouldAdvertiseAnonymousOptionForOperationWithoutScopeExtension() {
+            given(openApiRegistry.openApi()).willReturn(parseOpenAPI(SINGLE_OPERATION_SPEC));
+
+            var tools = declaringToolRegistry(new ScopeProperties(true, "x-scopes", "", null))
+                    .getTools();
+
+            then(securitySchemesOf(tools.getFirst())).isEqualTo(List.of(Map.of("type", "noauth")));
+        }
+
+        @Test
+        void shouldNotDeclareSecuritySchemesByDefault() {
+            given(openApiRegistry.openApi()).willReturn(parseOpenAPI(SINGLE_OPERATION_SPEC));
+
+            var tools = toolRegistry.getTools();
+
+            then(tools.getFirst().tool().meta()).isNull();
+        }
+
+        @Test
+        void shouldCoexistWithAppMetaKeys() {
+            given(openApiRegistry.openApi()).willReturn(parseOpenAPI("""
+                {
+                  "openapi": "3.1.0",
+                  "info": { "title": "Test API", "version": "1.0.0" },
+                  "paths": {
+                    "/forecast": {
+                      "get": {
+                        "operationId": "getForecast",
+                        "x-mcp-app": { "resourceUri": "ui://forecast-dashboard" }
+                      }
+                    }
+                  }
+                }
+                """));
+
+            var tools = declaringToolRegistry(defaultScopeProperties()).getTools();
+
+            var meta = tools.getFirst().tool().meta();
+            then(meta).containsKey(AppMeta.UI_META_KEY);
+            then(securitySchemesOf(tools.getFirst())).isEqualTo(List.of(Map.of("type", "noauth")));
+        }
+
+        private String specWith(String rootSecurity) {
+            return specWith(rootSecurity, """
+                    "get": { "operationId": "getForecast" }
+                    """);
+        }
+
+        private String specWith(String rootSecurity, String operation) {
+            return """
+                    {
+                      "openapi": "3.1.0",
+                      "info": { "title": "Test API", "version": "1.0.0" },
+                      %s
+                      "components": { "securitySchemes": { "oauthScheme": { "type": "oauth2" } } },
+                      "paths": {
+                        "/forecast": {
+                          %s
+                        }
+                      }
+                    }
+                    """.formatted(rootSecurity, operation);
+        }
+
+        @Test
+        void shouldRequireResolverWhenDeclaringSecuritySchemes() {
+            thenThrownBy(() -> new ToolRegistry(
+                            openApiRegistry,
+                            namingStrategy,
+                            inputSchemaComposer,
+                            inputExampleComposer,
+                            toolHandler,
+                            mapperFactory,
+                            toolAnnotationResolver,
+                            properties,
+                            null,
+                            true,
+                            null))
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
+
+        private ScopeProperties defaultScopeProperties() {
+            return new ScopeProperties(null, null, null, null);
+        }
+
+        private ToolRegistry declaringToolRegistry(ScopeProperties scopeProperties) {
+            return new ToolRegistry(
+                    openApiRegistry,
+                    namingStrategy,
+                    inputSchemaComposer,
+                    inputExampleComposer,
+                    toolHandler,
+                    mapperFactory,
+                    toolAnnotationResolver,
+                    properties,
+                    null,
+                    true,
+                    new ToolSecuritySchemeResolver(scopeProperties));
+        }
+
+        @SuppressWarnings("unchecked")
+        private List<Map<String, Object>> securitySchemesOf(RegisteredTool registeredTool) {
+            var meta = registeredTool.tool().meta();
+            then(meta).isNotNull();
+            return (List<Map<String, Object>>) meta.get("securitySchemes");
         }
     }
 

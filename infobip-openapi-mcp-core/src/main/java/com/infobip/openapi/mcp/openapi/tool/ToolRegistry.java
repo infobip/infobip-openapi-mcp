@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import com.infobip.openapi.mcp.apps.AppMeta;
 import com.infobip.openapi.mcp.apps.AppStructuredContent;
 import com.infobip.openapi.mcp.apps.AppToolExtension;
+import com.infobip.openapi.mcp.auth.scope.ToolSecuritySchemeResolver;
 import com.infobip.openapi.mcp.config.OpenApiMcpProperties;
 import com.infobip.openapi.mcp.openapi.OpenApiRegistry;
 import com.infobip.openapi.mcp.openapi.schema.ComposedExample;
@@ -55,6 +56,9 @@ public class ToolRegistry {
     private static final Logger LOGGER = LoggerFactory.getLogger(ToolRegistry.class);
     private static final TypeReference<Map<String, Object>> JSON_SCHEMA_MAP_TYPE = new TypeReference<>() {};
 
+    /** {@code _meta} key advertising a tool's authentication options in the partial-authentication modes. */
+    private static final String SECURITY_SCHEMES_META_KEY = "securitySchemes";
+
     private final OpenApiRegistry openApiRegistry;
     private final NamingStrategy namingStrategy;
     private final InputSchemaComposer inputSchemaComposer;
@@ -65,6 +69,8 @@ public class ToolRegistry {
     private final JsonMapper jsonSchemaMapper = JsonMapper.builder().build();
     private final OpenApiMcpProperties properties;
     private final @Nullable ResourceRegistry resourceRegistry;
+    private final boolean declareSecuritySchemes;
+    private final @Nullable ToolSecuritySchemeResolver securitySchemeResolver;
 
     private List<RegisteredTool> registeredToolsCache = List.of();
 
@@ -104,6 +110,40 @@ public class ToolRegistry {
             ToolAnnotationResolver toolAnnotationResolver,
             OpenApiMcpProperties properties,
             @Nullable ResourceRegistry resourceRegistry) {
+        this(
+                openApiRegistry,
+                namingStrategy,
+                inputSchemaComposer,
+                inputExampleComposer,
+                toolHandler,
+                openApiMapperFactory,
+                toolAnnotationResolver,
+                properties,
+                resourceRegistry,
+                false,
+                null);
+    }
+
+    /**
+     * Creates a registry that resolves and declares the per-operation {@code _meta.securitySchemes}
+     * advertisement via the given {@link ToolSecuritySchemeResolver}.
+     */
+    public ToolRegistry(
+            OpenApiRegistry openApiRegistry,
+            NamingStrategy namingStrategy,
+            InputSchemaComposer inputSchemaComposer,
+            InputExampleComposer inputExampleComposer,
+            ToolHandler toolHandler,
+            OpenApiMapperFactory openApiMapperFactory,
+            ToolAnnotationResolver toolAnnotationResolver,
+            OpenApiMcpProperties properties,
+            @Nullable ResourceRegistry resourceRegistry,
+            boolean declareSecuritySchemes,
+            @Nullable ToolSecuritySchemeResolver securitySchemeResolver) {
+        if (declareSecuritySchemes && securitySchemeResolver == null) {
+            throw new IllegalArgumentException(
+                    "A tool security scheme resolver is required when security schemes are declared");
+        }
         this.openApiRegistry = openApiRegistry;
         this.namingStrategy = namingStrategy;
         this.inputSchemaComposer = inputSchemaComposer;
@@ -113,6 +153,8 @@ public class ToolRegistry {
         this.toolAnnotationResolver = toolAnnotationResolver;
         this.properties = properties;
         this.resourceRegistry = resourceRegistry;
+        this.declareSecuritySchemes = declareSecuritySchemes;
+        this.securitySchemeResolver = securitySchemeResolver;
     }
 
     /**
@@ -158,8 +200,11 @@ public class ToolRegistry {
                             .inputSchema(resolveJsonSchema(fullOperation))
                             .annotations(toolAnnotationResolver.resolve(fullOperation, toolName));
                     if (appToolExtension != null) {
-                        toolBuilder.meta(AppMeta.toolMeta(appToolExtension));
                         appLinkedTools.put(toolName, appToolExtension);
+                    }
+                    var meta = composeToolMeta(appToolExtension, fullOperation);
+                    if (!meta.isEmpty()) {
+                        toolBuilder.meta(meta);
                     }
                     var tool = toolBuilder.build();
 
@@ -187,6 +232,23 @@ public class ToolRegistry {
 
     private boolean isPromptOperation(FullOperation fullOperation, Set<String> promptPaths) {
         return fullOperation.method() == PathItem.HttpMethod.GET && promptPaths.contains(fullOperation.path());
+    }
+
+    /**
+     * Merges the MCP Apps keys with the per-operation {@code securitySchemes} advertisement. The tool builder
+     * replaces rather than merges metadata, so all producers go through this single composition.
+     */
+    private Map<String, Object> composeToolMeta(
+            @Nullable AppToolExtension appToolExtension, FullOperation fullOperation) {
+        Map<String, Object> meta = appToolExtension != null
+                ? new LinkedHashMap<>(AppMeta.toolMeta(appToolExtension))
+                : new LinkedHashMap<>();
+        if (declareSecuritySchemes && securitySchemeResolver != null) {
+            securitySchemeResolver
+                    .resolve(fullOperation.openApi(), fullOperation.operation())
+                    .ifPresent(schemes -> meta.put(SECURITY_SCHEMES_META_KEY, schemes));
+        }
+        return meta;
     }
 
     private @Nullable AppToolExtension parseAppToolExtension(FullOperation fullOperation) {

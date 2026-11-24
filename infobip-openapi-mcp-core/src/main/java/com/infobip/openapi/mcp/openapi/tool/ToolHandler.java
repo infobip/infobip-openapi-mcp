@@ -4,6 +4,7 @@ import com.infobip.openapi.mcp.McpRequestContext;
 import com.infobip.openapi.mcp.apps.AppStructuredContent;
 import com.infobip.openapi.mcp.apps.DeclaredSchemaKind;
 import com.infobip.openapi.mcp.auth.CredentialProvider;
+import com.infobip.openapi.mcp.auth.PartialAuthChallengeHandler;
 import com.infobip.openapi.mcp.config.OpenApiMcpProperties;
 import com.infobip.openapi.mcp.enricher.ApiRequestEnricherChain;
 import com.infobip.openapi.mcp.error.ErrorModelWriter;
@@ -24,6 +25,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestClient;
@@ -79,6 +81,7 @@ public class ToolHandler {
     private final ProgressUpdateProvider progressUpdateProvider;
     private final NotificationTicker ticker;
     private final ObjectMapper objectMapper;
+    private final Optional<PartialAuthChallengeHandler> partialAuthHandler;
 
     public ToolHandler(
             RestClient restClient,
@@ -96,7 +99,7 @@ public class ToolHandler {
                 metricService,
                 credentialProvider,
                 progressUpdateProvider,
-                JsonMapper.builder().build());
+                Optional.empty());
     }
 
     public ToolHandler(
@@ -161,6 +164,57 @@ public class ToolHandler {
             ProgressUpdateProvider progressUpdateProvider,
             ObjectMapper objectMapper,
             NotificationTicker ticker) {
+        this(
+                restClient,
+                errorModelWriter,
+                properties,
+                enricherChain,
+                metricService,
+                credentialProvider,
+                progressUpdateProvider,
+                objectMapper,
+                ticker,
+                Optional.empty());
+    }
+
+    /**
+     * Partial-authentication constructor: the handler decides per request whether an API authorization
+     * failure marks the request for HTTP remapping or annotates the result in-band; empty in
+     * ALL_OR_NOTHING mode.
+     */
+    public ToolHandler(
+            RestClient restClient,
+            ErrorModelWriter errorModelWriter,
+            OpenApiMcpProperties properties,
+            ApiRequestEnricherChain enricherChain,
+            MetricService metricService,
+            CredentialProvider credentialProvider,
+            ProgressUpdateProvider progressUpdateProvider,
+            Optional<PartialAuthChallengeHandler> partialAuthHandler) {
+        this(
+                restClient,
+                errorModelWriter,
+                properties,
+                enricherChain,
+                metricService,
+                credentialProvider,
+                progressUpdateProvider,
+                JsonMapper.builder().build(),
+                () -> Thread.sleep(properties.progressNotificationsInterval().toMillis()),
+                partialAuthHandler);
+    }
+
+    ToolHandler(
+            RestClient restClient,
+            ErrorModelWriter errorModelWriter,
+            OpenApiMcpProperties properties,
+            ApiRequestEnricherChain enricherChain,
+            MetricService metricService,
+            CredentialProvider credentialProvider,
+            ProgressUpdateProvider progressUpdateProvider,
+            ObjectMapper objectMapper,
+            NotificationTicker ticker,
+            Optional<PartialAuthChallengeHandler> partialAuthHandler) {
         this.restClient = restClient;
         this.errorModelWriter = errorModelWriter;
         this.properties = properties;
@@ -171,6 +225,7 @@ public class ToolHandler {
         this.ticker = ticker;
         this.objectMapper = objectMapper;
         this.serializationCorrector = new JsonDoubleSerializationCorrector();
+        this.partialAuthHandler = partialAuthHandler;
     }
 
     /**
@@ -260,7 +315,8 @@ public class ToolHandler {
 
                     toolCallTimer.timeToolCall(
                             fullOperation, retryException.getStatusCode().isError());
-                    return callToolResult(retryException.getResponseBodyAsString(), true);
+                    return apiAuthErrorResult(
+                            context, retryException.getStatusCode(), retryException.getResponseBodyAsString());
                 } catch (RuntimeException retryException) {
                     httpCallRetryTimer.timeApiCall(fullOperation, HttpStatus.BAD_GATEWAY);
                     metricService.recordApiCall(fullOperation, HttpStatus.BAD_GATEWAY);
@@ -278,7 +334,7 @@ public class ToolHandler {
             LOGGER.debug("HTTP status code {}: {}", exception.getStatusCode(), exception.getResponseBodyAsString());
             metricService.recordApiCall(fullOperation, exception.getStatusCode());
             toolCallTimer.timeToolCall(fullOperation, true);
-            return callToolResult(exception.getResponseBodyAsString(), true);
+            return apiAuthErrorResult(context, exception.getStatusCode(), exception.getResponseBodyAsString());
         } catch (RuntimeException e) {
             httpCallTimer.timeApiCall(fullOperation, HttpStatus.BAD_GATEWAY);
             metricService.recordApiCall(fullOperation, HttpStatus.BAD_GATEWAY);
@@ -626,5 +682,16 @@ public class ToolHandler {
             builder.structuredContent(structuredContent);
         }
         return builder.build();
+    }
+
+    /**
+     * Builds the result for a downstream API authorization failure: handled by the partial-authentication
+     * handler when configured, plain error result otherwise.
+     */
+    private McpSchema.CallToolResult apiAuthErrorResult(
+            McpRequestContext context, HttpStatusCode statusCode, String apiErrorBody) {
+        return partialAuthHandler
+                .map(handler -> handler.handle(context, statusCode, apiErrorBody, body -> callToolResult(body, true)))
+                .orElseGet(() -> callToolResult(apiErrorBody, true));
     }
 }

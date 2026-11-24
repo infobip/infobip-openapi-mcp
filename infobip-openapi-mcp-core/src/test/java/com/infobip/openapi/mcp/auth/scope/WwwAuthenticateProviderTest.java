@@ -208,4 +208,61 @@ class WwwAuthenticateProviderTest {
         then(actualHeader)
                 .matches("Bearer resource_metadata=\"[^\"]+\", scope=\"[^\"]+\", error=\"insufficient_scope\"");
     }
+
+    @Test
+    void shouldBuildChallengeWithSignInInstructionAndScopes() {
+        // Given
+        var givenWwwAuthenticateProperties = new WwwAuthenticateProperties(UrlSource.API_BASE_URL, false);
+        var givenApiBaseUrl = URI.create("https://api.example.com");
+
+        given(oAuthProperties.wwwAuthenticate()).willReturn(givenWwwAuthenticateProperties);
+        given(apiBaseUrlProvider.get()).willReturn(givenApiBaseUrl);
+        given(scopeDiscoveryService.getDiscoveredScopes()).willReturn(Set.of("zalo:manage"));
+
+        // When
+        var actualChallenge = wwwAuthenticateProviderWithScopeService.buildWwwAuthenticateChallenge(givenRequest);
+
+        // Then
+        then(actualChallenge)
+                .isEqualTo("Bearer resource_metadata=\"https://api.example.com/.well-known/oauth-protected-resource\","
+                        + " scope=\"zalo:manage\", error=\"insufficient_scope\","
+                        + " error_description=\"You need to login to continue\"");
+    }
+
+    @Test
+    void shouldBuildChallengeWithoutScopesWhenScopeServiceAbsent() {
+        // Given
+        var givenWwwAuthenticateProperties = new WwwAuthenticateProperties(UrlSource.API_BASE_URL, false);
+        var givenApiBaseUrl = URI.create("https://api.example.com");
+
+        given(oAuthProperties.wwwAuthenticate()).willReturn(givenWwwAuthenticateProperties);
+        given(apiBaseUrlProvider.get()).willReturn(givenApiBaseUrl);
+
+        // When
+        var actualChallenge = wwwAuthenticateProviderWithoutScopeService.buildWwwAuthenticateChallenge(givenRequest);
+
+        // Then
+        then(actualChallenge).doesNotContain("scope=");
+        then(actualChallenge)
+                .endsWith(", error=\"insufficient_scope\", error_description=\"You need to login to continue\"");
+    }
+
+    @Test
+    void shouldNotIncludeErrorDescriptionInPlainHeader() {
+        // Given
+        var givenWwwAuthenticateProperties = new WwwAuthenticateProperties(UrlSource.API_BASE_URL, false);
+        var givenApiBaseUrl = URI.create("https://api.example.com");
+
+        given(oAuthProperties.wwwAuthenticate()).willReturn(givenWwwAuthenticateProperties);
+        given(apiBaseUrlProvider.get()).willReturn(givenApiBaseUrl);
+
+        // When
+        var plainHeader = wwwAuthenticateProviderWithoutScopeService.buildWwwAuthenticateHeader(givenRequest);
+        var scopeErrorHeader =
+                wwwAuthenticateProviderWithoutScopeService.buildWwwAuthenticateHeaderWithScopeError(givenRequest);
+
+        // Then
+        then(plainHeader).doesNotContain("error_description=");
+        then(scopeErrorHeader).doesNotContain("error_description=");
+    }
 }
